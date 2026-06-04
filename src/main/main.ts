@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
 import { randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Kafka, logLevel, type Admin, type Consumer, type KafkaMessage } from "kafkajs";
@@ -7,6 +8,7 @@ import { autoUpdater } from "electron-updater";
 import type {
   ConsumedMessage,
   ConsumeOffsetRequest,
+  ConsumeOffsetResult,
   ConsumeTimeRangeRequest,
   AppPreferences,
   AppSettingsBundle,
@@ -15,6 +17,7 @@ import type {
   ConsumerGroupSummary,
   ImportSettingsResult,
   MessageExportRequest,
+  OffsetMessageExportRequest,
   ProduceRequest,
   ProducedMessage,
   ServerProfile,
@@ -376,6 +379,111 @@ function formatMessageLog(messages: ConsumedMessage[], template?: string) {
     };
     return lineTemplate.replace(/\{(topic|partition|offset|timestamp|key|value|headers)\}/g, (_match, key: string) => values[key] ?? "");
   }).join("\n");
+}
+
+function formatMessageLogLine(message: ConsumedMessage, template?: string) {
+  return formatMessageLog([message], template);
+}
+
+function nextOffset(offset: string) {
+  return (/^\d+$/.test(offset) ? BigInt(offset) + 1n : 0n).toString();
+}
+
+async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> {
+  const profile = await getProfile(request.serverId);
+  const kafka = createKafka(profile);
+  const consumer = kafka.consumer({ groupId: `kafka-tool-offset-${Date.now()}` });
+  const messages: ConsumedMessage[] = [];
+  const limit = Math.max(1, Number(request.limit) || 10);
+  let seekOffset = request.offset;
+  let endExclusive: bigint | null = null;
+  let settled = false;
+
+  const admin = kafka.admin();
+  await admin.connect();
+  try {
+    const offsets = await admin.fetchTopicOffsets(request.topic);
+    const partitionOffset = offsets.find((offset) => offset.partition === request.partition);
+    if (partitionOffset && /^\d+$/.test(partitionOffset.high) && /^\d+$/.test(partitionOffset.low)) {
+      const high = BigInt(partitionOffset.high);
+      const low = BigInt(partitionOffset.low);
+      if (request.order === "desc") {
+        const snapshotEnd = request.endOffsetExclusive && /^\d+$/.test(request.endOffsetExclusive)
+          ? (BigInt(request.endOffsetExclusive) < high ? BigInt(request.endOffsetExclusive) : high)
+          : high;
+        const requestedEnd = /^\d+$/.test(request.offset) ? BigInt(request.offset) : 0n;
+        endExclusive = requestedEnd > low ? (requestedEnd < snapshotEnd ? requestedEnd : snapshotEnd) : snapshotEnd;
+      } else {
+        endExclusive = request.endOffsetExclusive && /^\d+$/.test(request.endOffsetExclusive)
+          ? (BigInt(request.endOffsetExclusive) < high ? BigInt(request.endOffsetExclusive) : high)
+          : high;
+      }
+
+      if (request.order === "desc" && endExclusive !== null) {
+        const start = endExclusive > BigInt(limit) ? endExclusive - BigInt(limit) : low;
+        seekOffset = (start > low ? start : low).toString();
+      } else if (/^\d+$/.test(seekOffset) && BigInt(seekOffset) < low) {
+        seekOffset = low.toString();
+      }
+    }
+  } finally {
+    await admin.disconnect();
+  }
+
+  await consumer.connect();
+  await consumer.subscribe({ topic: request.topic, fromBeginning: true });
+
+  return await new Promise<ConsumeOffsetResult>((resolve, reject) => {
+    const cleanup = () => {
+      void consumer.stop()
+        .catch(() => undefined)
+        .finally(() => {
+          void consumer.disconnect().catch(() => undefined);
+        });
+    };
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve({ messages: [...messages], endOffsetExclusive: endExclusive?.toString() });
+      cleanup();
+    };
+
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(error);
+      cleanup();
+    };
+
+    const timeout = setTimeout(finish, Math.max(8000, Math.min(120000, limit * 10)));
+
+    consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        if (partition !== request.partition) {
+          return;
+        }
+        if (endExclusive !== null && /^\d+$/.test(message.offset) && BigInt(message.offset) >= endExclusive) {
+          finish();
+          return;
+        }
+        messages.push(toConsumedMessage(request.serverId, topic, partition, message));
+        if (messages.length >= limit) {
+          finish();
+        }
+      }
+    }).catch(fail);
+
+    setTimeout(() => {
+      try {
+        consumer.seek({ topic: request.topic, partition: request.partition, offset: seekOffset });
+      } catch (error) {
+        fail(error);
+      }
+    }, 0);
+  });
 }
 
 async function stopActiveConsumer(request?: StopConsumeRequest) {
@@ -795,11 +903,72 @@ ipcMain.handle("kafka:topics-purge", async (_event, request: TopicMutationReques
 ipcMain.handle("kafka:groups", async (_event, serverId: string): Promise<ConsumerGroupSummary[]> => {
   return withAdmin(serverId, async (admin) => {
     const groups = await admin.listGroups();
-    return groups.groups
-      .map((group) => ({
-        groupId: group.groupId,
-        protocol: group.protocolType
-      }))
+    const groupIds = groups.groups.map((group) => group.groupId);
+    const describedGroups = groupIds.length > 0
+      ? await admin.describeGroups(groupIds).catch(() => ({ groups: [] }))
+      : { groups: [] };
+    const describedById = new Map(describedGroups.groups.map((group) => [group.groupId, group]));
+    const endOffsetsByTopic = new Map<string, Map<number, string>>();
+
+    async function getEndOffsets(topic: string) {
+      const cached = endOffsetsByTopic.get(topic);
+      if (cached) return cached;
+      const offsets = await admin.fetchTopicOffsets(topic);
+      const mapped = new Map(offsets.map((offset) => [offset.partition, offset.high]));
+      endOffsetsByTopic.set(topic, mapped);
+      return mapped;
+    }
+
+    const summaries = await Promise.all(groups.groups.map(async (group) => {
+        const described = describedById.get(group.groupId);
+        const summary: ConsumerGroupSummary = {
+          groupId: group.groupId,
+          protocol: described?.protocolType ?? group.protocolType,
+          state: described?.state,
+          members: described?.members.length
+        };
+
+        try {
+          const groupOffsets = await admin.fetchOffsets({ groupId: group.groupId });
+          const topicNames = [...new Set(groupOffsets.map((topicOffset) => topicOffset.topic))];
+          const topicEndOffsets = new Map<string, Map<number, string>>();
+
+          await Promise.all(topicNames.map(async (topic) => {
+            topicEndOffsets.set(topic, await getEndOffsets(topic));
+          }));
+
+          let assignedPartitions = 0;
+          const totalLag = groupOffsets.reduce<bigint | null>((total, topicOffset) => {
+            assignedPartitions += topicOffset.partitions.length;
+            return topicOffset.partitions.reduce<bigint | null>((partitionTotal, partitionOffset) => {
+              const endOffset = topicEndOffsets.get(topicOffset.topic)?.get(partitionOffset.partition) ?? "-";
+              const lag = calculateLag(partitionOffset.offset, endOffset);
+              if (!/^\d+$/.test(lag)) return partitionTotal;
+              return (partitionTotal ?? 0n) + BigInt(lag);
+            }, total);
+          }, null);
+
+          return {
+            ...summary,
+            topics: topicNames.length,
+            assignedPartitions,
+            totalLag: totalLag?.toString() ?? "-"
+          };
+        } catch {
+          return summary;
+        }
+      }));
+
+    return summaries
+      .map((summary) => {
+        const described = describedById.get(summary.groupId);
+        return {
+          ...summary,
+          protocol: summary.protocol ?? described?.protocolType,
+          state: summary.state ?? described?.state,
+          members: summary.members ?? described?.members.length
+        };
+      })
       .sort((a, b) => a.groupId.localeCompare(b.groupId));
   });
 });
@@ -880,6 +1049,81 @@ ipcMain.handle("messages:export", async (_event, request: MessageExportRequest):
   return result.filePath;
 });
 
+ipcMain.handle("messages:export-offset", async (_event, request: OffsetMessageExportRequest): Promise<string | null> => {
+  if (!mainWindow) return null;
+  const extension = request.format === "csv" ? "csv" : request.format === "log" ? "log" : "json";
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Export offset range messages",
+    defaultPath: `${sanitizeFileName(request.topic)}-offset-${new Date().toISOString().slice(0, 10)}.${extension}`,
+    filters: [{ name: extension.toUpperCase(), extensions: [extension] }]
+  });
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+
+  const stream = createWriteStream(result.filePath, { encoding: "utf8" });
+  const write = (chunk: string) => new Promise<void>((resolve, reject) => {
+    stream.write(chunk, (error) => error ? reject(error) : resolve());
+  });
+  const totalLimit = Math.max(1, Number(request.limit) || 10);
+  const pageSize = 5000;
+  let remaining = totalLimit;
+  let cursor = request.offset;
+  let count = 0;
+  let jsonFirst = true;
+
+  try {
+    if (request.format === "csv") {
+      await write(["topic", "partition", "offset", "timestamp", "key", "value", "headers"].join(",") + "\n");
+    } else if (request.format === "json") {
+      await write(`{\n  "exportedAt": ${JSON.stringify(new Date().toISOString())},\n  "topic": ${JSON.stringify(request.topic)},\n  "messages": [\n`);
+    }
+
+    while (remaining > 0) {
+      const batchLimit = Math.min(pageSize, remaining);
+      const batch = await consumeOffsetBatch({ ...request, offset: cursor, limit: batchLimit });
+      const messages = request.order === "desc" ? [...batch.messages].reverse() : batch.messages;
+      if (messages.length === 0) break;
+
+      for (const message of messages) {
+        if (request.format === "csv") {
+          await write([
+            message.topic,
+            message.partition,
+            message.offset,
+            message.timestamp,
+            message.key,
+            message.value,
+            JSON.stringify(message.headers)
+          ].map(csvValue).join(",") + "\n");
+        } else if (request.format === "log") {
+          await write(formatMessageLogLine(message, request.template) + "\n");
+        } else {
+          await write(`${jsonFirst ? "" : ",\n"}    ${JSON.stringify(message)}`);
+          jsonFirst = false;
+        }
+      }
+
+      count += messages.length;
+      remaining -= messages.length;
+      if (messages.length < batchLimit) break;
+      cursor = request.order === "desc"
+        ? messages[messages.length - 1].offset
+        : nextOffset(messages[messages.length - 1].offset);
+    }
+
+    if (request.format === "json") {
+      await write(`\n  ],\n  "count": ${count}\n}\n`);
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      stream.end((error?: Error | null) => error ? reject(error) : resolve());
+    });
+  }
+
+  return result.filePath;
+});
+
 ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise<ProducedMessage[]> => {
   const profile = await getProfile(request.serverId);
   const producer = createKafka(profile).producer();
@@ -926,69 +1170,14 @@ function toConsumedMessage(serverId: string | undefined, topic: string, partitio
   };
 }
 
-ipcMain.handle("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumedMessage[]> => {
-  const profile = await getProfile(request.serverId);
-  const consumer = createKafka(profile).consumer({ groupId: `kafka-tool-offset-${Date.now()}` });
-  const messages: ConsumedMessage[] = [];
-  const limit = Math.max(1, Math.min(Number(request.limit) || 10, 500));
-  let settled = false;
-
-  await consumer.connect();
-  await consumer.subscribe({ topic: request.topic, fromBeginning: true });
-
-  return await new Promise<ConsumedMessage[]>((resolve, reject) => {
-    const cleanup = () => {
-      void consumer.stop()
-        .catch(() => undefined)
-        .finally(() => {
-          void consumer.disconnect().catch(() => undefined);
-        });
-    };
-
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      resolve([...messages]);
-      cleanup();
-    };
-
-    const fail = (error: unknown) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      reject(error);
-      cleanup();
-    };
-
-    const timeout = setTimeout(finish, 8000);
-
-    consumer.run({
-      eachMessage: async ({ topic, partition, message }) => {
-        if (partition !== request.partition) {
-          return;
-        }
-        messages.push(toConsumedMessage(request.serverId, topic, partition, message));
-        if (messages.length >= limit) {
-          finish();
-        }
-      }
-    }).catch(fail);
-
-    setTimeout(() => {
-      try {
-        consumer.seek({ topic: request.topic, partition: request.partition, offset: request.offset });
-      } catch (error) {
-        fail(error);
-      }
-    }, 0);
-  });
+ipcMain.handle("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> => {
+  return consumeOffsetBatch(request);
 });
 
 ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRangeRequest): Promise<ConsumedMessage[]> => {
   const profile = await getProfile(request.serverId);
   const kafka = createKafka(profile);
-  const limit = Math.max(1, Math.min(Number(request.limit) || 100, 1000));
+  const limit = Math.max(1, Number(request.limit) || 100);
   const messages: ConsumedMessage[] = [];
   const admin = kafka.admin();
   const consumer = kafka.consumer({ groupId: `kafka-tool-time-${Date.now()}` });

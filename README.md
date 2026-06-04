@@ -10,23 +10,79 @@ It is designed for internal developer use: register Kafka clusters, browse topic
 - Open multiple cluster tabs
 - Search, reorder, connect, disconnect, edit, and delete servers
 - Browse topic lists with per-server favorites
+- Filter and sort topic lists by name, message count, partitions, and favorites
+- View topic message counts in the sidebar and topic overview
 - Open topic tabs by double-clicking topics
+- Split topic tabs into left/right work areas for side-by-side inspection
 - View topic partition, replica, ISR, and offset information
 - Consume messages by offset, time range, or live streaming
+- Use `Newest` or `Oldest` offset lookup order
+- Automatically page large offset queries over 10,000 messages
+- Keep large offset paging and full export pinned to the same snapshot offset
 - Pause live streaming and control auto-scroll
 - Limit retained live messages to protect renderer memory
 - Filter consumed messages by key, value, offset, partition, or timestamp
-- Export consumed messages as JSON or CSV
+- Export consumed messages as JSON, CSV, or custom LOG format
+- Export current page or full offset range for large offset queries
 - Inspect selected messages with Raw and Tree JSON viewers
 - Search and highlight JSON contents
 - Copy full message JSON or only the Kafka value
 - Send consumed payloads to the Produce tab
-- Produce messages with key and value
+- Produce messages with key, headers, and value
+- Use sortable TanStack-based grids for messages, brokers, topics, and consumers
 - View consumer groups and group lag
 - Persist user settings locally
 - Import/export settings from the native File menu
+- Customize editor font family, font size, and LOG export template
 - GitHub Releases based auto-update support
 - Optional SSL/TLS and SASL/OAUTHBEARER server authentication
+
+## Large Offset Queries
+
+Offset consume supports large limits for operational debugging.
+
+When the offset `Limit` is `10,000` or lower, the app reads and displays the requested range directly.
+
+When the offset `Limit` is greater than `10,000`, the app switches to paged viewing:
+
+- The screen loads up to `5,000` messages per page.
+- `Prev` and `Next` move through the offset range without keeping all messages in renderer memory.
+- `Newest` starts from the high offset captured when `Consume` is clicked.
+- `Oldest` starts from the entered offset.
+- The captured high offset is reused for paging and full export, so newly arriving Kafka messages do not change the current query session.
+
+The download menu has two groups in large offset mode:
+
+- `Current page`: exports only the currently displayed page.
+- `Full offset range`: exports the full requested offset range directly from the Electron main process.
+
+This keeps the UI responsive while still allowing large exports such as 60,000 messages.
+
+## Message Export
+
+Consumed messages can be exported as:
+
+- `JSON`
+- `CSV`
+- `LOG`
+
+The LOG format uses the template configured in:
+
+```text
+File > Preferences...
+```
+
+Available LOG template variables:
+
+```text
+{topic}
+{partition}
+{offset}
+{timestamp}
+{key}
+{value}
+{headers}
+```
 
 ## Authentication
 
@@ -86,6 +142,7 @@ Stored information includes:
 - Server profiles
 - Favorite topics by server
 - Consume defaults
+- Font and LOG export template preferences
 - Window size and position
 - Sidebar and panel sizes
 
@@ -217,7 +274,8 @@ File > Check for Updates...
 - TypeScript
 - Vite
 - KafkaJS
+- TanStack Table
+- TanStack Virtual
 - Tailwind CSS
 - electron-builder
 - electron-updater
-

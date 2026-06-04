@@ -1,77 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import type { ColumnDef } from "@tanstack/react-table";
 import { AlertTriangle, ArrowUpDown, Calendar, CheckCircle2, ChevronDown, ChevronRight, Copy, Database, Download, Filter, HardDrive, Layers, ListTree, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
-import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
+import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupLagRow, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
+import { DataGrid } from "./components/DataGrid";
+import { emptyConsumeState, emptyServer, fontOptions, topicSortOptions, type ConsumeDefaultPatch, type ConsumeFilterField, type ConsumeMode, type DragPayload, type JsonInspectorMode, type OffsetOrder, type SplitPaneState, type ToastState, type TopicAction, type TopicConsumeState, type TopicListFilter, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
+import { filterMessages, formatCompactNumber, formatCount, formatHeaders, formatMessagePayload, formatPercent, formatProduceValue, formatTimestamp, getEpochTitle, getPartitionColor, getTopicSortLabel, isTopicWorkView, parseJson, parseProduceHeaders, parseTopicCount, previewHeaders, previewValue, renderHighlightedText, renderRawJsonText, sanitizeFontFamily, sortTopics, stringifyPrimitive, validateJsonLikeValue } from "./utils";
 import "./styles.css";
 
-type View = "brokers" | "topics" | "consumers" | "info" | "consume" | "produce";
-type TopicWorkView = "info" | "consume" | "produce";
-type ConsumeMode = "offset" | "timeRange" | "live";
-type ConsumeFilterField = "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
-type OffsetOrder = "asc" | "desc";
-type JsonInspectorMode = "raw" | "tree";
-type TopicListFilter = "all" | "favorites" | "nonEmpty";
-type TopicSortMode = "nameAsc" | "messagesDesc" | "partitionsDesc" | "favoritesFirst";
-type ToastState = { message: string; kind: "loading" | "success" | "error" } | null;
-type ConsumeDefaultPatch = AppPreferences["consumeDefaultsByServer"][string];
-type TopicAction = { kind: "delete" | "purge"; topics: string[] } | null;
-
-type TopicConsumeState = {
-  messages: ConsumedMessage[];
-  selectedMessage: ConsumedMessage | null;
-  mode: ConsumeMode;
-  offsetOrder: OffsetOrder;
-  offset: string;
-  limit: number;
-  partition: string;
-  timeStart: string;
-  timeEnd: string;
-  filterText: string;
-  filterField: ConsumeFilterField;
-  autoScroll: boolean;
-  maxMessages: number;
-};
-
-const emptyServer = {
-  name: "",
-  brokers: "localhost:9092",
-  ssl: false,
-  oauthEnabled: false,
-  oauthTokenEndpoint: "",
-  oauthClientId: "",
-  oauthClientSecret: "",
-  oauthScope: "",
-  oauthAudience: ""
-};
-const emptyConsumeState: TopicConsumeState = {
-  messages: [],
-  selectedMessage: null,
-  mode: "offset",
-  offsetOrder: "asc",
-  offset: "0",
-  limit: 10,
-  partition: "",
-  timeStart: "",
-  timeEnd: "",
-  filterText: "",
-  filterField: "all",
-  autoScroll: true,
-  maxMessages: 1000
-};
-
-const topicSortOptions: Array<{ value: TopicSortMode; label: string }> = [
-  { value: "nameAsc", label: "Name A-Z" },
-  { value: "messagesDesc", label: "Messages High-Low" },
-  { value: "partitionsDesc", label: "Partitions High-Low" },
-  { value: "favoritesFirst", label: "Favorites first" }
-];
-
-const fontOptions = [
-  { value: "D2Coding, Consolas, 'Courier New', monospace", label: "D2Coding stack" },
-  { value: "Consolas, 'Courier New', monospace", label: "Consolas stack" },
-  { value: "'JetBrains Mono', Consolas, monospace", label: "JetBrains Mono stack" },
-  { value: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", label: "System UI stack" }
-];
+const OFFSET_PAGING_THRESHOLD = 10000;
+const OFFSET_PAGE_SIZE = 5000;
 
 function App() {
   const kafkaApi = window.kafkaApi;
@@ -121,6 +59,11 @@ function App() {
   const [isTopicSortMenuOpen, setIsTopicSortMenuOpen] = useState(false);
   const [pendingTopicAction, setPendingTopicAction] = useState<TopicAction>(null);
   const [topicActionConfirmText, setTopicActionConfirmText] = useState("");
+  const [splitPane, setSplitPane] = useState<SplitPaneState | null>(null);
+  const [splitDropSide, setSplitDropSide] = useState<"left" | "right" | null>(null);
+  const [splitPrimaryPercent, setSplitPrimaryPercent] = useState(50);
+  const [activeWorkspacePane, setActiveWorkspacePane] = useState<"primary" | "split">("primary");
+  const [activeDragPayload, setActiveDragPayload] = useState<DragPayload | null>(null);
   const [connectionError, setConnectionError] = useState<{ serverName: string; brokers: string; message: string } | null>(null);
   const [draggingServerId, setDraggingServerId] = useState("");
   const [serverDropTarget, setServerDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
@@ -157,6 +100,16 @@ function App() {
   const selectedGroupLag = groupLagByServer[selectedServerId]?.[selectedGroupId] ?? null;
   const consumeStates = consumeStatesByServer[selectedServerId] ?? {};
   const contextTopic = topicContextMenu?.topic ?? "";
+  const visibleSplitPane = splitPane?.serverId === selectedServerId ? splitPane : null;
+  const splitServer = visibleSplitPane ? servers.find((server) => server.id === visibleSplitPane.serverId) : undefined;
+  const splitTopics = visibleSplitPane ? topicsByServer[visibleSplitPane.serverId] ?? [] : [];
+  const splitGroups = visibleSplitPane ? groupsByServer[visibleSplitPane.serverId] ?? [] : [];
+  const splitBrokers = visibleSplitPane ? brokersByServer[visibleSplitPane.serverId] ?? [] : [];
+  const splitConsumeState = visibleSplitPane
+    ? (consumeStatesByServer[visibleSplitPane.serverId]?.[visibleSplitPane.topic] ?? getDefaultConsumeState(visibleSplitPane.serverId))
+    : emptyConsumeState;
+  const splitSelectedGroupId = visibleSplitPane ? selectedGroupByServer[visibleSplitPane.serverId] ?? "" : "";
+  const splitSelectedGroupLag = visibleSplitPane ? groupLagByServer[visibleSplitPane.serverId]?.[splitSelectedGroupId] ?? null : null;
 
   function getDefaultConsumeState(serverId = selectedServerId): TopicConsumeState {
     return {
@@ -253,6 +206,23 @@ function App() {
       const previous = current[selectedServerId] ?? {};
       const next = typeof action === "function" ? action(previous) : action;
       return { ...current, [selectedServerId]: next };
+    });
+  }
+
+  function updateConsumeStateFor(serverId: string, topic: string, patch: Partial<TopicConsumeState>) {
+    setConsumeStatesByServer((current) => {
+      const serverStates = current[serverId] ?? {};
+      const previous = serverStates[topic] ?? getDefaultConsumeState(serverId);
+      return {
+        ...current,
+        [serverId]: {
+          ...serverStates,
+          [topic]: {
+            ...previous,
+            ...patch
+          }
+        }
+      };
     });
   }
 
@@ -785,6 +755,171 @@ function App() {
     await connectServer(server);
   }
 
+  function readDragPayload(event: React.DragEvent): DragPayload | null {
+    const raw = event.dataTransfer.getData("application/x-kafka-tool");
+    if (!raw) return activeDragPayload;
+    try {
+      return JSON.parse(raw) as DragPayload;
+    } catch {
+      return activeDragPayload;
+    }
+  }
+
+  async function openSplitForTopic(serverId: string, topic: string) {
+    if (!topic || serverId !== selectedServerId) return;
+    setSplitPane((current) => {
+      const previousTabs = current?.serverId === serverId ? current.topicTabs : [];
+      return {
+        serverId,
+        topic,
+        topicTabs: previousTabs.includes(topic) ? previousTabs : [...previousTabs, topic],
+        view: getTopicView(topic) === "consume" ? "consume" : "info",
+        detail: null
+      };
+    });
+    setActiveWorkspacePane("split");
+    await loadSplitTopicDetail(serverId, topic);
+  }
+
+  async function loadSplitTopicDetail(serverId: string, topic: string) {
+    if (!kafkaApi || !topic) return;
+    const detail = await runTask("split topic detail 조회 중", () => kafkaApi.getTopicDetail(serverId, topic));
+    setSplitPane((current) => current && current.serverId === serverId && current.topic === topic
+      ? { ...current, detail }
+      : current
+    );
+  }
+
+  function handleWorkspaceDragOver(event: React.DragEvent<HTMLElement>) {
+    const payload = activeDragPayload ?? readDragPayload(event);
+    if (!payload) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const rect = event.currentTarget.getBoundingClientRect();
+    setSplitDropSide(event.clientX < rect.left + rect.width / 2 ? "left" : "right");
+  }
+
+  function startWorkspaceSplitResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const container = event.currentTarget.closest(".workspace") as HTMLElement | null;
+    const rect = container?.getBoundingClientRect();
+    if (!rect) return;
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const percent = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      setSplitPrimaryPercent(Math.min(72, Math.max(28, percent)));
+    };
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  }
+
+  async function handleWorkspaceDrop(event: React.DragEvent<HTMLElement>) {
+    const payload = activeDragPayload ?? readDragPayload(event);
+    if (!payload) return;
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const side = event.clientX < rect.left + rect.width / 2 ? "left" : "right";
+    setSplitDropSide(null);
+    setActiveDragPayload(null);
+    if (payload.type === "split-pane" && side === "left") {
+      await closeSplitPane();
+      return;
+    }
+    if (payload.type === "topic") {
+      if (side === "right" && payload.source === "primary") {
+        await openSplitForTopic(payload.serverId, payload.topic);
+        await removePrimaryTopicTabAfterSplit(payload.topic);
+        return;
+      }
+      if (side === "left" && payload.source === "split") {
+        await moveSplitTopicToPrimary(payload.topic);
+      }
+    }
+  }
+
+  async function openPrimaryTopicTab(topic: string) {
+    setActiveWorkspacePane("primary");
+    setOpenedTopicTabs((current) => (current.includes(topic) ? current : [...current, topic]));
+    activateTopicView(topic);
+    await loadTopicDetail(topic);
+  }
+
+  async function moveSplitTopicToPrimary(topic: string) {
+    const pane = splitPane;
+    if (!pane || pane.serverId !== selectedServerId || !pane.topicTabs.includes(topic)) return;
+    await openPrimaryTopicTab(topic);
+    await closeSplitTopicTab(topic);
+  }
+
+  async function removePrimaryTopicTabAfterSplit(topic: string) {
+    if (!openedTopicTabs.includes(topic)) return;
+    const nextTabs = openedTopicTabs.filter((item) => item !== topic);
+    setOpenedTopicTabs(nextTabs);
+    if (selectedTopic !== topic) return;
+    const nextTopic = nextTabs[nextTabs.length - 1] ?? "";
+    setSelectedTopic(nextTopic);
+    if (nextTopic) {
+      activateTopicView(nextTopic);
+      await loadTopicDetail(nextTopic);
+      return;
+    }
+    setTopicDetail(null);
+  }
+
+  async function closeSplitPane() {
+    const pane = splitPane;
+    if (!pane) return;
+    if ((streamingTopicsByServer[pane.serverId] ?? []).includes(pane.topic)) {
+      await stopConsume(pane.serverId, pane.topic);
+    }
+    setSplitPane(null);
+    setActiveWorkspacePane("primary");
+  }
+
+  async function activateSplitTopic(topic: string, view: View = "info") {
+    const pane = splitPane;
+    if (!pane || !topic) return;
+    setSplitPane((current) => current
+      ? {
+          ...current,
+          topic,
+          topicTabs: current.topicTabs.includes(topic) ? current.topicTabs : [...current.topicTabs, topic],
+          view,
+          detail: null
+        }
+      : current
+    );
+    await loadSplitTopicDetail(pane.serverId, topic);
+  }
+
+  async function closeSplitTopicTab(topic: string) {
+    const pane = splitPane;
+    if (!pane) return;
+    if ((streamingTopicsByServer[pane.serverId] ?? []).includes(topic)) {
+      await stopConsume(pane.serverId, topic);
+    }
+    const nextTabs = pane.topicTabs.filter((item) => item !== topic);
+    if (nextTabs.length === 0) {
+      setSplitPane(null);
+      setActiveWorkspacePane("primary");
+      return;
+    }
+    const nextTopic = pane.topic === topic ? nextTabs[nextTabs.length - 1] ?? "" : pane.topic;
+    setSplitPane({
+      ...pane,
+      topic: nextTopic,
+      topicTabs: nextTabs,
+      view: nextTopic ? pane.view : "topics",
+      detail: null
+    });
+    if (nextTopic) {
+      await loadSplitTopicDetail(pane.serverId, nextTopic);
+    }
+  }
+
   async function disconnectServer(serverId: string) {
     for (const topic of streamingTopicsByServer[serverId] ?? []) {
       await stopConsume(serverId, topic);
@@ -864,9 +999,11 @@ function App() {
   }
 
   async function openTopicTab(topic: string) {
-    setOpenedTopicTabs((current) => (current.includes(topic) ? current : [...current, topic]));
-    activateTopicView(topic);
-    await loadTopicDetail(topic);
+    if (activeWorkspacePane === "split" && splitPane?.serverId === selectedServerId) {
+      await activateSplitTopic(topic);
+      return;
+    }
+    await openPrimaryTopicTab(topic);
   }
 
   function toggleTopicRow(topic: string) {
@@ -1010,8 +1147,25 @@ function App() {
     }));
   }
 
+  async function loadConsumerGroupLagFor(serverId: string, groupId: string) {
+    if (!kafkaApi || !serverId) return;
+    setSelectedGroupByServer((current) => ({ ...current, [serverId]: groupId }));
+    const detail = await runTask("consumer group lag loading", () => kafkaApi.getConsumerGroupLag(serverId, groupId));
+    setGroupLagByServer((current) => ({
+      ...current,
+      [serverId]: {
+        ...(current[serverId] ?? {}),
+        [groupId]: detail
+      }
+    }));
+  }
+
   async function produce() {
-    if (!kafkaApi || !selectedServerId || !selectedTopic) return;
+    await produceFor(selectedServerId, selectedTopic);
+  }
+
+  async function produceFor(serverId: string, topic: string) {
+    if (!kafkaApi || !serverId || !topic) return;
     const validationError = validateJsonLikeValue(produceValue);
     if (validationError) {
       setStatus(validationError);
@@ -1026,8 +1180,8 @@ function App() {
     }
     const result = await runTask("메시지 전송 중", () =>
       kafkaApi.produce({
-        serverId: selectedServerId,
-        topic: selectedTopic,
+        serverId,
+        topic,
         key: produceKey,
         value: produceValue,
         headers
@@ -1088,7 +1242,7 @@ function App() {
   async function exportSettings() {
     if (!kafkaApi) return;
     setLoading(true);
-    setToast({ message: "설정 내보내기 중", kind: "loading" });
+      setToast({ message: "설정 내보내기 중", kind: "loading" });
     try {
       const filePath = await kafkaApi.exportSettings();
       if (filePath) {
@@ -1131,8 +1285,8 @@ function App() {
     }
   }
 
-  async function exportConsumedMessages(format: MessageExportFormat, messages: ConsumedMessage[]) {
-    if (!kafkaApi || !selectedTopic) return;
+  async function exportConsumedMessages(format: MessageExportFormat, messages: ConsumedMessage[], topicName = selectedTopic) {
+    if (!kafkaApi || !topicName) return;
     if (messages.length === 0) {
       setToast({ message: "내보낼 메시지가 없습니다.", kind: "error" });
       return;
@@ -1141,7 +1295,7 @@ function App() {
     setToast({ message: "메시지 내보내기 중", kind: "loading" });
     try {
       const filePath = await kafkaApi.exportMessages({
-        topic: selectedTopic,
+        topic: topicName,
         format,
         messages,
         template: exportFormatTemplate
@@ -1161,23 +1315,119 @@ function App() {
     }
   }
 
+  async function exportOffsetConditionMessages(format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState) {
+    if (!kafkaApi || !serverId || !topic) return;
+    const partition = state.partition === "" ? 0 : Number(state.partition);
+    setLoading(true);
+    setToast({ message: "전체 조건 메시지 내보내기 중", kind: "loading" });
+    try {
+      const filePath = await kafkaApi.exportOffsetMessages({
+        serverId,
+        topic,
+        partition,
+        offset: state.offset,
+        limit: state.limit,
+        order: state.offsetOrder,
+        endOffsetExclusive: state.offsetPagination?.endOffsetExclusive,
+        format,
+        template: exportFormatTemplate
+      });
+      if (filePath) {
+        setStatus(`전체 조건 메시지 내보내기 완료: ${filePath}`);
+        setToast({ message: "전체 조건 메시지 내보내기 완료", kind: "success" });
+      } else {
+        setToast(null);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatus(message);
+      setToast({ message, kind: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function startConsume() {
     if (!kafkaApi || !selectedServerId || !selectedTopic) return;
     const state = consumeStates[selectedTopic] ?? selectedDefaultConsumeState;
+    await startConsumeFor(selectedServerId, selectedTopic, state);
+  }
+
+  function getOffsetPageLimit(state: TopicConsumeState, pageIndex: number) {
+    if (state.limit <= OFFSET_PAGING_THRESHOLD) return state.limit;
+    return Math.min(OFFSET_PAGE_SIZE, Math.max(0, state.limit - pageIndex * OFFSET_PAGE_SIZE));
+  }
+
+  function getNextPageOffset(order: OffsetOrder, messages: ConsumedMessage[]) {
+    if (messages.length === 0) return "";
+    const anchor = messages[messages.length - 1].offset;
+    return order === "desc" ? anchor : stringifyPrimitive(/^\d+$/.test(anchor) ? BigInt(anchor) + 1n : anchor);
+  }
+
+  async function consumeOffsetPageFor(
+    serverId: string,
+    topic: string,
+    state: TopicConsumeState,
+    pageOffset: string,
+    pageIndex: number,
+    prevOffsets: string[]
+  ) {
+    if (!kafkaApi) return;
+    const partition = state.partition === "" ? 0 : Number(state.partition);
+    const pageLimit = getOffsetPageLimit(state, pageIndex);
+    if (pageLimit <= 0) return;
+    updateConsumeStateFor(serverId, topic, { messages: [], selectedMessage: null });
+    const result = await runTask("offset consume 조회 중", () =>
+      kafkaApi.consumeFromOffset({
+        serverId,
+        topic,
+        partition,
+        offset: pageOffset,
+        limit: pageLimit,
+        order: state.offsetOrder,
+        endOffsetExclusive: state.offsetPagination?.endOffsetExclusive
+      })
+    );
+    const items = result.messages;
+    const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
+    const endOffsetExclusive = result.endOffsetExclusive ?? state.offsetPagination?.endOffsetExclusive;
+    const hasPaging = state.limit > OFFSET_PAGING_THRESHOLD;
+    const pagination = hasPaging
+      ? {
+          totalLimit: state.limit,
+          pageSize: OFFSET_PAGE_SIZE,
+          pageIndex,
+          currentOffset: pageOffset,
+          prevOffsets,
+          nextOffset: getNextPageOffset(state.offsetOrder, orderedItems),
+          hasNext: orderedItems.length === pageLimit && (pageIndex + 1) * OFFSET_PAGE_SIZE < state.limit,
+          endOffsetExclusive
+        }
+      : null;
+    updateConsumeStateFor(serverId, topic, {
+      messages: orderedItems,
+      selectedMessage: orderedItems[0] ?? null,
+      offsetPagination: pagination
+    });
+  }
+
+  async function moveOffsetPageFor(serverId: string, topic: string, state: TopicConsumeState, direction: "prev" | "next") {
+    const pagination = state.offsetPagination;
+    if (!pagination) return;
+    if (direction === "next") {
+      await consumeOffsetPageFor(serverId, topic, state, pagination.nextOffset, pagination.pageIndex + 1, [...pagination.prevOffsets, pagination.currentOffset]);
+      return;
+    }
+    const previousOffset = pagination.prevOffsets[pagination.prevOffsets.length - 1];
+    if (previousOffset === undefined) return;
+    await consumeOffsetPageFor(serverId, topic, state, previousOffset, Math.max(0, pagination.pageIndex - 1), pagination.prevOffsets.slice(0, -1));
+  }
+
+  async function startConsumeFor(serverId: string, topic: string, state: TopicConsumeState) {
+    if (!kafkaApi || !serverId || !topic) return;
     const partition = state.partition === "" ? 0 : Number(state.partition);
     if (state.mode === "offset") {
-      updateSelectedConsumeState({ messages: [], selectedMessage: null });
-      const items = await runTask("offset consume 조회 중", () =>
-        kafkaApi.consumeFromOffset({
-          serverId: selectedServerId,
-          topic: selectedTopic,
-          partition,
-          offset: state.offset,
-          limit: state.limit
-        })
-      );
-      const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
-      updateSelectedConsumeState({ messages: orderedItems, selectedMessage: orderedItems[0] ?? null });
+      await consumeOffsetPageFor(serverId, topic, state, state.offset, 0, []);
       return;
     }
     if (state.mode === "timeRange") {
@@ -1189,8 +1439,8 @@ function App() {
       }
       const items = await runTask("time range consume 조회 중", () =>
         kafkaApi.consumeTimeRange({
-          serverId: selectedServerId,
-          topic: selectedTopic,
+          serverId,
+          topic,
           partition: state.partition === "" ? undefined : partition,
           startTimestamp,
           endTimestamp,
@@ -1198,22 +1448,23 @@ function App() {
         })
       );
       const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
-      updateSelectedConsumeState({ messages: orderedItems, selectedMessage: orderedItems[0] ?? null });
+      updateConsumeStateFor(serverId, topic, { messages: orderedItems, selectedMessage: orderedItems[0] ?? null, offsetPagination: null });
       return;
     }
     await runTask("실시간 consume 시작 중", () =>
       kafkaApi.startConsume({
-        serverId: selectedServerId,
-        topic: selectedTopic,
+        serverId,
+        topic,
         fromBeginning: false,
         partition: state.partition === "" ? undefined : Number(state.partition)
       })
     );
+    updateConsumeStateFor(serverId, topic, { offsetPagination: null });
     setStreamingTopicsByServer((current) => {
-      const topics = current[selectedServerId] ?? [];
+      const topics = current[serverId] ?? [];
       return {
         ...current,
-        [selectedServerId]: topics.includes(selectedTopic) ? topics : [...topics, selectedTopic]
+        [serverId]: topics.includes(topic) ? topics : [...topics, topic]
       };
     });
     setStatus("실시간 consume 중");
@@ -1287,7 +1538,7 @@ function App() {
         <section className="sidebar-panel server-panel" style={{ height: serverPanelHeight }}>
           <div className="sidebar-panel-title">
             <span>Name</span>
-            <span>Server · {filteredServers.length}/{servers.length}</span>
+            <span>Server</span>
           </div>
           <div className="search-box server-search">
             <input
@@ -1337,6 +1588,8 @@ function App() {
                 onDragEnd={() => {
                   setDraggingServerId("");
                   setServerDropTarget(null);
+                  setActiveDragPayload(null);
+                  setSplitDropSide(null);
                 }}
                 onClick={() => setSelectedServerId(server.id)}
                 onContextMenu={(event) => openServerContextMenu(event, server)}
@@ -1384,7 +1637,7 @@ function App() {
                           setIsTopicSortMenuOpen(false);
                         }}
                       >
-                        <span>{topicSort === option.value ? "✓" : ""}</span>
+                          <span>{topicSort === option.value ? "*" : ""}</span>
                         {option.label}
                       </button>
                     ))}
@@ -1422,6 +1675,7 @@ function App() {
                     active={topic.name === selectedTopic}
                     favorite
                     onSelect={() => {
+                      if (activeWorkspacePane === "split" && visibleSplitPane) return;
                       activateTopicView(topic.name);
                       void loadTopicDetail(topic.name);
                     }}
@@ -1439,6 +1693,7 @@ function App() {
                 active={topic.name === selectedTopic}
                 favorite={favoriteTopicNames.includes(topic.name)}
                 onSelect={() => {
+                  if (activeWorkspacePane === "split" && visibleSplitPane) return;
                   activateTopicView(topic.name);
                   void loadTopicDetail(topic.name);
                 }}
@@ -1454,11 +1709,26 @@ function App() {
 
       <div className="sidebar-resizer" onPointerDown={startSidebarResize} title="Resize sidebar" />
 
-      <main className="workspace">
+      <main
+        className={visibleSplitPane ? "workspace split-mode" : "workspace"}
+        style={visibleSplitPane ? { gridTemplateColumns: `${splitPrimaryPercent}fr 8px ${100 - splitPrimaryPercent}fr` } : undefined}
+        onDragOver={handleWorkspaceDragOver}
+        onDragLeave={() => setSplitDropSide(null)}
+        onDrop={(event) => void handleWorkspaceDrop(event)}
+      >
+        {splitDropSide && (
+          <div className={`split-drop-indicator ${splitDropSide}`}>
+            {splitDropSide === "right" ? "Drop here to split" : "Drop split here to close"}
+          </div>
+        )}
+        <section
+          className={activeWorkspacePane === "primary" ? "workspace-pane primary-pane active-pane" : "workspace-pane primary-pane inactive-pane"}
+          onMouseDown={() => setActiveWorkspacePane("primary")}
+        >
         <header className="topbar">
           <div>
             <span className="eyebrow" title={selectedServer ? selectedServer.brokers.join(", ") : "no server"}>{selectedServer ? selectedServer.brokers.join(", ") : "no server"}</span>
-            <h1>{selectedServer?.name ?? "Kafka 서버를 등록하세요"}</h1>
+            <h1>{selectedServer?.name ?? "Kafka Server"}</h1>
           </div>
         </header>
 
@@ -1528,6 +1798,10 @@ function App() {
           <button className="ghost" onClick={() => void refreshCurrentView()} disabled={!isSelectedServerConnected || loading}><RefreshCw size={16} /> 새로고침</button>
         </nav>
 
+        <section
+          className={activeWorkspacePane === "primary" ? "primary-topic-pane active-pane" : "primary-topic-pane inactive-pane"}
+          onMouseDown={() => setActiveWorkspacePane("primary")}
+        >
         {isTopicView && (
           <>
         <div className="topic-tabs" aria-label="Opened topics">
@@ -1538,8 +1812,20 @@ function App() {
               <button
                 key={topic}
                 className={topic === selectedTopic ? "topic-tab active" : "topic-tab"}
+                draggable
                 title={topic}
+                onDragStart={(event) => {
+                  const payload: DragPayload = { type: "topic", serverId: selectedServerId, topic, source: "primary" };
+                  setActiveDragPayload(payload);
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("application/x-kafka-tool", JSON.stringify(payload));
+                }}
+                onDragEnd={() => {
+                  setActiveDragPayload(null);
+                  setSplitDropSide(null);
+                }}
                 onClick={() => {
+                  setActiveWorkspacePane("primary");
                   activateTopicView(topic);
                   void loadTopicDetail(topic);
                 }}
@@ -1603,25 +1889,23 @@ function App() {
               filterField={selectedConsumeState.filterField}
               autoScroll={selectedConsumeState.autoScroll}
               maxMessages={selectedConsumeState.maxMessages}
+              offsetPagination={selectedConsumeState.offsetPagination}
               messagePaneHeight={messagePaneHeight}
               onMode={(mode) => {
-                updateSelectedConsumeState({ mode });
+                updateSelectedConsumeState({ mode, offsetPagination: null });
                 updateConsumeDefaults({ mode });
               }}
-              onOffset={(offset) => updateSelectedConsumeState({ offset })}
+              onOffset={(offset) => updateSelectedConsumeState({ offset, offsetPagination: null })}
               onOffsetOrder={(offsetOrder) => {
-                const orderedMessages = offsetOrder === "desc"
-                  ? [...selectedConsumeState.messages].sort((left, right) => Number(right.offset) - Number(left.offset))
-                  : [...selectedConsumeState.messages].sort((left, right) => Number(left.offset) - Number(right.offset));
-                updateSelectedConsumeState({ offsetOrder, messages: orderedMessages, selectedMessage: orderedMessages[0] ?? null });
+                updateSelectedConsumeState({ offsetOrder, offsetPagination: null });
                 updateConsumeDefaults({ offsetOrder });
               }}
               onLimit={(limit) => {
-                updateSelectedConsumeState({ limit });
+                updateSelectedConsumeState({ limit, offsetPagination: null });
                 updateConsumeDefaults({ limit });
               }}
               onPartition={(partition) => {
-                updateSelectedConsumeState({ partition });
+                updateSelectedConsumeState({ partition, offsetPagination: null });
                 updateConsumeDefaults({ partition });
               }}
               onTimeStart={(timeStart) => updateSelectedConsumeState({ timeStart })}
@@ -1641,10 +1925,13 @@ function App() {
                 updateSelectedConsumeState({ maxMessages });
                 updateConsumeDefaults({ maxMessages });
               }}
+              onPagePrev={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "prev")}
+              onPageNext={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "next")}
               onSelectMessage={(selectedMessage) => updateSelectedConsumeState({ selectedMessage })}
               onMessagePaneHeight={setMessagePaneHeight}
               onSendToProduce={sendMessageToProduce}
               onExport={(format, messages) => void exportConsumedMessages(format, messages)}
+              onExportAll={(format) => void exportOffsetConditionMessages(format, selectedServerId, selectedTopic, selectedConsumeState)}
               onStart={() => void startConsume()}
               onStop={() => void stopConsume()}
             />
@@ -1662,11 +1949,13 @@ function App() {
             />
           )}
           {view === "consumers" && (
-            <GroupsPanel
+            <ConsumerGroupsPanel
               groups={groups}
               selectedGroupId={selectedGroupId}
               detail={selectedGroupLag}
+              detailsByGroup={groupLagByServer[selectedServerId] ?? {}}
               onSelectGroup={(groupId) => void loadConsumerGroupLag(groupId)}
+              onBack={() => setSelectedGroupByServer((current) => ({ ...current, [selectedServerId]: "" }))}
               onRefresh={() => void refreshGroups()}
               onRefreshDetail={() => {
                 if (selectedGroupId) void loadConsumerGroupLag(selectedGroupId);
@@ -1674,6 +1963,84 @@ function App() {
             />
           )}
         </div>
+        </section>
+        </section>
+        {visibleSplitPane && <div className="workspace-split-resizer" onPointerDown={startWorkspaceSplitResize} title="Resize split panes" />}
+        {visibleSplitPane && splitServer && (
+          <SplitWorkspacePane
+            pane={visibleSplitPane}
+            server={splitServer}
+            topics={splitTopics}
+            brokers={splitBrokers}
+            groups={splitGroups}
+            selectedGroupId={splitSelectedGroupId}
+            selectedGroupLag={splitSelectedGroupLag}
+            groupDetailsById={groupLagByServer[visibleSplitPane.serverId] ?? {}}
+            consumeState={splitConsumeState}
+            isConnected={connectedServerIds.includes(visibleSplitPane.serverId)}
+            isConsuming={(streamingTopicsByServer[visibleSplitPane.serverId] ?? []).includes(visibleSplitPane.topic)}
+            messagePaneHeight={messagePaneHeight}
+            onClose={() => void closeSplitPane()}
+            active={activeWorkspacePane === "split"}
+            onActivate={() => setActiveWorkspacePane("split")}
+            onDragStart={(event) => {
+              const payload: DragPayload = { type: "split-pane" };
+              setActiveDragPayload(payload);
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("application/x-kafka-tool", JSON.stringify(payload));
+            }}
+            onDragEnd={() => {
+              setActiveDragPayload(null);
+              setSplitDropSide(null);
+            }}
+            onView={(nextView) => {
+              setSplitPane((current) => current ? { ...current, view: nextView } : current);
+              if (nextView === "brokers" && !brokersByServer[visibleSplitPane.serverId]) void refreshBrokersForServer(visibleSplitPane.serverId);
+              if (nextView === "topics" && !topicsByServer[visibleSplitPane.serverId]) void refreshTopicsForServer(visibleSplitPane.serverId);
+              if (nextView === "consumers" && !groupsByServer[visibleSplitPane.serverId]) void refreshGroupsForServer(visibleSplitPane.serverId);
+            }}
+            onTopic={(topic) => {
+              void activateSplitTopic(topic);
+            }}
+            onCloseTopic={(topic) => void closeSplitTopicTab(topic)}
+            onTopicDragStart={(event, topic) => {
+              const payload: DragPayload = { type: "topic", serverId: visibleSplitPane.serverId, topic, source: "split" };
+              setActiveDragPayload(payload);
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("application/x-kafka-tool", JSON.stringify(payload));
+            }}
+            onTopicDragEnd={() => {
+              setActiveDragPayload(null);
+              setSplitDropSide(null);
+            }}
+            onRefresh={() => {
+              if (visibleSplitPane.view === "info" && visibleSplitPane.topic) void loadSplitTopicDetail(visibleSplitPane.serverId, visibleSplitPane.topic);
+            }}
+            onSelectGroup={(groupId) => void loadConsumerGroupLagFor(visibleSplitPane.serverId, groupId)}
+            onBackGroup={() => setSelectedGroupByServer((current) => ({ ...current, [visibleSplitPane.serverId]: "" }))}
+            onRefreshGroupDetail={() => {
+              if (splitSelectedGroupId) void loadConsumerGroupLagFor(visibleSplitPane.serverId, splitSelectedGroupId);
+            }}
+            onUpdateConsume={(patch) => updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, patch)}
+            onOffsetOrder={(offsetOrder) => {
+              updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, { offsetOrder, offsetPagination: null });
+            }}
+            onOffsetPage={(direction) => void moveOffsetPageFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState, direction)}
+            onStartConsume={() => void startConsumeFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState)}
+            onStopConsume={() => void stopConsume(visibleSplitPane.serverId, visibleSplitPane.topic)}
+            onSendToProduce={sendMessageToProduce}
+            onExport={(format, messages) => void exportConsumedMessages(format, messages, visibleSplitPane.topic)}
+            onExportAll={(format) => void exportOffsetConditionMessages(format, visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState)}
+            onMessagePaneHeight={setMessagePaneHeight}
+            produceKey={produceKey}
+            produceHeaders={produceHeaders}
+            produceValue={produceValue}
+            onProduceKey={setProduceKey}
+            onProduceHeaders={setProduceHeaders}
+            onProduceValue={setProduceValue}
+            onProduce={() => void produceFor(visibleSplitPane.serverId, visibleSplitPane.topic)}
+          />
+        )}
       </main>
 
       {isServerFormOpen && (
@@ -1924,6 +2291,161 @@ function App() {
   );
 }
 
+function SplitWorkspacePane(props: {
+  pane: SplitPaneState;
+  server: ServerProfile;
+  topics: TopicSummary[];
+  brokers: BrokerSummary[];
+  groups: ConsumerGroupSummary[];
+  selectedGroupId: string;
+  selectedGroupLag: ConsumerGroupLagDetail | null;
+  groupDetailsById: Record<string, ConsumerGroupLagDetail>;
+  consumeState: TopicConsumeState;
+  isConnected: boolean;
+  isConsuming: boolean;
+  messagePaneHeight: number;
+  active: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+  onDragStart: (event: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onView: (view: View) => void;
+  onTopic: (topic: string) => void;
+  onCloseTopic: (topic: string) => void;
+  onTopicDragStart: (event: React.DragEvent, topic: string) => void;
+  onTopicDragEnd: () => void;
+  onRefresh: () => void;
+  onSelectGroup: (groupId: string) => void;
+  onBackGroup: () => void;
+  onRefreshGroupDetail: () => void;
+  onUpdateConsume: (patch: Partial<TopicConsumeState>) => void;
+  onOffsetOrder: (value: OffsetOrder) => void;
+  onOffsetPage: (direction: "prev" | "next") => void;
+  onStartConsume: () => void;
+  onStopConsume: () => void;
+  onSendToProduce: (message: ConsumedMessage) => void;
+  onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
+  onExportAll: (format: MessageExportFormat) => void;
+  onMessagePaneHeight: (value: number) => void;
+  produceKey: string;
+  produceHeaders: string;
+  produceValue: string;
+  onProduceKey: (value: string) => void;
+  onProduceHeaders: (value: string) => void;
+  onProduceValue: (value: string) => void;
+  onProduce: () => void;
+}) {
+  const topicViews: View[] = ["info", "consume", "produce"];
+  const isTopicView = props.pane.view === "info" || props.pane.view === "consume" || props.pane.view === "produce";
+  const topicDetail = props.pane.detail;
+
+  return (
+    <section className={props.active ? "workspace-pane split-pane active-pane" : "workspace-pane split-pane inactive-pane"} onMouseDown={props.onActivate}>
+      {isTopicView && (
+        <>
+          <div className="split-topic-tabs-row">
+          <div className="topic-tabs" aria-label="Opened split topics">
+            {props.pane.topicTabs.length === 0 ? (
+              <div className="topic-tabs-empty">토픽을 선택하세요.</div>
+            ) : props.pane.topicTabs.map((topic) => (
+              <button
+                key={topic}
+                className={topic === props.pane.topic ? "topic-tab active" : "topic-tab"}
+                draggable
+                title={topic}
+                onDragStart={(event) => props.onTopicDragStart(event, topic)}
+                onDragEnd={props.onTopicDragEnd}
+                onClick={() => props.onTopic(topic)}
+                onAuxClick={(event) => {
+                  if (event.button === 1) {
+                    event.preventDefault();
+                    props.onCloseTopic(topic);
+                  }
+                }}
+              >
+                <span>{topic}</span>
+                <X size={14} onClick={(event) => { event.stopPropagation(); props.onCloseTopic(topic); }} />
+              </button>
+            ))}
+          </div>
+          </div>
+          <div className="tabs topic-work-tabs split-topic-tabs">
+            {topicViews.map((view) => (
+              <button key={view} className={props.pane.view === view ? "active" : ""} onClick={() => props.onView(view)} disabled={!props.pane.topic}>
+                {view === "info" && <Layers size={15} />}
+                {view === "consume" && <Play size={15} />}
+                {view === "produce" && <Send size={15} />}
+                {view === "info" ? "Info" : view === "consume" ? "Consume" : "Produce"}
+              </button>
+            ))}
+            <button className="ghost" onClick={props.onRefresh} disabled={!props.pane.topic || props.pane.view === "produce"}>
+              <RefreshCw size={15} /> 새로고침
+            </button>
+          </div>
+        </>
+      )}
+
+      <div className="content-grid split-content-grid">
+        {props.pane.view === "info" && <TopicPanel detail={topicDetail} />}
+        {props.pane.view === "consume" && (
+          <ConsumePanel
+            messages={props.consumeState.messages}
+            selectedMessage={props.consumeState.selectedMessage}
+            mode={props.consumeState.mode}
+            offsetOrder={props.consumeState.offsetOrder}
+            isConsuming={props.isConsuming}
+            offset={props.consumeState.offset}
+            limit={props.consumeState.limit}
+            partition={props.consumeState.partition}
+            timeStart={props.consumeState.timeStart}
+            timeEnd={props.consumeState.timeEnd}
+            filterText={props.consumeState.filterText}
+            filterField={props.consumeState.filterField}
+            autoScroll={props.consumeState.autoScroll}
+            maxMessages={props.consumeState.maxMessages}
+            offsetPagination={props.consumeState.offsetPagination}
+            messagePaneHeight={props.messagePaneHeight}
+            onMode={(mode) => props.onUpdateConsume({ mode, offsetPagination: null })}
+            onOffset={((offset) => props.onUpdateConsume({ offset, offsetPagination: null }))}
+            onOffsetOrder={props.onOffsetOrder}
+            onLimit={(limit) => props.onUpdateConsume({ limit, offsetPagination: null })}
+            onPartition={(partition) => props.onUpdateConsume({ partition, offsetPagination: null })}
+            onTimeStart={(timeStart) => props.onUpdateConsume({ timeStart })}
+            onTimeEnd={(timeEnd) => props.onUpdateConsume({ timeEnd })}
+            onFilterText={(filterText) => props.onUpdateConsume({ filterText })}
+            onFilterField={(filterField) => props.onUpdateConsume({ filterField })}
+            onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all" })}
+            onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
+            onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
+            onMaxMessages={(maxMessages) => props.onUpdateConsume({ maxMessages })}
+            onPagePrev={() => props.onOffsetPage("prev")}
+            onPageNext={() => props.onOffsetPage("next")}
+            onSelectMessage={(selectedMessage) => props.onUpdateConsume({ selectedMessage })}
+            onMessagePaneHeight={props.onMessagePaneHeight}
+            onSendToProduce={props.onSendToProduce}
+            onExport={props.onExport}
+            onExportAll={props.onExportAll}
+            onStart={props.onStartConsume}
+            onStop={props.onStopConsume}
+          />
+        )}
+        {props.pane.view === "produce" && (
+          <ProducePanel
+            topic={props.pane.topic}
+            keyText={props.produceKey}
+            headers={props.produceHeaders}
+            value={props.produceValue}
+            onKey={props.onProduceKey}
+            onHeaders={props.onProduceHeaders}
+            onValue={props.onProduceValue}
+            onProduce={props.onProduce}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
 function TopicPanel({ detail }: { detail: TopicDetail | null }) {
   if (!detail) return <section className="panel empty">토픽을 선택하세요.</section>;
   return (
@@ -1963,6 +2485,69 @@ function BrokersPanel({ brokers }: { brokers: BrokerSummary[] }) {
   const totalOutOfSyncReplicas = brokers.reduce((total, broker) => total + broker.outOfSyncReplicaCount, 0);
   const totalUnderReplicatedPartitions = brokers.reduce((total, broker) => total + broker.underReplicatedPartitionCount, 0);
   const controller = brokers.find((broker) => broker.controller);
+  const columns = useMemo<ColumnDef<BrokerSummary>[]>(() => [
+    {
+      accessorKey: "nodeId",
+      header: "Broker ID",
+      cell: ({ row }) => (
+        <span className="broker-id-cell">
+          {row.original.nodeId}
+          {row.original.controller && <span className="controller-badge">Controller</span>}
+        </span>
+      )
+    },
+    {
+      accessorKey: "partitionSkewPercent",
+      header: "Partitions Skew",
+      cell: ({ row }) => (
+        <span className={Math.abs(row.original.partitionSkewPercent) > 10 ? "metric-warn" : ""}>
+          {formatPercent(row.original.partitionSkewPercent)}
+        </span>
+      )
+    },
+    {
+      accessorKey: "leaderCount",
+      header: "Leaders",
+      cell: ({ row }) => formatCompactNumber(row.original.leaderCount)
+    },
+    {
+      accessorKey: "leaderSkewPercent",
+      header: "Leader Skew",
+      cell: ({ row }) => (
+        <span className={Math.abs(row.original.leaderSkewPercent) > 10 ? "metric-warn" : ""}>
+          {formatPercent(row.original.leaderSkewPercent)}
+        </span>
+      )
+    },
+    {
+      accessorKey: "onlinePartitionCount",
+      header: "Online Partitions",
+      cell: ({ row }) => formatCompactNumber(row.original.onlinePartitionCount)
+    },
+    {
+      accessorKey: "replicaCount",
+      header: "Replicas",
+      cell: ({ row }) => formatCompactNumber(row.original.replicaCount)
+    },
+    {
+      accessorKey: "outOfSyncReplicaCount",
+      header: "OOS Replicas",
+      cell: ({ row }) => (
+        <span className={row.original.outOfSyncReplicaCount > 0 ? "metric-warn" : ""}>
+          {formatCompactNumber(row.original.outOfSyncReplicaCount)}
+        </span>
+      )
+    },
+    {
+      accessorKey: "port",
+      header: "Port"
+    },
+    {
+      accessorKey: "host",
+      header: "Host",
+      cell: ({ row }) => <span title={row.original.host}>{row.original.host}</span>
+    }
+  ], []);
 
   return (
     <section className="panel brokers-panel">
@@ -1996,44 +2581,13 @@ function BrokersPanel({ brokers }: { brokers: BrokerSummary[] }) {
           <strong className={totalOutOfSyncReplicas > 0 ? "metric-warn" : ""}>{formatCompactNumber(totalOutOfSyncReplicas)}</strong>
         </div>
       </div>
-      <div className="message-table broker-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Broker ID</th>
-              <th>Partitions Skew</th>
-              <th>Leaders</th>
-              <th>Leader Skew</th>
-              <th>Online Partitions</th>
-              <th>Replicas</th>
-              <th>OOS Replicas</th>
-              <th>Port</th>
-              <th>Host</th>
-            </tr>
-          </thead>
-          <tbody>
-            {brokers.map((broker) => (
-              <tr key={broker.nodeId}>
-                <td>
-                  <span className="broker-id-cell">
-                    {broker.nodeId}
-                    {broker.controller && <span className="controller-badge">Controller</span>}
-                  </span>
-                </td>
-                <td className={Math.abs(broker.partitionSkewPercent) > 10 ? "metric-warn" : ""}>{formatPercent(broker.partitionSkewPercent)}</td>
-                <td>{formatCompactNumber(broker.leaderCount)}</td>
-                <td className={Math.abs(broker.leaderSkewPercent) > 10 ? "metric-warn" : ""}>{formatPercent(broker.leaderSkewPercent)}</td>
-                <td>{formatCompactNumber(broker.onlinePartitionCount)}</td>
-                <td>{formatCompactNumber(broker.replicaCount)}</td>
-                <td className={broker.outOfSyncReplicaCount > 0 ? "metric-warn" : ""}>{formatCompactNumber(broker.outOfSyncReplicaCount)}</td>
-                <td>{broker.port}</td>
-                <td title={broker.host}>{broker.host}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {brokers.length === 0 && <div className="empty-list">No brokers loaded</div>}
-      </div>
+      <DataGrid
+        data={brokers}
+        columns={columns}
+        className="broker-table"
+        emptyText="No brokers loaded"
+        getRowKey={(broker) => String(broker.nodeId)}
+      />
     </section>
   );
 }
@@ -2055,6 +2609,48 @@ function ServerTopicsPanel(props: {
   const visibleTopicNames = props.topics.map((topic) => topic.name);
   const selectedVisibleCount = visibleTopicNames.filter((topic) => selected.has(topic)).length;
   const allVisibleSelected = visibleTopicNames.length > 0 && selectedVisibleCount === visibleTopicNames.length;
+  const columns = useMemo<ColumnDef<TopicSummary>[]>(() => [
+    {
+      id: "check",
+      header: "CHK",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span className="check-column" onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected.has(row.original.name)}
+            onChange={() => props.onToggleSelected(row.original.name)}
+            title={`Select ${row.original.name}`}
+          />
+        </span>
+      )
+    },
+    {
+      accessorKey: "name",
+      header: "Topic",
+      cell: ({ row }) => <span title={row.original.name}>{row.original.name}</span>
+    },
+    {
+      accessorKey: "partitions",
+      header: "Partitions"
+    },
+    {
+      accessorKey: "replicationFactor",
+      header: "RF"
+    },
+    {
+      id: "messages",
+      header: "Messages",
+      accessorFn: (topic) => Number(topic.messageCount ?? 0),
+      cell: ({ row }) => <span title={row.original.messageCount ?? "0"}>{formatCount(row.original.messageCount)}</span>
+    },
+    {
+      id: "favorite",
+      header: "Favorite",
+      accessorFn: (topic) => favorites.has(topic.name) ? 1 : 0,
+      cell: ({ row }) => favorites.has(row.original.name) ? "Yes" : "-"
+    }
+  ], [favorites, props.onToggleSelected, selected]);
   return (
     <section className="panel server-topics-panel">
       <div className="section-title">
@@ -2078,38 +2674,16 @@ function ServerTopicsPanel(props: {
         <button className="ghost compact" onClick={props.onPurgeSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> Purge</button>
         <button className="danger compact" onClick={props.onDeleteSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> Delete</button>
       </div>
-      <div className="message-table server-topics-table">
-        <table>
-          <thead>
-            <tr><th className="check-column">CHK</th><th>Topic</th><th>Partitions</th><th>RF</th><th>Messages</th><th>Favorite</th></tr>
-          </thead>
-          <tbody>
-            {props.topics.map((topic) => (
-              <tr
-                key={topic.name}
-                className={selected.has(topic.name) ? "selected" : ""}
-                onClick={() => props.onSelect(topic.name)}
-                onDoubleClick={() => props.onOpen(topic.name)}
-              >
-                <td className="check-column" onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(topic.name)}
-                    onChange={() => props.onToggleSelected(topic.name)}
-                    title={`Select ${topic.name}`}
-                  />
-                </td>
-                <td title={topic.name}>{topic.name}</td>
-                <td>{topic.partitions}</td>
-                <td>{topic.replicationFactor}</td>
-                <td title={topic.messageCount ?? "0"}>{formatCount(topic.messageCount)}</td>
-                <td>{favorites.has(topic.name) ? "Yes" : "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {props.topics.length === 0 && <div className="empty-list">No topics found</div>}
-      </div>
+      <DataGrid
+        data={props.topics}
+        columns={columns}
+        className="server-topics-table"
+        emptyText="No topics found"
+        getRowKey={(topic) => topic.name}
+        getRowClassName={(topic) => (selected.has(topic.name) ? "selected" : "")}
+        onRowClick={(topic) => props.onSelect(topic.name)}
+        onRowDoubleClick={(topic) => props.onOpen(topic.name)}
+      />
     </section>
   );
 }
@@ -2159,6 +2733,7 @@ function ConsumePanel(props: {
   filterField: ConsumeFilterField;
   autoScroll: boolean;
   maxMessages: number;
+  offsetPagination: TopicConsumeState["offsetPagination"];
   messagePaneHeight: number;
   onMode: (value: ConsumeMode) => void;
   onOffsetOrder: (value: OffsetOrder) => void;
@@ -2173,15 +2748,19 @@ function ConsumePanel(props: {
   onApplyFilter: (value: string) => void;
   onAutoScroll: (value: boolean) => void;
   onMaxMessages: (value: number) => void;
+  onPagePrev: () => void;
+  onPageNext: () => void;
   onSelectMessage: (message: ConsumedMessage) => void;
   onMessagePaneHeight: (value: number) => void;
   onSendToProduce: (message: ConsumedMessage) => void;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
+  onExportAll: (format: MessageExportFormat) => void;
   onStart: () => void;
   onStop: () => void;
 }) {
   const [inspectorMode, setInspectorMode] = useState<JsonInspectorMode>("raw");
   const [inspectorSearch, setInspectorSearch] = useState("");
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
   const selectedPayload = props.selectedMessage ? formatMessagePayload(props.selectedMessage) : null;
@@ -2190,6 +2769,9 @@ function ConsumePanel(props: {
     () => filterMessages(props.messages, props.filterText, props.filterField),
     [props.filterField, props.filterText, props.messages]
   );
+  const isLargeOffsetRequest = props.mode === "offset" && props.limit > OFFSET_PAGING_THRESHOLD;
+  const pagination = props.offsetPagination;
+  const canExportFullOffsetRange = isLargeOffsetRequest && Boolean(pagination?.endOffsetExclusive);
 
   useEffect(() => {
     if (props.mode !== "live" || !props.autoScroll) return;
@@ -2215,14 +2797,58 @@ function ConsumePanel(props: {
   }
 
   function getRowNo(index: number) {
-    if (props.mode === "offset") {
-      return props.offsetOrder === "asc" ? index + 1 : filteredMessages.length - index;
-    }
-    if (props.mode === "timeRange") {
-      return props.offsetOrder === "asc" ? index + 1 : filteredMessages.length - index;
-    }
-    return filteredMessages.length - index;
+    return index + 1;
   }
+
+  const columns = useMemo<ColumnDef<ConsumedMessage>[]>(() => [
+    {
+      id: "no",
+      header: "No",
+      enableSorting: false,
+      cell: ({ row }) => getRowNo(row.index)
+    },
+    {
+      accessorKey: "partition",
+      header: "Partition",
+      sortingFn: "basic",
+      cell: ({ row }) => {
+        const partition = row.original.partition;
+        return (
+          <span className="partition-badge" style={{ color: getPartitionColor(partition), borderColor: getPartitionColor(partition) }}>
+            {partition}
+          </span>
+        );
+      }
+    },
+    {
+      accessorKey: "offset",
+      header: "Offset",
+      sortingFn: (left, right, columnId) => Number(left.getValue(columnId)) - Number(right.getValue(columnId)),
+      cell: ({ row }) => <span title={row.original.offset}>{row.original.offset}</span>
+    },
+    {
+      accessorKey: "timestamp",
+      header: "Timestamp",
+      sortingFn: (left, right, columnId) => Date.parse(String(left.getValue(columnId))) - Date.parse(String(right.getValue(columnId))),
+      cell: ({ row }) => <span title={row.original.timestamp}>{formatTimestamp(row.original.timestamp)}</span>
+    },
+    {
+      accessorKey: "key",
+      header: "Key",
+      cell: ({ row }) => <span title={row.original.key || "-"}>{row.original.key || "-"}</span>
+    },
+    {
+      id: "headers",
+      header: "Headers",
+      accessorFn: (message) => formatHeaders(message.headers),
+      cell: ({ row }) => <span title={formatHeaders(row.original.headers)}>{previewHeaders(row.original.headers)}</span>
+    },
+    {
+      accessorKey: "value",
+      header: "Value",
+      cell: ({ row }) => <span title={row.original.value}>{previewValue(row.original.value)}</span>
+    }
+  ], [filteredMessages.length, props.mode, props.offsetOrder]);
 
   return (
     <section className="panel consume-workspace">
@@ -2236,10 +2862,10 @@ function ConsumePanel(props: {
         {props.mode === "offset" && (
           <>
             <input className="small-input" type="number" min={0} value={props.offset} onChange={(event) => props.onOffset(event.target.value)} placeholder="offset" />
-            <input className="tiny-input" type="number" min={1} max={500} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
+            <input className="tiny-input" type="number" min={1} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
             <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title="Message order">
-              <option value="asc">Oldest first</option>
-              <option value="desc">Newest first</option>
+              <option value="asc">Oldest</option>
+              <option value="desc">Newest</option>
             </select>
           </>
         )}
@@ -2253,10 +2879,10 @@ function ConsumePanel(props: {
               <Calendar size={14} />
               <input type="datetime-local" value={props.timeEnd} onChange={(event) => props.onTimeEnd(event.target.value)} />
             </label>
-            <input className="tiny-input" type="number" min={1} max={1000} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
+            <input className="tiny-input" type="number" min={1} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
             <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title="Message order">
-              <option value="asc">Oldest first</option>
-              <option value="desc">Newest first</option>
+              <option value="asc">Oldest</option>
+              <option value="desc">Newest</option>
             </select>
           </>
         )}
@@ -2289,17 +2915,67 @@ function ConsumePanel(props: {
             Streaming
           </span>
         )}
-        <button className="export-button" onClick={() => props.onExport("json", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as JSON">
-          <Download size={14} /> JSON
-        </button>
-        <button className="export-button" onClick={() => props.onExport("csv", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as CSV">
-          <Download size={14} /> CSV
-        </button>
-        <button className="export-button" onClick={() => props.onExport("log", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as custom log">
-          <Download size={14} /> LOG
-        </button>
+        <div className="export-menu">
+          <button
+            className="export-button"
+            onClick={() => setIsExportMenuOpen((current) => !current)}
+            disabled={filteredMessages.length === 0}
+            title="Export filtered messages"
+          >
+            <Download size={14} />
+            <ChevronDown size={13} />
+          </button>
+          {isExportMenuOpen && (
+            <div className="export-menu-popover">
+              <span className="export-menu-label">Current page</span>
+              {(["json", "csv", "log"] as MessageExportFormat[]).map((format) => (
+                <button
+                  key={format}
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    props.onExport(format, filteredMessages);
+                  }}
+                >
+                  <Download size={13} />
+                  {format.toUpperCase()}
+                </button>
+              ))}
+              {canExportFullOffsetRange && (
+                <>
+                  <span className="export-menu-divider" />
+                  <span className="export-menu-label">Full offset range</span>
+                  {(["json", "csv", "log"] as MessageExportFormat[]).map((format) => (
+                    <button
+                      key={`all-${format}`}
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        props.onExportAll(format);
+                      }}
+                    >
+                      <Download size={13} />
+                      All {format.toUpperCase()}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <span className={props.isConsuming ? "count live-count" : "count"}>{props.isConsuming ? "Live" : ""} {filteredMessages.length}/{props.messages.length} messages</span>
       </div>
+      {isLargeOffsetRequest && (
+        <div className="paging-bar">
+          <span>
+            Page {pagination ? pagination.pageIndex + 1 : 1}
+            {" "}of {Math.max(1, Math.ceil(props.limit / OFFSET_PAGE_SIZE))}
+            {" "}· showing up to {OFFSET_PAGE_SIZE.toLocaleString()} messages
+          </span>
+          <div>
+            <button className="ghost compact" onClick={props.onPagePrev} disabled={!pagination || pagination.prevOffsets.length === 0}>Prev</button>
+            <button className="ghost compact" onClick={props.onPageNext} disabled={!pagination?.hasNext}>Next</button>
+          </div>
+        </div>
+      )}
       <div className="filter-bar">
         <select value={props.filterField} onChange={(event) => props.onFilterField(event.target.value as ConsumeFilterField)}>
           <option value="all">All</option>
@@ -2315,39 +2991,17 @@ function ConsumePanel(props: {
         <button className="ghost compact" onClick={props.onClearFilter}>Clear</button>
       </div>
       <div className="consume-grid" ref={consumeGridRef} style={{ gridTemplateRows: `${props.messagePaneHeight}px 8px minmax(0, 1fr)` }}>
-        <div className="message-table" ref={messageTableRef}>
-          <table>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Partition</th>
-                <th>Offset</th>
-                <th>Timestamp</th>
-                <th>Key</th>
-                <th>Headers</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMessages.map((message, index) => (
-                <tr
-                  key={`${message.partition}-${message.offset}-${message.timestamp}`}
-                  className={props.selectedMessage === message ? "selected" : ""}
-                  style={{ borderLeftColor: getPartitionColor(message.partition) }}
-                  onClick={() => props.onSelectMessage(message)}
-                >
-                  <td>{getRowNo(index)}</td>
-                  <td><span className="partition-badge" style={{ color: getPartitionColor(message.partition), borderColor: getPartitionColor(message.partition) }}>{message.partition}</span></td>
-                  <td title={message.offset}>{message.offset}</td>
-                  <td title={message.timestamp}>{formatTimestamp(message.timestamp)}</td>
-                  <td title={message.key || "-"}>{message.key || "-"}</td>
-                  <td title={formatHeaders(message.headers)}>{previewHeaders(message.headers)}</td>
-                  <td title={message.value}>{previewValue(message.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredMessages.length === 0 && <div className="empty-list">No messages</div>}
+        <div ref={messageTableRef} className="consume-grid-table-wrap">
+          <DataGrid
+            data={filteredMessages}
+            columns={columns}
+            className="tanstack-message-table"
+            emptyText="No messages"
+            getRowKey={(message) => `${message.partition}-${message.offset}-${message.timestamp}`}
+            getRowClassName={(message) => (props.selectedMessage === message ? "selected" : "")}
+            getRowStyle={(message) => ({ borderLeftColor: getPartitionColor(message.partition) })}
+            onRowClick={props.onSelectMessage}
+          />
         </div>
         <div className="consume-split-resizer" onPointerDown={startInspectorResize} title="Resize message grid and JSON viewer" />
         <JsonInspector
@@ -2454,254 +3108,6 @@ function JsonTreeNode(props: {
   );
 }
 
-function previewValue(value: string) {
-  if (!value) return "(empty)";
-  return value.length > 80 ? `${value.slice(0, 80)}...` : value;
-}
-
-function formatHeaders(headers: Record<string, string>) {
-  const entries = Object.entries(headers);
-  if (entries.length === 0) return "-";
-  return JSON.stringify(headers);
-}
-
-function previewHeaders(headers: Record<string, string>) {
-  const entries = Object.entries(headers);
-  if (entries.length === 0) return "-";
-  const text = entries.map(([key, value]) => `${key}=${value}`).join(", ");
-  return text.length > 80 ? `${text.slice(0, 80)}...` : text;
-}
-
-function parseTopicCount(value?: string) {
-  if (!value || !/^\d+$/.test(value)) return 0n;
-  return BigInt(value);
-}
-
-function formatCount(value?: string) {
-  const count = Number(parseTopicCount(value));
-  if (!Number.isFinite(count)) return "-";
-  return formatCompactNumber(count);
-}
-
-function formatCompactNumber(value: number) {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return value.toLocaleString();
-}
-
-function formatPercent(value: number) {
-  if (!Number.isFinite(value)) return "-";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)}%`;
-}
-
-function isTopicWorkView(view: View): view is TopicWorkView {
-  return view === "info" || view === "consume" || view === "produce";
-}
-
-function getTopicSortLabel(value: TopicSortMode) {
-  return topicSortOptions.find((option) => option.value === value)?.label ?? "Name A-Z";
-}
-
-function sortTopics(topics: TopicSummary[], sortMode: TopicSortMode, favoriteTopicNames: string[]) {
-  const favorites = new Set(favoriteTopicNames);
-  return [...topics].sort((left, right) => {
-    if (sortMode === "favoritesFirst") {
-      const favoriteCompare = Number(favorites.has(right.name)) - Number(favorites.has(left.name));
-      if (favoriteCompare !== 0) return favoriteCompare;
-    }
-    if (sortMode === "messagesDesc") {
-      const countCompare = compareBigInt(parseTopicCount(right.messageCount), parseTopicCount(left.messageCount));
-      if (countCompare !== 0) return countCompare;
-    }
-    if (sortMode === "partitionsDesc") {
-      const partitionCompare = right.partitions - left.partitions;
-      if (partitionCompare !== 0) return partitionCompare;
-    }
-    return left.name.localeCompare(right.name);
-  });
-}
-
-function compareBigInt(left: bigint, right: bigint) {
-  if (left > right) return 1;
-  if (left < right) return -1;
-  return 0;
-}
-
-function filterMessages(messages: ConsumedMessage[], filterText: string, filterField: ConsumeFilterField) {
-  const query = filterText.trim().toLowerCase();
-  if (filterField === "headersEmpty") {
-    return messages.filter((message) => Object.keys(message.headers ?? {}).length === 0);
-  }
-  if (!query) return messages;
-
-  return messages.filter((message) => {
-    const fields: Record<ConsumeFilterField, string> = {
-      all: [
-        message.key,
-        message.value,
-        message.offset,
-        String(message.partition),
-        message.timestamp,
-        JSON.stringify(message.headers)
-      ].join(" "),
-      key: message.key,
-      value: message.value,
-      offset: message.offset,
-      partition: String(message.partition),
-      headers: JSON.stringify(message.headers),
-      headersEmpty: Object.keys(message.headers ?? {}).length === 0 ? "true" : "false",
-      timestamp: message.timestamp
-    };
-    return fields[filterField].toLowerCase().includes(query);
-  });
-}
-
-function getPartitionColor(partition: number) {
-  const colors = ["#0f8b8d", "#d97706", "#7c3aed", "#e11d48", "#2563eb", "#16a34a", "#c026d3", "#ea580c"];
-  return colors[Math.abs(partition) % colors.length];
-}
-
-function formatTimestamp(timestamp: string) {
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return timestamp;
-  return date.toLocaleString("ko-KR", { hour12: false });
-}
-
-function formatMessagePayload(message: ConsumedMessage) {
-  const parsedValue = parseJson(message.value);
-  return {
-    topic: message.topic,
-    partition: message.partition,
-    offset: message.offset,
-    timestamp: message.timestamp,
-    key: parseJson(message.key),
-    value: parsedValue,
-    headers: message.headers
-  };
-}
-
-function parseJson(value: string) {
-  if (!value) return "";
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
-}
-
-function formatProduceValue(value: string) {
-  const parsed = parseJson(value);
-  return typeof parsed === "string" ? value : JSON.stringify(parsed, null, 2);
-}
-
-function validateJsonLikeValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) {
-    return null;
-  }
-  try {
-    JSON.parse(trimmed);
-    return null;
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `Value JSON 형식이 올바르지 않습니다. ${detail}`;
-  }
-}
-
-function parseProduceHeaders(value: string): Record<string, string> | string {
-  const trimmed = value.trim();
-  if (!trimmed) return {};
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
-      return "Headers must be a JSON object.";
-    }
-    return Object.fromEntries(
-      Object.entries(parsed as Record<string, unknown>)
-        .filter(([, headerValue]) => headerValue !== null && headerValue !== undefined)
-        .map(([key, headerValue]) => [key, typeof headerValue === "string" ? headerValue : JSON.stringify(headerValue)])
-    );
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `Headers JSON 형식이 올바르지 않습니다. ${detail}`;
-  }
-}
-
-function sanitizeFontFamily(value: string) {
-  return value.replace(/[;{}]/g, "").trim();
-}
-
-function stringifyPrimitive(value: unknown) {
-  if (typeof value === "string") return value;
-  if (value === null) return "null";
-  if (value === undefined) return "undefined";
-  return String(value);
-}
-
-function renderHighlightedText(text: string, query: string) {
-  const needle = query.trim();
-  if (!needle) return text;
-  const lowerText = text.toLowerCase();
-  const lowerNeedle = needle.toLowerCase();
-  const parts: React.ReactNode[] = [];
-  let cursor = 0;
-  let index = lowerText.indexOf(lowerNeedle);
-
-  while (index !== -1) {
-    if (index > cursor) {
-      parts.push(text.slice(cursor, index));
-    }
-    parts.push(<mark key={`${index}-${parts.length}`}>{text.slice(index, index + needle.length)}</mark>);
-    cursor = index + needle.length;
-    index = lowerText.indexOf(lowerNeedle, cursor);
-  }
-
-  if (cursor < text.length) {
-    parts.push(text.slice(cursor));
-  }
-
-  return parts;
-}
-
-function renderRawJsonText(text: string, query: string) {
-  const nodes: React.ReactNode[] = [];
-  const epochPattern = /\b\d{10,13}\b/g;
-  let cursor = 0;
-  let match = epochPattern.exec(text);
-
-  while (match) {
-    const value = match[0];
-    const index = match.index;
-    if (index > cursor) {
-      nodes.push(<React.Fragment key={`text-${cursor}`}>{renderHighlightedText(text.slice(cursor, index), query)}</React.Fragment>);
-    }
-    nodes.push(
-      <span key={`epoch-${index}`} className="epoch-token" title={getEpochTitle(value)}>
-        {renderHighlightedText(value, query)}
-      </span>
-    );
-    cursor = index + value.length;
-    match = epochPattern.exec(text);
-  }
-
-  if (cursor < text.length) {
-    nodes.push(<React.Fragment key={`text-${cursor}`}>{renderHighlightedText(text.slice(cursor), query)}</React.Fragment>);
-  }
-
-  return nodes;
-}
-
-function getEpochTitle(value: unknown) {
-  const text = typeof value === "number" ? String(value) : typeof value === "string" ? value : "";
-  if (!/^\d{10,13}$/.test(text)) return undefined;
-  const millis = text.length === 10 ? Number(text) * 1000 : Number(text);
-  const date = new Date(millis);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date.toLocaleString("ko-KR", { hour12: false });
-}
-
 function ProducePanel(props: {
   topic: string;
   keyText: string;
@@ -2722,6 +3128,184 @@ function ProducePanel(props: {
       <label>Headers<textarea className="headers-editor" value={props.headers} onChange={(event) => props.onHeaders(event.target.value)} placeholder="{ }" /></label>
       <label>Value<textarea value={props.value} onChange={(event) => props.onValue(event.target.value)} /></label>
       <button className="primary wide" onClick={props.onProduce} disabled={!props.topic}><Send size={16} /> 메시지 전송</button>
+    </section>
+  );
+}
+
+function GroupStateBadge({ state }: { state?: string }) {
+  const normalized = (state || "unknown").toLowerCase();
+  return <span className={`group-state-badge ${normalized}`}>{state || "UNKNOWN"}</span>;
+}
+
+function groupRowsByTopic(rows: ConsumerGroupLagDetail["rows"]) {
+  const grouped = new Map<string, ConsumerGroupLagDetail["rows"]>();
+  for (const row of rows) {
+    grouped.set(row.topic, [...(grouped.get(row.topic) ?? []), row]);
+  }
+  return [...grouped.entries()].map(([topic, topicRows]) => {
+    const totalLag = topicRows.reduce<bigint | null>((total, row) => {
+      if (!/^\d+$/.test(row.lag)) return total;
+      return (total ?? 0n) + BigInt(row.lag);
+    }, null);
+    return {
+      topic,
+      rows: topicRows,
+      totalLag: totalLag?.toString() ?? "-"
+    };
+  });
+}
+
+function ConsumerGroupsPanel(props: {
+  groups: ConsumerGroupSummary[];
+  selectedGroupId: string;
+  detail: ConsumerGroupLagDetail | null;
+  detailsByGroup: Record<string, ConsumerGroupLagDetail>;
+  onSelectGroup: (groupId: string) => void;
+  onBack: () => void;
+  onRefresh: () => void;
+  onRefreshDetail: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredGroups = props.groups.filter((group) => group.groupId.toLowerCase().includes(normalizedQuery));
+  const groupColumns = useMemo<ColumnDef<ConsumerGroupSummary>[]>(() => [
+    {
+      accessorKey: "groupId",
+      header: "Group ID",
+      cell: ({ row }) => <strong title={row.original.groupId}>{row.original.groupId}</strong>
+    },
+    {
+      id: "members",
+      header: "Num Of Members",
+      accessorFn: (group) => group.members ?? -1,
+      cell: ({ row }) => row.original.members ?? "-"
+    },
+    {
+      id: "topics",
+      header: "Num Of Topics",
+      accessorFn: (group) => props.detailsByGroup[group.groupId]
+        ? new Set(props.detailsByGroup[group.groupId].rows.map((item) => item.topic)).size
+        : group.topics ?? -1,
+      cell: ({ row }) => {
+        const detail = props.detailsByGroup[row.original.groupId];
+        return detail ? new Set(detail.rows.map((item) => item.topic)).size : row.original.topics ?? "-";
+      }
+    },
+    {
+      id: "lag",
+      header: "Consumer Lag",
+      accessorFn: (group) => {
+        const lag = props.detailsByGroup[group.groupId]?.totalLag ?? group.totalLag;
+        return /^\d+$/.test(lag ?? "") ? Number(lag) : -1;
+      },
+      cell: ({ row }) => {
+        const lag = props.detailsByGroup[row.original.groupId]?.totalLag ?? row.original.totalLag ?? "N/A";
+        return <span className={lag !== "N/A" && lag !== "-" && lag !== "0" ? "lag-warn" : ""}>{lag}</span>;
+      }
+    },
+    {
+      accessorKey: "coordinator",
+      header: "Coordinator",
+      cell: ({ row }) => row.original.coordinator ?? "-"
+    },
+    {
+      accessorKey: "state",
+      header: "State",
+      cell: ({ row }) => <GroupStateBadge state={row.original.state} />
+    }
+  ], [props.detailsByGroup]);
+  const lagColumns = useMemo<ColumnDef<ConsumerGroupLagRow>[]>(() => [
+    {
+      accessorKey: "partition",
+      header: "Partition"
+    },
+    {
+      id: "currentOffset",
+      header: "Current Offset",
+      accessorFn: (row) => /^\d+$/.test(row.currentOffset) ? Number(row.currentOffset) : -1,
+      cell: ({ row }) => <span title={row.original.currentOffset}>{row.original.currentOffset}</span>
+    },
+    {
+      id: "endOffset",
+      header: "End Offset",
+      accessorFn: (row) => /^\d+$/.test(row.endOffset) ? Number(row.endOffset) : -1,
+      cell: ({ row }) => <span title={row.original.endOffset}>{row.original.endOffset}</span>
+    },
+    {
+      id: "lag",
+      header: "Consumer Lag",
+      accessorFn: (row) => /^\d+$/.test(row.lag) ? Number(row.lag) : -1,
+      cell: ({ row }) => <span className={row.original.lag !== "-" && row.original.lag !== "0" ? "lag-warn" : ""}>{row.original.lag}</span>
+    },
+    {
+      accessorKey: "metadata",
+      header: "Metadata",
+      cell: ({ row }) => <span title={row.original.metadata ?? ""}>{row.original.metadata || "-"}</span>
+    }
+  ], []);
+
+  if (props.detail) {
+    const groupedTopics = groupRowsByTopic(props.detail.rows).filter((topic) => topic.topic.toLowerCase().includes(normalizedQuery));
+    return (
+      <section className="panel groups-panel">
+        <div className="group-detail-header">
+          <button className="ghost compact" onClick={props.onBack}>Consumers</button>
+          <span>/</span>
+          <h2 title={props.detail.groupId}>{props.detail.groupId}</h2>
+          <button className="ghost compact" onClick={props.onRefreshDetail}><RefreshCw size={15} /> 새로고침</button>
+        </div>
+        <div className="group-summary-grid">
+          <div><span>State</span><strong><GroupStateBadge state={props.detail.state} /></strong></div>
+          <div><span>Members</span><strong>{props.detail.members}</strong></div>
+          <div><span>Assigned Topics</span><strong>{new Set(props.detail.rows.map((row) => row.topic)).size}</strong></div>
+          <div><span>Assigned Partitions</span><strong>{props.detail.rows.length}</strong></div>
+          <div><span>Total Lag</span><strong className={props.detail.totalLag !== "-" && props.detail.totalLag !== "0" ? "lag-warn" : ""}>{props.detail.totalLag}</strong></div>
+        </div>
+        <div className="search-box group-search">
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by topic name" />
+          {query && <button onClick={() => setQuery("")} title="Clear search"><X size={13} /></button>}
+        </div>
+        <div className="group-topic-detail-list">
+          {groupedTopics.map((topic) => (
+            <section key={topic.topic} className="group-topic-card">
+              <div className="group-topic-row">
+                <strong title={topic.topic}>{topic.topic}</strong>
+                <span className={topic.totalLag !== "-" && topic.totalLag !== "0" ? "lag-warn" : ""}>{topic.totalLag}</span>
+              </div>
+              <DataGrid
+                data={topic.rows}
+                columns={lagColumns}
+                className="group-lag-table"
+                emptyText="No committed offsets"
+                getRowKey={(row) => `${row.topic}-${row.partition}`}
+              />
+            </section>
+          ))}
+          {groupedTopics.length === 0 && <div className="empty-list">No committed offsets</div>}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel groups-panel">
+      <div className="section-title">
+        <h2>Consumers</h2>
+        <button className="ghost compact" onClick={props.onRefresh}><RefreshCw size={15} /> 조회</button>
+      </div>
+      <div className="search-box group-search">
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by Consumer Group ID" />
+        {query && <button onClick={() => setQuery("")} title="Clear search"><X size={13} /></button>}
+      </div>
+      <DataGrid
+        data={filteredGroups}
+        columns={groupColumns}
+        className="consumer-groups-table"
+        emptyText="No consumer groups"
+        getRowKey={(group) => group.groupId}
+        getRowClassName={(group) => (group.groupId === props.selectedGroupId ? "selected" : "")}
+        onRowClick={(group) => props.onSelectGroup(group.groupId)}
+      />
     </section>
   );
 }

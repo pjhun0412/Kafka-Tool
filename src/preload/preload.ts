@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -20,6 +20,7 @@ const api: KafkaApi = {
   listConsumerGroups: (serverId: string) => ipcRenderer.invoke("kafka:groups", serverId),
   getConsumerGroupLag: (serverId: string, groupId: string) => ipcRenderer.invoke("kafka:group-lag", serverId, groupId),
   exportMessages: (request: MessageExportRequest) => ipcRenderer.invoke("messages:export", request),
+  exportOffsetMessages: (request: OffsetMessageExportRequest) => ipcRenderer.invoke("messages:export-offset", request),
   produce: (message: ProduceRequest) => ipcRenderer.invoke("kafka:produce", message),
   consumeFromOffset: (request: ConsumeOffsetRequest) => ipcRenderer.invoke("kafka:consume-offset", request),
   consumeTimeRange: (request: ConsumeTimeRangeRequest) => ipcRenderer.invoke("kafka:consume-time-range", request),

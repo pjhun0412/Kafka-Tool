@@ -57,6 +57,11 @@ export type ConsumerGroupSummary = {
   groupId: string;
   state?: string;
   protocol?: string;
+  members?: number;
+  coordinator?: string;
+  topics?: number;
+  assignedPartitions?: number;
+  totalLag?: string;
 };
 
 export type ConsumerGroupLagRow = {
@@ -145,6 +150,11 @@ export type MessageExportRequest = {
   template?: string;
 };
 
+export type OffsetMessageExportRequest = ConsumeOffsetRequest & {
+  format: MessageExportFormat;
+  template?: string;
+};
+
 export type TopicMutationRequest = {
   serverId: string;
   topics: string[];
@@ -183,6 +193,13 @@ export type ConsumeOffsetRequest = {
   partition: number;
   offset: string;
   limit: number;
+  order?: "asc" | "desc";
+  endOffsetExclusive?: string;
+};
+
+export type ConsumeOffsetResult = {
+  messages: ConsumedMessage[];
+  endOffsetExclusive?: string;
 };
 
 export type ConsumeTimeRangeRequest = {
@@ -213,8 +230,9 @@ export type KafkaApi = {
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;
   getConsumerGroupLag: (serverId: string, groupId: string) => Promise<ConsumerGroupLagDetail>;
   exportMessages: (request: MessageExportRequest) => Promise<string | null>;
+  exportOffsetMessages: (request: OffsetMessageExportRequest) => Promise<string | null>;
   produce: (message: ProduceRequest) => Promise<ProducedMessage[]>;
-  consumeFromOffset: (request: ConsumeOffsetRequest) => Promise<ConsumedMessage[]>;
+  consumeFromOffset: (request: ConsumeOffsetRequest) => Promise<ConsumeOffsetResult>;
   consumeTimeRange: (request: ConsumeTimeRangeRequest) => Promise<ConsumedMessage[]>;
   startConsume: (request: StartConsumeRequest) => Promise<void>;
   stopConsume: (request?: StopConsumeRequest) => Promise<void>;
