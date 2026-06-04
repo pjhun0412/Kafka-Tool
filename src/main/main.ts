@@ -308,6 +308,20 @@ function sanitizeFileName(value: string) {
   return value.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").slice(0, 80) || "messages";
 }
 
+async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>) {
+  const results: R[] = [];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 function csvValue(value: unknown) {
   const text = typeof value === "string" ? value : JSON.stringify(value ?? "");
   return `"${text.replace(/"/g, '""')}"`;
@@ -595,13 +609,30 @@ ipcMain.handle("preferences:save", async (_event, preferences: AppPreferences) =
 ipcMain.handle("kafka:topics", async (_event, serverId: string): Promise<TopicSummary[]> => {
   return withAdmin(serverId, async (admin) => {
     const metadata = await admin.fetchTopicMetadata();
-    return metadata.topics
+    const topics = metadata.topics
       .filter((topic) => !topic.name.startsWith("__"))
       .map((topic) => ({
         name: topic.name,
         partitions: topic.partitions.length,
         replicationFactor: topic.partitions[0]?.replicas.length ?? 0
-      }))
+      }));
+    const topicsWithOffsets = await mapWithConcurrency(topics, 8, async (topic) => {
+      try {
+        const offsets = await admin.fetchTopicOffsets(topic.name);
+        const messageCount = offsets.reduce((total, offset) => {
+          const high = /^\d+$/.test(offset.high) ? BigInt(offset.high) : 0n;
+          const low = /^\d+$/.test(offset.low) ? BigInt(offset.low) : 0n;
+          return total + (high > low ? high - low : 0n);
+        }, 0n);
+        return {
+          ...topic,
+          messageCount: messageCount.toString()
+        };
+      } catch {
+        return topic;
+      }
+    });
+    return topicsWithOffsets
       .sort((a, b) => a.name.localeCompare(b.name));
   });
 });

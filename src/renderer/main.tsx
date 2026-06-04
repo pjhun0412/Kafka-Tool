@@ -9,6 +9,7 @@ type ConsumeMode = "offset" | "timeRange" | "live";
 type ConsumeFilterField = "all" | "key" | "value" | "offset" | "partition" | "timestamp";
 type OffsetOrder = "asc" | "desc";
 type JsonInspectorMode = "raw" | "tree";
+type TopicListFilter = "all" | "favorites" | "opened" | "live" | "nonEmpty";
 type ToastState = { message: string; kind: "loading" | "success" | "error" } | null;
 type ConsumeDefaultPatch = AppPreferences["consumeDefaultsByServer"][string];
 
@@ -69,6 +70,7 @@ function App() {
   const [view, setView] = useState<View>("info");
   const [topicsByServer, setTopicsByServer] = useState<Record<string, TopicSummary[]>>({});
   const [topicQueryByServer, setTopicQueryByServer] = useState<Record<string, string>>({});
+  const [topicFilterByServer, setTopicFilterByServer] = useState<Record<string, TopicListFilter>>({});
   const [favoriteTopicsByServer, setFavoriteTopicsByServer] = useState<Record<string, string[]>>({});
   const [consumeDefaultsByServer, setConsumeDefaultsByServer] = useState<AppPreferences["consumeDefaultsByServer"]>({});
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
@@ -112,6 +114,7 @@ function App() {
   const isSelectedServerConnected = connectedServerIds.includes(selectedServerId);
   const topics = topicsByServer[selectedServerId] ?? [];
   const topicQuery = topicQueryByServer[selectedServerId] ?? "";
+  const topicFilter = topicFilterByServer[selectedServerId] ?? "all";
   const selectedTopic = selectedTopicByServer[selectedServerId] ?? "";
   const openedTopicTabs = openedTopicTabsByServer[selectedServerId] ?? [];
   const topicDetail = topicDetailByServer[selectedServerId] ?? null;
@@ -135,6 +138,11 @@ function App() {
   function setTopicQuery(topicQuery: string) {
     if (!selectedServerId) return;
     setTopicQueryByServer((current) => ({ ...current, [selectedServerId]: topicQuery }));
+  }
+
+  function setTopicFilter(topicFilter: TopicListFilter) {
+    if (!selectedServerId) return;
+    setTopicFilterByServer((current) => ({ ...current, [selectedServerId]: topicFilter }));
   }
 
   function setSelectedTopic(topic: string) {
@@ -172,18 +180,28 @@ function App() {
 
   const filteredTopics = useMemo(() => {
     const query = topicQuery.trim().toLowerCase();
-    if (!query) {
-      return topics;
-    }
-    return topics.filter((topic) => topic.name.toLowerCase().includes(query));
-  }, [topicQuery, topics]);
+  const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
+    const openedTopicNames = openedTopicTabsByServer[selectedServerId] ?? [];
+    const liveTopicNames = streamingTopicsByServer[selectedServerId] ?? [];
+    return topics.filter((topic) => {
+      const matchesSearch = !query || topic.name.toLowerCase().includes(query);
+      const count = parseTopicCount(topic.messageCount);
+      const matchesFilter =
+        topicFilter === "all" ||
+        (topicFilter === "favorites" && favoriteTopicNames.includes(topic.name)) ||
+        (topicFilter === "opened" && openedTopicNames.includes(topic.name)) ||
+        (topicFilter === "live" && liveTopicNames.includes(topic.name)) ||
+        (topicFilter === "nonEmpty" && count > 0n);
+      return matchesSearch && matchesFilter;
+    });
+  }, [favoriteTopicsByServer, openedTopicTabsByServer, selectedServerId, streamingTopicsByServer, topicFilter, topicQuery, topics]);
 
   const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
   const favoriteTopics = useMemo(
     () => favoriteTopicNames
-      .map((name) => topics.find((topic) => topic.name === name))
+      .map((name) => filteredTopics.find((topic) => topic.name === name))
       .filter((topic): topic is TopicSummary => Boolean(topic)),
-    [favoriteTopicNames, topics]
+    [favoriteTopicNames, filteredTopics]
   );
   const nonFavoriteFilteredTopics = useMemo(
     () => filteredTopics.filter((topic) => !favoriteTopicNames.includes(topic.name)),
@@ -1057,6 +1075,15 @@ function App() {
               </button>
             )}
           </div>
+          <div className="topic-filter-row">
+            <select value={topicFilter} onChange={(event) => setTopicFilter(event.target.value as TopicListFilter)} title="Filter topics">
+              <option value="all">All topics</option>
+              <option value="favorites">Favorites</option>
+              <option value="opened">Opened tabs</option>
+              <option value="live">Live only</option>
+              <option value="nonEmpty">Has messages</option>
+            </select>
+          </div>
           <div className="topic-scroll">
             {favoriteTopics.length > 0 && (
               <div className="favorite-topic-section">
@@ -1448,7 +1475,13 @@ function TopicListItem(props: {
       </span>
       <span className="topic-copy">
         <strong title={props.topic.name}>{props.topic.name}</strong>
-        <small title={`${props.topic.partitions} partitions / RF ${props.topic.replicationFactor}`}>{props.topic.partitions} partitions / RF {props.topic.replicationFactor}</small>
+        <small title={`${props.topic.partitions} partitions / RF ${props.topic.replicationFactor}`}>
+          P {props.topic.partitions} / RF {props.topic.replicationFactor}
+        </small>
+        <span className="topic-stats">
+          <span title="Estimated retained messages from high-low offsets">{formatCount(props.topic.messageCount)} msgs</span>
+          <span title={props.topic.sizeBytes ? "Topic size" : "Topic size requires broker log-dir/JMX support"}>{formatBytes(props.topic.sizeBytes)}</span>
+        </span>
       </span>
     </button>
   );
@@ -1746,6 +1779,34 @@ function JsonTreeNode(props: {
 function previewValue(value: string) {
   if (!value) return "(empty)";
   return value.length > 80 ? `${value.slice(0, 80)}...` : value;
+}
+
+function parseTopicCount(value?: string) {
+  if (!value || !/^\d+$/.test(value)) return 0n;
+  return BigInt(value);
+}
+
+function formatCount(value?: string) {
+  const count = Number(parseTopicCount(value));
+  if (!Number.isFinite(count)) return "-";
+  return formatCompactNumber(count);
+}
+
+function formatCompactNumber(value: number) {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return value.toLocaleString();
+}
+
+function formatBytes(value?: string) {
+  if (!value || !/^\d+$/.test(value)) return "Size n/a";
+  const bytes = Number(BigInt(value));
+  if (!Number.isFinite(bytes)) return "Size n/a";
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
 }
 
 function filterMessages(messages: ConsumedMessage[], filterText: string, filterField: ConsumeFilterField) {

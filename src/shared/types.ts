@@ -19,6 +19,8 @@ export type TopicSummary = {
   name: string;
   partitions: number;
   replicationFactor: number;
+  messageCount?: string;
+  sizeBytes?: string;
 };
 
 export type TopicDetail = {
