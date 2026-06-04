@@ -42,6 +42,7 @@
     "directories": {
       "output": "out"
     },
+    "artifactName": "Kafka-Tool-Setup-${version}.${ext}",
     "publish": [
       {
         "provider": "github",
