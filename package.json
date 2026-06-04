@@ -47,7 +47,8 @@
       {
         "provider": "github",
         "owner": "pjhun0412",
-        "repo": "Kafka-Tool"
+        "repo": "Kafka-Tool",
+        "releaseType": "release"
       }
     ],
     "files": [
