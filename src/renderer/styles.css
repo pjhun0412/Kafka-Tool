@@ -198,6 +198,10 @@
     @apply border border-line bg-white text-slate-700 hover:bg-slate-50;
   }
 
+  .export-button {
+    @apply inline-flex min-h-8 items-center justify-center gap-1.5 rounded-md border border-brand/25 bg-brand/10 px-2.5 text-[12px] font-extrabold text-brandDark shadow-sm transition hover:border-brand/40 hover:bg-brand/15 disabled:cursor-not-allowed disabled:border-line disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none;
+  }
+
   .sidebar-panel {
     @apply min-h-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.05];
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Calendar, ChevronDown, ChevronRight, Copy, Database, Filter, Layers, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
+import { Calendar, ChevronDown, ChevronRight, Copy, Database, Download, Filter, Layers, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
 import type { AppPreferences, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
 import "./styles.css";
 
@@ -1503,8 +1503,12 @@ function ConsumePanel(props: {
             Streaming
           </span>
         )}
-        <button className="ghost compact" onClick={() => props.onExport("json", filteredMessages)} disabled={filteredMessages.length === 0}>JSON</button>
-        <button className="ghost compact" onClick={() => props.onExport("csv", filteredMessages)} disabled={filteredMessages.length === 0}>CSV</button>
+        <button className="export-button" onClick={() => props.onExport("json", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as JSON">
+          <Download size={14} /> JSON
+        </button>
+        <button className="export-button" onClick={() => props.onExport("csv", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as CSV">
+          <Download size={14} /> CSV
+        </button>
         <span className={props.isConsuming ? "count live-count" : "count"}>{props.isConsuming ? "Live" : ""} {filteredMessages.length}/{props.messages.length} messages</span>
       </div>
       <div className="filter-bar">
