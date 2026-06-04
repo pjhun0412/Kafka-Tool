@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Kafka, logLevel, type Admin, type Consumer, type KafkaMessage } from "kafkajs";
+import { autoUpdater } from "electron-updater";
 import type {
   ConsumedMessage,
   ConsumeOffsetRequest,
@@ -19,13 +20,15 @@ import type {
   StartConsumeRequest,
   StopConsumeRequest,
   TopicDetail,
-  TopicSummary
+  TopicSummary,
+  UpdateStatus
 } from "../shared/types.js";
 
 const devServerUrl = process.env.KAFKA_TOOL_DEV_SERVER_URL;
 let mainWindow: BrowserWindow | null = null;
 const activeConsumers = new Map<string, Consumer>();
 let windowBoundsSaveTimer: NodeJS.Timeout | null = null;
+let autoUpdaterConfigured = false;
 
 function profilesPath() {
   return path.join(app.getPath("userData"), "servers.json");
@@ -200,6 +203,21 @@ function createApplicationMenu() {
           }
         },
         { type: "separator" },
+        {
+          label: "Check for Updates...",
+          click: async () => {
+            try {
+              await checkForUpdates();
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              mainWindow?.webContents.send("updates:status", {
+                status: "error",
+                message
+              } satisfies UpdateStatus);
+            }
+          }
+        },
+        { type: "separator" },
         process.platform === "darwin" ? { role: "close" } : { role: "quit" }
       ]
     }
@@ -289,6 +307,87 @@ function sendConsumeError(error: unknown) {
   mainWindow?.webContents.send("kafka:consume-error", message);
 }
 
+function sendUpdateStatus(status: UpdateStatus) {
+  mainWindow?.webContents.send("updates:status", status);
+}
+
+function configureAutoUpdater() {
+  if (autoUpdaterConfigured) return;
+  autoUpdaterConfigured = true;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    sendUpdateStatus({ status: "checking", message: "업데이트 확인 중" });
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    sendUpdateStatus({
+      status: "available",
+      message: `새 버전 ${info.version} 다운로드 중`,
+      version: info.version
+    });
+  });
+
+  autoUpdater.on("update-not-available", (info) => {
+    sendUpdateStatus({
+      status: "not-available",
+      message: `현재 최신 버전입니다. (${info.version})`,
+      version: info.version
+    });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    const percent = Math.round(progress.percent);
+    sendUpdateStatus({
+      status: "download-progress",
+      message: `업데이트 다운로드 중 ${percent}%`,
+      percent
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    sendUpdateStatus({
+      status: "downloaded",
+      message: `업데이트 ${info.version} 다운로드 완료`,
+      version: info.version
+    });
+    if (!mainWindow) return;
+    void dialog.showMessageBox(mainWindow, {
+      type: "info",
+      buttons: ["재시작 후 업데이트", "나중에"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "업데이트 준비 완료",
+      message: `Kafka Tool ${info.version} 업데이트를 설치할 준비가 됐습니다.`,
+      detail: "지금 재시작하면 업데이트가 적용됩니다."
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall(false, true);
+      }
+    });
+  });
+
+  autoUpdater.on("error", (error) => {
+    sendUpdateStatus({
+      status: "error",
+      message: error instanceof Error ? error.message : String(error)
+    });
+  });
+}
+
+async function checkForUpdates() {
+  configureAutoUpdater();
+  if (!app.isPackaged) {
+    sendUpdateStatus({
+      status: "error",
+      message: "업데이트 확인은 패키징된 앱에서만 동작합니다."
+    });
+    return;
+  }
+  await autoUpdater.checkForUpdates();
+}
+
 async function saveWindowBounds() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const bounds = mainWindow.getNormalBounds();
@@ -368,6 +467,17 @@ async function createWindow() {
   } catch (error) {
     console.error("Failed to load renderer", error);
   }
+
+  if (app.isPackaged) {
+    setTimeout(() => {
+      void checkForUpdates().catch((error) => {
+        sendUpdateStatus({
+          status: "error",
+          message: error instanceof Error ? error.message : String(error)
+        });
+      });
+    }, 3000);
+  }
 }
 
 ipcMain.handle("servers:list", async () => readProfiles());
@@ -417,6 +527,14 @@ ipcMain.handle("settings:export", async (): Promise<string | null> => {
 
 ipcMain.handle("settings:import", async (): Promise<ImportSettingsResult | null> => {
   return importSettingsFromFile();
+});
+
+ipcMain.handle("updates:check", async () => {
+  await checkForUpdates();
+});
+
+ipcMain.handle("updates:install", async () => {
+  autoUpdater.quitAndInstall(false, true);
 });
 
 ipcMain.handle("preferences:load", async () => readPreferences());

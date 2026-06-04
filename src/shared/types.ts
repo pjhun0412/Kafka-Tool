@@ -111,6 +111,13 @@ export type MessageExportRequest = {
   messages: ConsumedMessage[];
 };
 
+export type UpdateStatus = {
+  status: "checking" | "available" | "not-available" | "download-progress" | "downloaded" | "error";
+  message: string;
+  version?: string;
+  percent?: number;
+};
+
 export type StartConsumeRequest = {
   serverId: string;
   topic: string;
@@ -154,6 +161,8 @@ export type KafkaApi = {
   reorderServers: (ids: string[]) => Promise<ServerProfile[]>;
   exportSettings: () => Promise<string | null>;
   importSettings: () => Promise<ImportSettingsResult | null>;
+  checkForUpdates: () => Promise<void>;
+  installUpdate: () => Promise<void>;
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
@@ -171,4 +180,5 @@ export type KafkaApi = {
   onSettingsImported: (callback: (result: ImportSettingsResult) => void) => () => void;
   onSettingsExported: (callback: (filePath: string) => void) => () => void;
   onSettingsError: (callback: (error: string) => void) => () => void;
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 };

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest } from "../shared/types.js";
+import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -8,6 +8,8 @@ const api: KafkaApi = {
   reorderServers: (ids: string[]) => ipcRenderer.invoke("servers:reorder", ids),
   exportSettings: () => ipcRenderer.invoke("settings:export"),
   importSettings: () => ipcRenderer.invoke("settings:import"),
+  checkForUpdates: () => ipcRenderer.invoke("updates:check"),
+  installUpdate: () => ipcRenderer.invoke("updates:install"),
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
   listTopics: (serverId: string) => ipcRenderer.invoke("kafka:topics", serverId),
@@ -44,6 +46,11 @@ const api: KafkaApi = {
     const listener = (_event: Electron.IpcRendererEvent, error: string) => callback(error);
     ipcRenderer.on("settings:error", listener);
     return () => ipcRenderer.removeListener("settings:error", listener);
+  },
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status);
+    ipcRenderer.on("updates:status", listener);
+    return () => ipcRenderer.removeListener("updates:status", listener);
   }
 };
 

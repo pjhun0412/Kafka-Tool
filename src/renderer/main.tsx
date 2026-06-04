@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Calendar, ChevronDown, ChevronRight, Copy, Database, Filter, Layers, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
-import type { AppPreferences, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary } from "../shared/types";
+import type { AppPreferences, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
 import "./styles.css";
 
 type View = "info" | "consume" | "produce" | "groups";
@@ -401,6 +401,24 @@ function App() {
       offImported();
       offExported();
       offSettingsError();
+    };
+  }, [kafkaApi]);
+
+  useEffect(() => {
+    if (!kafkaApi) {
+      return;
+    }
+    const offUpdateStatus = kafkaApi.onUpdateStatus((updateStatus: UpdateStatus) => {
+      const kind = updateStatus.status === "error"
+        ? "error"
+        : updateStatus.status === "checking" || updateStatus.status === "available" || updateStatus.status === "download-progress"
+          ? "loading"
+          : "success";
+      setStatus(updateStatus.message);
+      setToast({ message: updateStatus.message, kind });
+    });
+    return () => {
+      offUpdateStatus();
     };
   }, [kafkaApi]);
 
