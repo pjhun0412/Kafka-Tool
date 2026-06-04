@@ -2,6 +2,17 @@ export type ServerProfile = {
   id: string;
   name: string;
   brokers: string[];
+  security?: {
+    ssl?: boolean;
+    sasl?: {
+      mechanism: "oauthbearer";
+      tokenEndpoint: string;
+      clientId: string;
+      clientSecret: string;
+      scope?: string;
+      audience?: string;
+    };
+  };
 };
 
 export type TopicSummary = {

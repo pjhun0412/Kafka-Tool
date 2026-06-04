@@ -28,7 +28,17 @@ type TopicConsumeState = {
   maxMessages: number;
 };
 
-const emptyServer = { name: "", brokers: "localhost:9092" };
+const emptyServer = {
+  name: "",
+  brokers: "localhost:9092",
+  ssl: false,
+  oauthEnabled: false,
+  oauthTokenEndpoint: "",
+  oauthClientId: "",
+  oauthClientSecret: "",
+  oauthScope: "",
+  oauthAudience: ""
+};
 const emptyConsumeState: TopicConsumeState = {
   messages: [],
   selectedMessage: null,
@@ -477,13 +487,33 @@ function App() {
     };
   }, [serverContextMenu]);
 
+  function buildServerSecurity(): ServerProfile["security"] | undefined {
+    if (!serverForm.ssl && !serverForm.oauthEnabled) {
+      return undefined;
+    }
+    return {
+      ssl: serverForm.ssl,
+      sasl: serverForm.oauthEnabled
+        ? {
+          mechanism: "oauthbearer",
+          tokenEndpoint: serverForm.oauthTokenEndpoint.trim(),
+          clientId: serverForm.oauthClientId.trim(),
+          clientSecret: serverForm.oauthClientSecret,
+          scope: serverForm.oauthScope.trim() || undefined,
+          audience: serverForm.oauthAudience.trim() || undefined
+        }
+        : undefined
+    };
+  }
+
   async function saveServer() {
     if (!kafkaApi) return;
     const nextServers = await runTask("서버 저장 중", () =>
       kafkaApi.saveServer({
         id: editingServerId ?? undefined,
         name: serverForm.name,
-        brokers: serverForm.brokers.split(",").map((broker) => broker.trim())
+        brokers: serverForm.brokers.split(",").map((broker) => broker.trim()),
+        security: buildServerSecurity()
       })
     );
     setServers(nextServers);
@@ -520,7 +550,17 @@ function App() {
 
   function openEditServerForm(server: ServerProfile) {
     setEditingServerId(server.id);
-    setServerForm({ name: server.name, brokers: server.brokers.join(", ") });
+    setServerForm({
+      name: server.name,
+      brokers: server.brokers.join(", "),
+      ssl: Boolean(server.security?.ssl),
+      oauthEnabled: server.security?.sasl?.mechanism === "oauthbearer",
+      oauthTokenEndpoint: server.security?.sasl?.tokenEndpoint ?? "",
+      oauthClientId: server.security?.sasl?.clientId ?? "",
+      oauthClientSecret: server.security?.sasl?.clientSecret ?? "",
+      oauthScope: server.security?.sasl?.scope ?? "",
+      oauthAudience: server.security?.sasl?.audience ?? ""
+    });
     setIsServerFormOpen(true);
   }
 
@@ -1252,6 +1292,48 @@ function App() {
               브로커
               <input value={serverForm.brokers} onChange={(event) => setServerForm({ ...serverForm, brokers: event.target.value })} placeholder="localhost:9092, localhost:9093" />
             </label>
+            <section className="auth-settings">
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={serverForm.ssl}
+                  onChange={(event) => setServerForm({ ...serverForm, ssl: event.target.checked })}
+                />
+                Use SSL/TLS
+              </label>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={serverForm.oauthEnabled}
+                  onChange={(event) => setServerForm({ ...serverForm, oauthEnabled: event.target.checked, ssl: event.target.checked ? true : serverForm.ssl })}
+                />
+                SASL/OAUTHBEARER
+              </label>
+              {serverForm.oauthEnabled && (
+                <div className="auth-grid">
+                  <label>
+                    Token endpoint
+                    <input value={serverForm.oauthTokenEndpoint} onChange={(event) => setServerForm({ ...serverForm, oauthTokenEndpoint: event.target.value })} placeholder="https://auth.example.com/oauth2/token" />
+                  </label>
+                  <label>
+                    Client ID
+                    <input value={serverForm.oauthClientId} onChange={(event) => setServerForm({ ...serverForm, oauthClientId: event.target.value })} placeholder="kafka-client" />
+                  </label>
+                  <label>
+                    Client secret
+                    <input type="password" value={serverForm.oauthClientSecret} onChange={(event) => setServerForm({ ...serverForm, oauthClientSecret: event.target.value })} placeholder="client secret" />
+                  </label>
+                  <label>
+                    Scope
+                    <input value={serverForm.oauthScope} onChange={(event) => setServerForm({ ...serverForm, oauthScope: event.target.value })} placeholder="optional" />
+                  </label>
+                  <label>
+                    Audience
+                    <input value={serverForm.oauthAudience} onChange={(event) => setServerForm({ ...serverForm, oauthAudience: event.target.value })} placeholder="optional" />
+                  </label>
+                </div>
+              )}
+            </section>
             <div className="modal-actions">
               <button className="ghost" onClick={closeServerForm}>취소</button>
               <button className="primary" onClick={saveServer} disabled={loading}>

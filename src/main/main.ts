@@ -111,7 +111,8 @@ function normalizeImportedServers(servers: unknown): ServerProfile[] {
     return {
       id: typeof item.id === "string" && item.id.trim() ? item.id : randomUUID(),
       name,
-      brokers
+      brokers,
+      security: item.security
     };
   });
 }
@@ -235,11 +236,49 @@ async function getProfile(serverId: string) {
 }
 
 function createKafka(profile: ServerProfile) {
+  const sasl = profile.security?.sasl;
   return new Kafka({
     clientId: "kafka-tool",
     brokers: profile.brokers,
+    ssl: profile.security?.ssl,
+    sasl: sasl?.mechanism === "oauthbearer"
+      ? {
+        mechanism: "oauthbearer",
+        oauthBearerProvider: async () => ({
+          value: await requestOAuthBearerToken(sasl)
+        })
+      }
+      : undefined,
     logLevel: logLevel.NOTHING
   });
+}
+
+async function requestOAuthBearerToken(config: NonNullable<NonNullable<ServerProfile["security"]>["sasl"]>) {
+  const body = new URLSearchParams({
+    grant_type: "client_credentials",
+    client_id: config.clientId,
+    client_secret: config.clientSecret
+  });
+  if (config.scope?.trim()) {
+    body.set("scope", config.scope.trim());
+  }
+  if (config.audience?.trim()) {
+    body.set("audience", config.audience.trim());
+  }
+
+  const response = await fetch(config.tokenEndpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+  const payload = await response.json().catch(() => ({})) as { access_token?: unknown; error?: unknown; error_description?: unknown };
+  if (!response.ok || typeof payload.access_token !== "string") {
+    const detail = [payload.error, payload.error_description].filter(Boolean).join(": ");
+    throw new Error(`OAuth token request failed (${response.status}). ${detail || response.statusText}`);
+  }
+  return payload.access_token;
 }
 
 async function withAdmin<T>(serverId: string, action: (admin: Admin) => Promise<T>) {
@@ -491,11 +530,19 @@ ipcMain.handle("servers:save", async (_event, server: Omit<ServerProfile, "id"> 
     throw new Error("브로커 주소를 하나 이상 입력하세요.");
   }
 
+  if (server.security?.sasl) {
+    const sasl = server.security.sasl;
+    if (!sasl.tokenEndpoint.trim() || !sasl.clientId.trim() || !sasl.clientSecret.trim()) {
+      throw new Error("SASL/OAUTHBEARER requires token endpoint, client ID, and client secret.");
+    }
+  }
+
   const profiles = await readProfiles();
   const nextProfile: ServerProfile = {
     id: server.id ?? randomUUID(),
     name: server.name.trim(),
-    brokers
+    brokers,
+    security: server.security
   };
   const nextProfiles = profiles.some((item) => item.id === nextProfile.id)
     ? profiles.map((item) => (item.id === nextProfile.id ? nextProfile : item))

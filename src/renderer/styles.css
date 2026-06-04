@@ -890,6 +890,31 @@
     @apply grid w-full max-w-[460px] gap-4 rounded-lg border border-line bg-white p-5 shadow-soft;
   }
 
+  .auth-settings {
+    @apply grid gap-2 rounded-lg border border-line bg-slate-50 p-3;
+  }
+
+  .checkbox-row {
+    @apply flex min-h-7 grid-cols-none items-center gap-2 text-[12px] font-extrabold text-slate-700;
+  }
+
+  .checkbox-row input {
+    @apply m-0 h-4 min-h-0 w-4 shrink-0 accent-brand;
+    padding: 0;
+  }
+
+  .auth-grid {
+    @apply mt-1 grid gap-2 border-t border-line pt-3;
+  }
+
+  .auth-grid label {
+    @apply text-[12px];
+  }
+
+  .auth-grid input {
+    @apply min-h-8 py-1.5 text-[12px];
+  }
+
   .error-modal {
     @apply max-w-[540px];
   }
