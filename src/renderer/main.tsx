@@ -1,17 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Calendar, ChevronDown, ChevronRight, Copy, Database, Download, Filter, Layers, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
-import type { AppPreferences, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
+import { AlertTriangle, ArrowUpDown, Calendar, CheckCircle2, ChevronDown, ChevronRight, Copy, Database, Download, Filter, HardDrive, Layers, ListTree, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
+import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
 import "./styles.css";
 
-type View = "info" | "consume" | "produce" | "groups";
+type View = "brokers" | "topics" | "consumers" | "info" | "consume" | "produce";
+type TopicWorkView = "info" | "consume" | "produce";
 type ConsumeMode = "offset" | "timeRange" | "live";
-type ConsumeFilterField = "all" | "key" | "value" | "offset" | "partition" | "timestamp";
+type ConsumeFilterField = "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
 type OffsetOrder = "asc" | "desc";
 type JsonInspectorMode = "raw" | "tree";
-type TopicListFilter = "all" | "favorites" | "opened" | "live" | "nonEmpty";
+type TopicListFilter = "all" | "favorites" | "nonEmpty";
+type TopicSortMode = "nameAsc" | "messagesDesc" | "partitionsDesc" | "favoritesFirst";
 type ToastState = { message: string; kind: "loading" | "success" | "error" } | null;
 type ConsumeDefaultPatch = AppPreferences["consumeDefaultsByServer"][string];
+type TopicAction = { kind: "delete" | "purge"; topics: string[] } | null;
 
 type TopicConsumeState = {
   messages: ConsumedMessage[];
@@ -56,6 +59,20 @@ const emptyConsumeState: TopicConsumeState = {
   maxMessages: 1000
 };
 
+const topicSortOptions: Array<{ value: TopicSortMode; label: string }> = [
+  { value: "nameAsc", label: "Name A-Z" },
+  { value: "messagesDesc", label: "Messages High-Low" },
+  { value: "partitionsDesc", label: "Partitions High-Low" },
+  { value: "favoritesFirst", label: "Favorites first" }
+];
+
+const fontOptions = [
+  { value: "D2Coding, Consolas, 'Courier New', monospace", label: "D2Coding stack" },
+  { value: "Consolas, 'Courier New', monospace", label: "Consolas stack" },
+  { value: "'JetBrains Mono', Consolas, monospace", label: "JetBrains Mono stack" },
+  { value: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", label: "System UI stack" }
+];
+
 function App() {
   const kafkaApi = window.kafkaApi;
   const [servers, setServers] = useState<ServerProfile[]>([]);
@@ -67,22 +84,27 @@ function App() {
   const [serverForm, setServerForm] = useState(emptyServer);
   const [editingServerId, setEditingServerId] = useState<string | null>(null);
   const [isServerFormOpen, setIsServerFormOpen] = useState(false);
-  const [view, setView] = useState<View>("info");
+  const [viewByServer, setViewByServer] = useState<Record<string, View>>({});
+  const [topicViewByServer, setTopicViewByServer] = useState<Record<string, Record<string, TopicWorkView>>>({});
   const [topicsByServer, setTopicsByServer] = useState<Record<string, TopicSummary[]>>({});
   const [topicQueryByServer, setTopicQueryByServer] = useState<Record<string, string>>({});
   const [topicFilterByServer, setTopicFilterByServer] = useState<Record<string, TopicListFilter>>({});
+  const [topicSortByServer, setTopicSortByServer] = useState<Record<string, TopicSortMode>>({});
+  const [selectedTopicRowsByServer, setSelectedTopicRowsByServer] = useState<Record<string, string[]>>({});
   const [favoriteTopicsByServer, setFavoriteTopicsByServer] = useState<Record<string, string[]>>({});
   const [consumeDefaultsByServer, setConsumeDefaultsByServer] = useState<AppPreferences["consumeDefaultsByServer"]>({});
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [selectedTopicByServer, setSelectedTopicByServer] = useState<Record<string, string>>({});
   const [openedTopicTabsByServer, setOpenedTopicTabsByServer] = useState<Record<string, string[]>>({});
   const [topicDetailByServer, setTopicDetailByServer] = useState<Record<string, TopicDetail | null>>({});
+  const [brokersByServer, setBrokersByServer] = useState<Record<string, BrokerSummary[]>>({});
   const [groupsByServer, setGroupsByServer] = useState<Record<string, ConsumerGroupSummary[]>>({});
   const [selectedGroupByServer, setSelectedGroupByServer] = useState<Record<string, string>>({});
   const [groupLagByServer, setGroupLagByServer] = useState<Record<string, Record<string, ConsumerGroupLagDetail>>>({});
   const [consumeStatesByServer, setConsumeStatesByServer] = useState<Record<string, Record<string, TopicConsumeState>>>({});
   const [produceValue, setProduceValue] = useState("{\n  \"hello\": \"kafka\"\n}");
   const [produceKey, setProduceKey] = useState("");
+  const [produceHeaders, setProduceHeaders] = useState("{}");
   const [streamingTopicsByServer, setStreamingTopicsByServer] = useState<Record<string, string[]>>({});
   const [status, setStatus] = useState("서버를 등록하거나 선택하세요.");
   const [toast, setToast] = useState<ToastState>(null);
@@ -90,7 +112,15 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(288);
   const [serverPanelHeight, setServerPanelHeight] = useState(230);
   const [messagePaneHeight, setMessagePaneHeight] = useState(230);
+  const [fontFamily, setFontFamily] = useState("D2Coding, Consolas, 'Courier New', monospace");
+  const [fontSize, setFontSize] = useState(13);
+  const [exportFormatTemplate, setExportFormatTemplate] = useState("[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}");
+  const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [serverContextMenu, setServerContextMenu] = useState<{ serverId: string; x: number; y: number } | null>(null);
+  const [topicContextMenu, setTopicContextMenu] = useState<{ topic: string; x: number; y: number } | null>(null);
+  const [isTopicSortMenuOpen, setIsTopicSortMenuOpen] = useState(false);
+  const [pendingTopicAction, setPendingTopicAction] = useState<TopicAction>(null);
+  const [topicActionConfirmText, setTopicActionConfirmText] = useState("");
   const [connectionError, setConnectionError] = useState<{ serverName: string; brokers: string; message: string } | null>(null);
   const [draggingServerId, setDraggingServerId] = useState("");
   const [serverDropTarget, setServerDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
@@ -115,19 +145,53 @@ function App() {
   const topics = topicsByServer[selectedServerId] ?? [];
   const topicQuery = topicQueryByServer[selectedServerId] ?? "";
   const topicFilter = topicFilterByServer[selectedServerId] ?? "all";
+  const topicSort = topicSortByServer[selectedServerId] ?? "nameAsc";
   const selectedTopic = selectedTopicByServer[selectedServerId] ?? "";
+  const selectedTopicRows = selectedTopicRowsByServer[selectedServerId] ?? [];
+  const view = viewByServer[selectedServerId] ?? (selectedTopic ? "info" : "topics");
   const openedTopicTabs = openedTopicTabsByServer[selectedServerId] ?? [];
   const topicDetail = topicDetailByServer[selectedServerId] ?? null;
+  const brokers = brokersByServer[selectedServerId] ?? [];
   const groups = groupsByServer[selectedServerId] ?? [];
   const selectedGroupId = selectedGroupByServer[selectedServerId] ?? "";
   const selectedGroupLag = groupLagByServer[selectedServerId]?.[selectedGroupId] ?? null;
   const consumeStates = consumeStatesByServer[selectedServerId] ?? {};
+  const contextTopic = topicContextMenu?.topic ?? "";
 
   function getDefaultConsumeState(serverId = selectedServerId): TopicConsumeState {
     return {
       ...emptyConsumeState,
-      ...(consumeDefaultsByServer[serverId] ?? {})
+      ...(consumeDefaultsByServer[serverId] ?? {}),
+      mode: "offset"
     };
+  }
+
+  function setView(view: View) {
+    if (!selectedServerId) return;
+    setViewByServer((current) => ({ ...current, [selectedServerId]: view }));
+    if (isTopicWorkView(view) && selectedTopic) {
+      setTopicViewByServer((current) => ({
+        ...current,
+        [selectedServerId]: {
+          ...(current[selectedServerId] ?? {}),
+          [selectedTopic]: view
+        }
+      }));
+    }
+  }
+
+  function getTopicView(topic: string) {
+    return topicViewByServer[selectedServerId]?.[topic] ?? "info";
+  }
+
+  function activateTopicView(topic: string) {
+    if (!selectedServerId) return;
+    setViewByServer((current) => ({ ...current, [selectedServerId]: getTopicView(topic) }));
+  }
+
+  function activateSelectedTopicView() {
+    if (!selectedTopic) return;
+    activateTopicView(selectedTopic);
   }
 
   function setTopics(topics: TopicSummary[]) {
@@ -143,6 +207,20 @@ function App() {
   function setTopicFilter(topicFilter: TopicListFilter) {
     if (!selectedServerId) return;
     setTopicFilterByServer((current) => ({ ...current, [selectedServerId]: topicFilter }));
+  }
+
+  function setTopicSort(topicSort: TopicSortMode) {
+    if (!selectedServerId) return;
+    setTopicSortByServer((current) => ({ ...current, [selectedServerId]: topicSort }));
+  }
+
+  function setSelectedTopicRows(action: string[] | ((current: string[]) => string[])) {
+    if (!selectedServerId) return;
+    setSelectedTopicRowsByServer((current) => {
+      const previous = current[selectedServerId] ?? [];
+      const next = typeof action === "function" ? action(previous) : action;
+      return { ...current, [selectedServerId]: next };
+    });
   }
 
   function setSelectedTopic(topic: string) {
@@ -180,32 +258,32 @@ function App() {
 
   const filteredTopics = useMemo(() => {
     const query = topicQuery.trim().toLowerCase();
-  const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
-    const openedTopicNames = openedTopicTabsByServer[selectedServerId] ?? [];
-    const liveTopicNames = streamingTopicsByServer[selectedServerId] ?? [];
+    const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
     return topics.filter((topic) => {
       const matchesSearch = !query || topic.name.toLowerCase().includes(query);
       const count = parseTopicCount(topic.messageCount);
       const matchesFilter =
         topicFilter === "all" ||
         (topicFilter === "favorites" && favoriteTopicNames.includes(topic.name)) ||
-        (topicFilter === "opened" && openedTopicNames.includes(topic.name)) ||
-        (topicFilter === "live" && liveTopicNames.includes(topic.name)) ||
         (topicFilter === "nonEmpty" && count > 0n);
       return matchesSearch && matchesFilter;
     });
-  }, [favoriteTopicsByServer, openedTopicTabsByServer, selectedServerId, streamingTopicsByServer, topicFilter, topicQuery, topics]);
+  }, [favoriteTopicsByServer, selectedServerId, topicFilter, topicQuery, topics]);
 
   const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
+  const sortedTopics = useMemo(
+    () => sortTopics(filteredTopics, topicSort, favoriteTopicNames),
+    [favoriteTopicNames, filteredTopics, topicSort]
+  );
   const favoriteTopics = useMemo(
     () => favoriteTopicNames
-      .map((name) => filteredTopics.find((topic) => topic.name === name))
+      .map((name) => sortedTopics.find((topic) => topic.name === name))
       .filter((topic): topic is TopicSummary => Boolean(topic)),
-    [favoriteTopicNames, filteredTopics]
+    [favoriteTopicNames, sortedTopics]
   );
   const nonFavoriteFilteredTopics = useMemo(
-    () => filteredTopics.filter((topic) => !favoriteTopicNames.includes(topic.name)),
-    [favoriteTopicNames, filteredTopics]
+    () => sortedTopics.filter((topic) => !favoriteTopicNames.includes(topic.name)),
+    [favoriteTopicNames, sortedTopics]
   );
 
   const selectedDefaultConsumeState = getDefaultConsumeState();
@@ -281,6 +359,22 @@ function App() {
     setServerContextMenu(null);
   }
 
+  function openTopicContextMenu(event: React.MouseEvent, topic: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    activateTopicView(topic);
+    setSelectedTopic(topic);
+    setTopicContextMenu({
+      topic,
+      x: Math.min(event.clientX, window.innerWidth - 190),
+      y: Math.min(event.clientY, window.innerHeight - 190)
+    });
+  }
+
+  function closeTopicContextMenu() {
+    setTopicContextMenu(null);
+  }
+
   function getServerConnectionClass(serverId: string) {
     if (connectedServerIds.includes(serverId)) return "connection-dot connected";
     if (failedServerIds.includes(serverId)) return "connection-dot failed";
@@ -353,6 +447,15 @@ function App() {
       if (typeof preferences.layout?.messagePaneHeight === "number") {
         setMessagePaneHeight(preferences.layout.messagePaneHeight);
       }
+      if (typeof preferences.appearance?.fontFamily === "string") {
+        setFontFamily(preferences.appearance.fontFamily);
+      }
+      if (typeof preferences.appearance?.fontSize === "number") {
+        setFontSize(preferences.appearance.fontSize);
+      }
+      if (typeof preferences.exportFormatTemplate === "string") {
+        setExportFormatTemplate(preferences.exportFormatTemplate);
+      }
       setPreferencesLoaded(true);
     }).catch((error) => {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -371,9 +474,14 @@ function App() {
         sidebarWidth,
         serverPanelHeight,
         messagePaneHeight
-      }
+      },
+      appearance: {
+        fontFamily,
+        fontSize
+      },
+      exportFormatTemplate
     }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
-  }, [kafkaApi, preferencesLoaded, favoriteTopicsByServer, consumeDefaultsByServer, sidebarWidth, serverPanelHeight, messagePaneHeight]);
+  }, [kafkaApi, preferencesLoaded, favoriteTopicsByServer, consumeDefaultsByServer, sidebarWidth, serverPanelHeight, messagePaneHeight, fontFamily, fontSize, exportFormatTemplate]);
 
   useEffect(() => {
     if (!kafkaApi) {
@@ -407,6 +515,23 @@ function App() {
       offError();
     };
   }, [kafkaApi, selectedServerId, consumeDefaultsByServer]);
+
+  useEffect(() => {
+    if (!kafkaApi) {
+      return;
+    }
+    const offPreferencesOpen = kafkaApi.onPreferencesOpen(() => setIsPreferencesOpen(true));
+    return () => {
+      offPreferencesOpen();
+    };
+  }, [kafkaApi]);
+
+  useEffect(() => {
+    const safeFontFamily = sanitizeFontFamily(fontFamily) || "D2Coding, Consolas, 'Courier New', monospace";
+    document.documentElement.style.setProperty("--app-font-family", safeFontFamily);
+    document.documentElement.style.setProperty("--app-mono-font-family", safeFontFamily);
+    document.documentElement.style.setProperty("--app-font-size", `${Math.min(16, Math.max(11, fontSize))}px`);
+  }, [fontFamily, fontSize]);
 
   useEffect(() => {
     if (!kafkaApi) {
@@ -456,11 +581,15 @@ function App() {
         if (!topicsByServer[selectedServerId]) {
           void refreshTopics();
         }
+        if (!brokersByServer[selectedServerId]) {
+          void refreshBrokers();
+        }
         if (!groupsByServer[selectedServerId]) {
           void refreshGroups();
         }
       } else {
         setTopics([]);
+        setBrokersByServer((current) => ({ ...current, [selectedServerId]: [] }));
         setGroups([]);
         setSelectedTopic("");
         setTopicDetail(null);
@@ -504,6 +633,28 @@ function App() {
       window.removeEventListener("keydown", close);
     };
   }, [serverContextMenu]);
+
+  useEffect(() => {
+    if (!topicContextMenu) return;
+    const close = () => closeTopicContextMenu();
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [topicContextMenu]);
+
+  useEffect(() => {
+    if (!isTopicSortMenuOpen) return;
+    const close = () => setIsTopicSortMenuOpen(false);
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [isTopicSortMenuOpen]);
 
   function buildServerSecurity(): ServerProfile["security"] | undefined {
     if (!serverForm.ssl && !serverForm.oauthEnabled) {
@@ -553,6 +704,16 @@ function App() {
     setSelectedTopic("");
     setTopicDetail(null);
     setConsumeStates({});
+    setViewByServer((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setTopicViewByServer((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setStreamingTopicsByServer((current) => {
       const next = { ...current };
       delete next[id];
@@ -599,7 +760,9 @@ function App() {
       setFailedServerIds((current) => current.filter((serverId) => serverId !== server.id));
       setConnectedServerIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
       setOpenClusterIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
+      await refreshBrokersForServer(server.id);
       await refreshTopicsForServer(server.id);
+      setViewByServer((current) => ({ ...current, [server.id]: current[server.id] ?? "info" }));
       await refreshGroupsForServer(server.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -631,6 +794,7 @@ function App() {
     setOpenClusterIds((current) => current.filter((id) => id !== serverId));
     if (selectedServerId === serverId) {
       setTopics([]);
+      setBrokersByServer((current) => ({ ...current, [serverId]: [] }));
       setGroups([]);
       setOpenedTopicTabs([]);
       setSelectedTopic("");
@@ -653,11 +817,27 @@ function App() {
     }
   }
 
+  async function refreshBrokers() {
+    if (!selectedServerId) return;
+    await refreshBrokersForServer(selectedServerId);
+  }
+
+  async function refreshBrokersForServer(serverId: string) {
+    if (!kafkaApi) return;
+    const items = await runTask("브로커 조회 중", () => kafkaApi.listBrokers(serverId));
+    setBrokersByServer((current) => ({ ...current, [serverId]: items }));
+  }
+
   async function refreshTopicsForServer(serverId: string) {
     if (!kafkaApi) return;
     setTopicQueryByServer((current) => ({ ...current, [serverId]: "" }));
     const items = await runTask("토픽 조회 중", () => kafkaApi.listTopics(serverId));
     setTopicsByServer((current) => ({ ...current, [serverId]: items }));
+    const topicNames = new Set(items.map((topic) => topic.name));
+    setSelectedTopicRowsByServer((current) => ({
+      ...current,
+      [serverId]: (current[serverId] ?? []).filter((topic) => topicNames.has(topic))
+    }));
     const previousSelectedTopic = selectedTopicByServer[serverId] ?? "";
     const nextTopic = previousSelectedTopic && items.some((topic) => topic.name === previousSelectedTopic) ? previousSelectedTopic : items[0]?.name ?? "";
     setSelectedTopicByServer((current) => ({ ...current, [serverId]: nextTopic }));
@@ -685,8 +865,93 @@ function App() {
 
   async function openTopicTab(topic: string) {
     setOpenedTopicTabs((current) => (current.includes(topic) ? current : [...current, topic]));
+    activateTopicView(topic);
     await loadTopicDetail(topic);
-    setView("info");
+  }
+
+  function toggleTopicRow(topic: string) {
+    setSelectedTopicRows((current) =>
+      current.includes(topic)
+        ? current.filter((item) => item !== topic)
+        : [...current, topic]
+    );
+  }
+
+  function toggleAllTopicRows(topicNames: string[]) {
+    setSelectedTopicRows((current) => {
+      const names = new Set(topicNames);
+      const selectedInView = current.filter((topic) => names.has(topic));
+      if (topicNames.length > 0 && selectedInView.length === topicNames.length) {
+        return current.filter((topic) => !names.has(topic));
+      }
+      return [...new Set([...current, ...topicNames])];
+    });
+  }
+
+  async function copySelectedTopicNames(topicsToCopy = selectedTopicRows) {
+    if (topicsToCopy.length === 0) return;
+    await navigator.clipboard.writeText(topicsToCopy.join("\n"));
+    setToast({ message: `Copied ${topicsToCopy.length} topic name(s).`, kind: "success" });
+  }
+
+  function requestTopicAction(kind: "delete" | "purge", topicsToMutate = selectedTopicRows) {
+    if (topicsToMutate.length === 0) return;
+    setTopicActionConfirmText("");
+    setPendingTopicAction({ kind, topics: [...topicsToMutate] });
+  }
+
+  function cleanupDeletedTopics(deletedTopics: string[]) {
+    const deleted = new Set(deletedTopics);
+    setSelectedTopicRows((current) => current.filter((topic) => !deleted.has(topic)));
+    setOpenedTopicTabs((current) => current.filter((topic) => !deleted.has(topic)));
+    setFavoriteTopicsByServer((current) => ({
+      ...current,
+      [selectedServerId]: (current[selectedServerId] ?? []).filter((topic) => !deleted.has(topic))
+    }));
+    setConsumeStates((current) => {
+      const next = { ...current };
+      for (const topic of deleted) {
+        delete next[topic];
+      }
+      return next;
+    });
+    setTopicViewByServer((current) => {
+      const serverViews = { ...(current[selectedServerId] ?? {}) };
+      for (const topic of deleted) {
+        delete serverViews[topic];
+      }
+      return { ...current, [selectedServerId]: serverViews };
+    });
+    if (deleted.has(selectedTopic)) {
+      const nextTopic = topics.find((topic) => !deleted.has(topic.name))?.name ?? "";
+      setSelectedTopic(nextTopic);
+      if (nextTopic) {
+        void loadTopicDetail(nextTopic);
+      } else {
+        setTopicDetail(null);
+      }
+    }
+  }
+
+  async function confirmTopicAction() {
+    if (!kafkaApi || !selectedServerId || !pendingTopicAction) return;
+    const action = pendingTopicAction;
+    if (topicActionConfirmText.trim().toUpperCase() !== action.kind.toUpperCase()) return;
+    setPendingTopicAction(null);
+    setTopicActionConfirmText("");
+    if (action.kind === "delete") {
+      await runTask(`Deleting ${action.topics.length} topic(s)`, () => kafkaApi.deleteTopics({ serverId: selectedServerId, topics: action.topics }));
+      cleanupDeletedTopics(action.topics);
+      await refreshTopics();
+      setToast({ message: `Deleted ${action.topics.length} topic(s).`, kind: "success" });
+      return;
+    }
+    await runTask(`Purging ${action.topics.length} topic(s)`, () => kafkaApi.purgeTopics({ serverId: selectedServerId, topics: action.topics }));
+    await refreshTopics();
+    if (selectedTopic && action.topics.includes(selectedTopic)) {
+      await loadTopicDetail(selectedTopic);
+    }
+    setToast({ message: `Purged ${action.topics.length} topic(s).`, kind: "success" });
   }
 
   async function closeTopicTab(topic: string) {
@@ -699,6 +964,11 @@ function App() {
       const next = { ...current };
       delete next[topic];
       return next;
+    });
+    setTopicViewByServer((current) => {
+      const serverViews = { ...(current[selectedServerId] ?? {}) };
+      delete serverViews[topic];
+      return { ...current, [selectedServerId]: serverViews };
     });
     if (selectedTopic !== topic) {
       return;
@@ -748,12 +1018,19 @@ function App() {
       setToast({ message: validationError, kind: "error" });
       return;
     }
+    const headers = parseProduceHeaders(produceHeaders);
+    if (typeof headers === "string") {
+      setStatus(headers);
+      setToast({ message: headers, kind: "error" });
+      return;
+    }
     const result = await runTask("메시지 전송 중", () =>
       kafkaApi.produce({
         serverId: selectedServerId,
         topic: selectedTopic,
         key: produceKey,
-        value: produceValue
+        value: produceValue,
+        headers
       })
     );
     setStatus(`전송 완료: ${result.map((item) => `p${item.partition}@${item.offset}`).join(", ")}`);
@@ -762,6 +1039,7 @@ function App() {
   function sendMessageToProduce(message: ConsumedMessage) {
     setProduceKey(message.key);
     setProduceValue(formatProduceValue(message.value));
+    setProduceHeaders(JSON.stringify(message.headers ?? {}, null, 2));
     setView("produce");
     setToast({ message: "메시지를 Produce 탭으로 복사했습니다.", kind: "success" });
   }
@@ -779,6 +1057,15 @@ function App() {
     if (typeof result.preferences.layout?.messagePaneHeight === "number") {
       setMessagePaneHeight(result.preferences.layout.messagePaneHeight);
     }
+    if (typeof result.preferences.appearance?.fontFamily === "string") {
+      setFontFamily(result.preferences.appearance.fontFamily);
+    }
+    if (typeof result.preferences.appearance?.fontSize === "number") {
+      setFontSize(result.preferences.appearance.fontSize);
+    }
+    if (typeof result.preferences.exportFormatTemplate === "string") {
+      setExportFormatTemplate(result.preferences.exportFormatTemplate);
+    }
     setConnectedServerIds([]);
     setFailedServerIds([]);
     setOpenClusterIds([]);
@@ -788,7 +1075,10 @@ function App() {
     setSelectedTopicByServer({});
     setOpenedTopicTabsByServer({});
     setTopicDetailByServer({});
+    setBrokersByServer({});
     setGroupsByServer({});
+    setViewByServer({});
+    setTopicViewByServer({});
     setSelectedGroupByServer({});
     setGroupLagByServer({});
     setConsumeStatesByServer({});
@@ -853,7 +1143,8 @@ function App() {
       const filePath = await kafkaApi.exportMessages({
         topic: selectedTopic,
         format,
-        messages
+        messages,
+        template: exportFormatTemplate
       });
       if (filePath) {
         setStatus(`메시지 내보내기 완료: ${filePath}`);
@@ -906,7 +1197,8 @@ function App() {
           limit: state.limit
         })
       );
-      updateSelectedConsumeState({ messages: items, selectedMessage: items[0] ?? null });
+      const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
+      updateSelectedConsumeState({ messages: orderedItems, selectedMessage: orderedItems[0] ?? null });
       return;
     }
     await runTask("실시간 consume 시작 중", () =>
@@ -940,6 +1232,21 @@ function App() {
   }
 
   async function refreshCurrentView() {
+    if (view === "brokers") {
+      await refreshBrokers();
+      return;
+    }
+    if (view === "topics") {
+      await refreshTopics();
+      return;
+    }
+    if (view === "consumers") {
+      setGroups([]);
+      setSelectedGroupByServer((current) => ({ ...current, [selectedServerId]: "" }));
+      setGroupLagByServer((current) => ({ ...current, [selectedServerId]: {} }));
+      await refreshGroups();
+      return;
+    }
     if (view === "info") {
       if (selectedTopic) {
         await loadTopicDetail(selectedTopic);
@@ -955,17 +1262,13 @@ function App() {
       setStatus("Consume tab reset.");
       return;
     }
-    if (view === "groups") {
-      setGroups([]);
-      setSelectedGroupByServer((current) => ({ ...current, [selectedServerId]: "" }));
-      setGroupLagByServer((current) => ({ ...current, [selectedServerId]: {} }));
-      await refreshGroups();
-      return;
-    }
     setProduceKey("");
+    setProduceHeaders("{}");
     setProduceValue("{\n  \"hello\": \"kafka\"\n}");
     setStatus("Produce tab reset.");
   }
+
+  const isTopicView = view === "info" || view === "consume" || view === "produce";
 
   return (
     <div className="app-shell" style={{ gridTemplateColumns: `${sidebarWidth}px 6px minmax(0, 1fr)` }}>
@@ -1062,6 +1365,32 @@ function App() {
             <h2>Topics</h2>
             <div className="topic-title-actions">
               <span>{filteredTopics.length}/{topics.length}</span>
+              <div className="topic-sort-wrap" onClick={(event) => event.stopPropagation()}>
+                <button
+                  className="topic-refresh"
+                  onClick={() => setIsTopicSortMenuOpen((current) => !current)}
+                  title={`Sort: ${getTopicSortLabel(topicSort)}`}
+                >
+                  <ArrowUpDown size={14} />
+                </button>
+                {isTopicSortMenuOpen && (
+                  <div className="topic-sort-menu">
+                    {topicSortOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        className={topicSort === option.value ? "active" : ""}
+                        onClick={() => {
+                          setTopicSort(option.value);
+                          setIsTopicSortMenuOpen(false);
+                        }}
+                      >
+                        <span>{topicSort === option.value ? "✓" : ""}</span>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button className="topic-refresh" onClick={() => void refreshTopics()} disabled={!isSelectedServerConnected || loading} title="Refresh topics">
                 <RefreshCw size={14} />
               </button>
@@ -1079,8 +1408,6 @@ function App() {
             <select value={topicFilter} onChange={(event) => setTopicFilter(event.target.value as TopicListFilter)} title="Filter topics">
               <option value="all">All topics</option>
               <option value="favorites">Favorites</option>
-              <option value="opened">Opened tabs</option>
-              <option value="live">Live only</option>
               <option value="nonEmpty">Has messages</option>
             </select>
           </div>
@@ -1095,11 +1422,12 @@ function App() {
                     active={topic.name === selectedTopic}
                     favorite
                     onSelect={() => {
-                      setView("info");
+                      activateTopicView(topic.name);
                       void loadTopicDetail(topic.name);
                     }}
                     onOpen={() => void openTopicTab(topic.name)}
                     onToggleFavorite={() => toggleFavoriteTopic(topic.name)}
+                    onContextMenu={(event) => openTopicContextMenu(event, topic.name)}
                   />
                 ))}
               </div>
@@ -1111,11 +1439,12 @@ function App() {
                 active={topic.name === selectedTopic}
                 favorite={favoriteTopicNames.includes(topic.name)}
                 onSelect={() => {
-                  setView("info");
+                  activateTopicView(topic.name);
                   void loadTopicDetail(topic.name);
                 }}
                 onOpen={() => void openTopicTab(topic.name)}
                 onToggleFavorite={() => toggleFavoriteTopic(topic.name)}
+                onContextMenu={(event) => openTopicContextMenu(event, topic.name)}
               />
             ))}
             {filteredTopics.length === 0 && <div className="empty-list">No topics found</div>}
@@ -1153,25 +1482,53 @@ function App() {
 
         <nav className="tabs server-work-tabs">
           <button
-            className={view === "groups" ? "active" : ""}
+            className={view === "brokers" ? "active" : ""}
             onClick={() => {
-              if (view === "groups") {
-                setView("info");
+              if (view === "brokers") {
+                activateSelectedTopicView();
                 return;
               }
-              setView("groups");
+              setView("brokers");
+              if (!brokersByServer[selectedServerId]) void refreshBrokers();
+            }}
+            disabled={!isSelectedServerConnected}
+          >
+            <HardDrive size={16} /> Brokers
+          </button>
+          <button
+            className={view === "topics" ? "active" : ""}
+            onClick={() => {
+              if (view === "topics") {
+                activateSelectedTopicView();
+                return;
+              }
+              setView("topics");
+              if (!topicsByServer[selectedServerId]) void refreshTopics();
+            }}
+            disabled={!isSelectedServerConnected}
+          >
+            <ListTree size={16} /> Topics
+          </button>
+          <button
+            className={view === "consumers" ? "active" : ""}
+            onClick={() => {
+              if (view === "consumers") {
+                activateSelectedTopicView();
+                return;
+              }
+              setView("consumers");
               if (!groupsByServer[selectedServerId]) {
                 void refreshGroups();
               }
             }}
             disabled={!isSelectedServerConnected}
           >
-            <Users size={16} /> Groups
+            <Users size={16} /> Consumers
           </button>
           <button className="ghost" onClick={() => void refreshCurrentView()} disabled={!isSelectedServerConnected || loading}><RefreshCw size={16} /> 새로고침</button>
         </nav>
 
-        {view !== "groups" && (
+        {isTopicView && (
           <>
         <div className="topic-tabs" aria-label="Opened topics">
           {openedTopicTabs.length === 0 ? (
@@ -1183,7 +1540,7 @@ function App() {
                 className={topic === selectedTopic ? "topic-tab active" : "topic-tab"}
                 title={topic}
                 onClick={() => {
-                  setView("info");
+                  activateTopicView(topic);
                   void loadTopicDetail(topic);
                 }}
                 onAuxClick={(event) => {
@@ -1211,6 +1568,24 @@ function App() {
         )}
 
         <div className="content-grid">
+          {view === "brokers" && <BrokersPanel brokers={brokers} />}
+          {view === "topics" && (
+            <ServerTopicsPanel
+              topics={sortedTopics}
+              favoriteTopicNames={favoriteTopicNames}
+              selectedTopics={selectedTopicRows}
+              onOpen={(topic) => void openTopicTab(topic)}
+              onSelect={(topic) => {
+                activateTopicView(topic);
+                void loadTopicDetail(topic);
+              }}
+              onToggleSelected={toggleTopicRow}
+              onToggleAllSelected={toggleAllTopicRows}
+              onCopySelected={() => void copySelectedTopicNames()}
+              onPurgeSelected={() => requestTopicAction("purge")}
+              onDeleteSelected={() => requestTopicAction("delete")}
+            />
+          )}
           {view === "info" && <TopicPanel detail={topicDetail} />}
           {view === "consume" && (
             <ConsumePanel
@@ -1278,13 +1653,15 @@ function App() {
             <ProducePanel
               topic={selectedTopic}
               keyText={produceKey}
+              headers={produceHeaders}
               value={produceValue}
               onKey={setProduceKey}
+              onHeaders={setProduceHeaders}
               onValue={setProduceValue}
               onProduce={() => void produce()}
             />
           )}
-          {view === "groups" && (
+          {view === "consumers" && (
             <GroupsPanel
               groups={groups}
               selectedGroupId={selectedGroupId}
@@ -1332,7 +1709,7 @@ function App() {
                 <input
                   type="checkbox"
                   checked={serverForm.oauthEnabled}
-                  onChange={(event) => setServerForm({ ...serverForm, oauthEnabled: event.target.checked, ssl: event.target.checked ? true : serverForm.ssl })}
+                  onChange={(event) => setServerForm({ ...serverForm, oauthEnabled: event.target.checked })}
                 />
                 SASL/OAUTHBEARER
               </label>
@@ -1372,8 +1749,66 @@ function App() {
       )}
       {toast && (
         <div className={`toast ${toast.kind}`}>
-          {toast.kind === "loading" && <RefreshCw className="spin" size={14} />}
-          {toast.message}
+          <span className="toast-icon">
+            {toast.kind === "loading" && <RefreshCw className="spin" size={16} />}
+            {toast.kind === "success" && <CheckCircle2 size={16} />}
+            {toast.kind === "error" && <AlertTriangle size={16} />}
+          </span>
+          <span className="toast-message">{toast.message}</span>
+        </div>
+      )}
+      {isPreferencesOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setIsPreferencesOpen(false)}>
+          <section className="server-modal preferences-modal" role="dialog" aria-modal="true" aria-labelledby="preferences-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-title">
+              <div>
+                <span className="eyebrow">Application</span>
+                <h2 id="preferences-title">Preferences</h2>
+              </div>
+              <button className="modal-close" onClick={() => setIsPreferencesOpen(false)} title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <section className="preferences-grid">
+              <label>
+                Editor: Font Family
+                <input list="font-family-options" value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} placeholder="D2Coding, Consolas, 'Courier New', monospace" />
+                <datalist id="font-family-options">
+                  {fontOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </datalist>
+              </label>
+              <label>
+                Editor: Font Size
+                <input type="number" min={11} max={16} value={fontSize} onChange={(event) => setFontSize(Number(event.target.value) || 13)} />
+              </label>
+              <label className="font-size-slider">
+                Size preview
+                <input type="range" min={11} max={16} value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} />
+              </label>
+              <div className="font-preview">
+                <strong>proc-status-t</strong>
+                <span>{"{\"system_time\":1780388670010,\"proc_id\":\"PR1001\"}"}</span>
+              </div>
+              <label>
+                User Format: Log Export
+                <textarea
+                  className="format-template-editor"
+                  value={exportFormatTemplate}
+                  onChange={(event) => setExportFormatTemplate(event.target.value)}
+                  placeholder="[{timestamp}] {topic}[{partition}]@{offset} key={key} value={value}"
+                />
+              </label>
+              <div className="format-help">
+                Placeholders: {"{timestamp}"}, {"{topic}"}, {"{partition}"}, {"{offset}"}, {"{key}"}, {"{headers}"}, {"{value}"}
+              </div>
+            </section>
+            <div className="modal-actions">
+              <button className="ghost" onClick={() => { setFontFamily("D2Coding, Consolas, 'Courier New', monospace"); setFontSize(13); setExportFormatTemplate("[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"); }}>Reset</button>
+              <button className="primary" onClick={() => setIsPreferencesOpen(false)}>Done</button>
+            </div>
+          </section>
         </div>
       )}
       {connectionError && (
@@ -1399,6 +1834,67 @@ function App() {
               <button className="primary" onClick={() => setConnectionError(null)}>확인</button>
             </div>
           </section>
+        </div>
+      )}
+      {pendingTopicAction && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={() => setPendingTopicAction(null)}>
+          <section className="server-modal topic-action-modal" role="dialog" aria-modal="true" aria-labelledby="topic-action-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-title">
+              <div>
+                <span className="eyebrow">Topic {pendingTopicAction.kind}</span>
+                <h2 id="topic-action-title">{pendingTopicAction.kind === "delete" ? "Delete selected topics" : "Purge selected topics"}</h2>
+              </div>
+              <button className="modal-close" onClick={() => setPendingTopicAction(null)} title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="topic-action-warning">
+              <strong>{pendingTopicAction.topics.length} topic(s) selected</strong>
+              <p>
+                {pendingTopicAction.kind === "delete"
+                  ? "Delete removes the selected topics from the cluster."
+                  : "Purge keeps the topics, but removes records up to the current high offsets."}
+              </p>
+              <div className="topic-action-list">
+                {pendingTopicAction.topics.map((topic) => <span key={topic}>{topic}</span>)}
+              </div>
+            </div>
+            <label>
+              Type {pendingTopicAction.kind.toUpperCase()} to confirm
+              <input value={topicActionConfirmText} onChange={(event) => setTopicActionConfirmText(event.target.value)} autoFocus />
+            </label>
+            <div className="modal-actions">
+              <button className="ghost" onClick={() => setPendingTopicAction(null)}>Cancel</button>
+              <button
+                className={pendingTopicAction.kind === "delete" ? "danger" : "primary"}
+                onClick={() => void confirmTopicAction()}
+                disabled={topicActionConfirmText.trim().toUpperCase() !== pendingTopicAction.kind.toUpperCase() || loading}
+              >
+                {pendingTopicAction.kind === "delete" ? <Trash2 size={16} /> : <Trash2 size={16} />}
+                {pendingTopicAction.kind === "delete" ? "Delete" : "Purge"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {topicContextMenu && (
+        <div
+          className="context-menu topic-context-menu"
+          style={{ left: topicContextMenu.x, top: topicContextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button onClick={() => { closeTopicContextMenu(); void openTopicTab(contextTopic); }}>
+            <Layers size={14} /> Open
+          </button>
+          <button onClick={() => { closeTopicContextMenu(); void copySelectedTopicNames([contextTopic]); }}>
+            <Copy size={14} /> Copy name
+          </button>
+          <button className="danger-item" onClick={() => { closeTopicContextMenu(); requestTopicAction("purge", [contextTopic]); }}>
+            <Trash2 size={14} /> Purge
+          </button>
+          <button className="danger-item" onClick={() => { closeTopicContextMenu(); requestTopicAction("delete", [contextTopic]); }}>
+            <Trash2 size={14} /> Delete
+          </button>
         </div>
       )}
       {serverContextMenu && contextServer && (
@@ -1460,6 +1956,164 @@ function TopicPanel({ detail }: { detail: TopicDetail | null }) {
   );
 }
 
+function BrokersPanel({ brokers }: { brokers: BrokerSummary[] }) {
+  const totalOnlinePartitions = brokers.reduce((total, broker) => total + broker.onlinePartitionCount, 0);
+  const totalReplicas = brokers.reduce((total, broker) => total + broker.replicaCount, 0);
+  const totalInSyncReplicas = brokers.reduce((total, broker) => total + broker.inSyncReplicaCount, 0);
+  const totalOutOfSyncReplicas = brokers.reduce((total, broker) => total + broker.outOfSyncReplicaCount, 0);
+  const totalUnderReplicatedPartitions = brokers.reduce((total, broker) => total + broker.underReplicatedPartitionCount, 0);
+  const controller = brokers.find((broker) => broker.controller);
+
+  return (
+    <section className="panel brokers-panel">
+      <div className="section-title">
+        <h2>Brokers</h2>
+        <span>{brokers.length} brokers</span>
+      </div>
+      <div className="broker-summary-grid">
+        <div className="broker-summary-card">
+          <span>Broker Count</span>
+          <strong>{brokers.length}</strong>
+        </div>
+        <div className="broker-summary-card">
+          <span>Active Controller</span>
+          <strong>{controller?.nodeId ?? "-"}</strong>
+        </div>
+        <div className="broker-summary-card">
+          <span>Online Partitions</span>
+          <strong>{formatCompactNumber(totalOnlinePartitions)}</strong>
+        </div>
+        <div className="broker-summary-card">
+          <span>URP</span>
+          <strong className={totalUnderReplicatedPartitions > 0 ? "metric-warn" : ""}>{formatCompactNumber(totalUnderReplicatedPartitions)}</strong>
+        </div>
+        <div className="broker-summary-card">
+          <span>In Sync Replicas</span>
+          <strong>{formatCompactNumber(totalInSyncReplicas)} <small>of {formatCompactNumber(totalReplicas)}</small></strong>
+        </div>
+        <div className="broker-summary-card">
+          <span>Out Of Sync Replicas</span>
+          <strong className={totalOutOfSyncReplicas > 0 ? "metric-warn" : ""}>{formatCompactNumber(totalOutOfSyncReplicas)}</strong>
+        </div>
+      </div>
+      <div className="message-table broker-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Broker ID</th>
+              <th>Partitions Skew</th>
+              <th>Leaders</th>
+              <th>Leader Skew</th>
+              <th>Online Partitions</th>
+              <th>Replicas</th>
+              <th>OOS Replicas</th>
+              <th>Port</th>
+              <th>Host</th>
+            </tr>
+          </thead>
+          <tbody>
+            {brokers.map((broker) => (
+              <tr key={broker.nodeId}>
+                <td>
+                  <span className="broker-id-cell">
+                    {broker.nodeId}
+                    {broker.controller && <span className="controller-badge">Controller</span>}
+                  </span>
+                </td>
+                <td className={Math.abs(broker.partitionSkewPercent) > 10 ? "metric-warn" : ""}>{formatPercent(broker.partitionSkewPercent)}</td>
+                <td>{formatCompactNumber(broker.leaderCount)}</td>
+                <td className={Math.abs(broker.leaderSkewPercent) > 10 ? "metric-warn" : ""}>{formatPercent(broker.leaderSkewPercent)}</td>
+                <td>{formatCompactNumber(broker.onlinePartitionCount)}</td>
+                <td>{formatCompactNumber(broker.replicaCount)}</td>
+                <td className={broker.outOfSyncReplicaCount > 0 ? "metric-warn" : ""}>{formatCompactNumber(broker.outOfSyncReplicaCount)}</td>
+                <td>{broker.port}</td>
+                <td title={broker.host}>{broker.host}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {brokers.length === 0 && <div className="empty-list">No brokers loaded</div>}
+      </div>
+    </section>
+  );
+}
+
+function ServerTopicsPanel(props: {
+  topics: TopicSummary[];
+  favoriteTopicNames: string[];
+  selectedTopics: string[];
+  onOpen: (topic: string) => void;
+  onSelect: (topic: string) => void;
+  onToggleSelected: (topic: string) => void;
+  onToggleAllSelected: (topics: string[]) => void;
+  onCopySelected: () => void;
+  onPurgeSelected: () => void;
+  onDeleteSelected: () => void;
+}) {
+  const favorites = new Set(props.favoriteTopicNames);
+  const selected = new Set(props.selectedTopics);
+  const visibleTopicNames = props.topics.map((topic) => topic.name);
+  const selectedVisibleCount = visibleTopicNames.filter((topic) => selected.has(topic)).length;
+  const allVisibleSelected = visibleTopicNames.length > 0 && selectedVisibleCount === visibleTopicNames.length;
+  return (
+    <section className="panel server-topics-panel">
+      <div className="section-title">
+        <h2>Topics</h2>
+        <span>{props.topics.length} topics</span>
+      </div>
+      <div className="topic-actionbar">
+        <label className="topic-select-all">
+          <input
+            type="checkbox"
+            checked={allVisibleSelected}
+            ref={(input) => {
+              if (input) input.indeterminate = selectedVisibleCount > 0 && !allVisibleSelected;
+            }}
+            onChange={() => props.onToggleAllSelected(visibleTopicNames)}
+            disabled={visibleTopicNames.length === 0}
+          />
+          {props.selectedTopics.length} selected
+        </label>
+        <button className="ghost compact" onClick={props.onCopySelected} disabled={props.selectedTopics.length === 0}><Copy size={14} /> Copy</button>
+        <button className="ghost compact" onClick={props.onPurgeSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> Purge</button>
+        <button className="danger compact" onClick={props.onDeleteSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> Delete</button>
+      </div>
+      <div className="message-table server-topics-table">
+        <table>
+          <thead>
+            <tr><th className="check-column">CHK</th><th>Topic</th><th>Partitions</th><th>RF</th><th>Messages</th><th>Favorite</th></tr>
+          </thead>
+          <tbody>
+            {props.topics.map((topic) => (
+              <tr
+                key={topic.name}
+                className={selected.has(topic.name) ? "selected" : ""}
+                onClick={() => props.onSelect(topic.name)}
+                onDoubleClick={() => props.onOpen(topic.name)}
+              >
+                <td className="check-column" onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(topic.name)}
+                    onChange={() => props.onToggleSelected(topic.name)}
+                    title={`Select ${topic.name}`}
+                  />
+                </td>
+                <td title={topic.name}>{topic.name}</td>
+                <td>{topic.partitions}</td>
+                <td>{topic.replicationFactor}</td>
+                <td title={topic.messageCount ?? "0"}>{formatCount(topic.messageCount)}</td>
+                <td>{favorites.has(topic.name) ? "Yes" : "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {props.topics.length === 0 && <div className="empty-list">No topics found</div>}
+      </div>
+    </section>
+  );
+}
+
 function TopicListItem(props: {
   topic: TopicSummary;
   active: boolean;
@@ -1467,21 +2121,24 @@ function TopicListItem(props: {
   onSelect: () => void;
   onOpen: () => void;
   onToggleFavorite: () => void;
+  onContextMenu: (event: React.MouseEvent) => void;
 }) {
   return (
-    <button className={props.active ? "topic active" : "topic"} onClick={props.onSelect} onDoubleClick={props.onOpen} title={`${props.topic.name} (${props.topic.partitions} partitions / RF ${props.topic.replicationFactor})`}>
+    <button
+      className={props.active ? "topic active" : "topic"}
+      onClick={props.onSelect}
+      onDoubleClick={props.onOpen}
+      onContextMenu={props.onContextMenu}
+      title={`${props.topic.name} (${props.topic.partitions} partitions / RF ${props.topic.replicationFactor})`}
+    >
       <span className={props.favorite ? "topic-favorite favorite" : "topic-favorite"} onClick={(event) => { event.stopPropagation(); props.onToggleFavorite(); }} title={props.favorite ? "Remove favorite" : "Add favorite"}>
         <Star size={14} fill={props.favorite ? "currentColor" : "none"} />
       </span>
       <span className="topic-copy">
         <strong title={props.topic.name}>{props.topic.name}</strong>
-        <small title={`${props.topic.partitions} partitions / RF ${props.topic.replicationFactor}`}>
-          P {props.topic.partitions} / RF {props.topic.replicationFactor}
+        <small title={`${props.topic.partitions} partitions / RF ${props.topic.replicationFactor} / ${formatCount(props.topic.messageCount)} messages`}>
+          P {props.topic.partitions} / RF {props.topic.replicationFactor} / {formatCount(props.topic.messageCount)} msgs
         </small>
-        <span className="topic-stats">
-          <span title="Estimated retained messages from high-low offsets">{formatCount(props.topic.messageCount)} msgs</span>
-          <span title={props.topic.sizeBytes ? "Topic size" : "Topic size requires broker log-dir/JMX support"}>{formatBytes(props.topic.sizeBytes)}</span>
-        </span>
       </span>
     </button>
   );
@@ -1557,6 +2214,16 @@ function ConsumePanel(props: {
     window.addEventListener("pointerup", onPointerUp);
   }
 
+  function getRowNo(index: number) {
+    if (props.mode === "offset") {
+      return props.offsetOrder === "asc" ? index + 1 : filteredMessages.length - index;
+    }
+    if (props.mode === "timeRange") {
+      return props.offsetOrder === "asc" ? index + 1 : filteredMessages.length - index;
+    }
+    return filteredMessages.length - index;
+  }
+
   return (
     <section className="panel consume-workspace">
       <div className="toolbar">
@@ -1587,6 +2254,10 @@ function ConsumePanel(props: {
               <input type="datetime-local" value={props.timeEnd} onChange={(event) => props.onTimeEnd(event.target.value)} />
             </label>
             <input className="tiny-input" type="number" min={1} max={1000} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
+            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title="Message order">
+              <option value="asc">Oldest first</option>
+              <option value="desc">Newest first</option>
+            </select>
           </>
         )}
         {props.isConsuming ? (
@@ -1624,6 +2295,9 @@ function ConsumePanel(props: {
         <button className="export-button" onClick={() => props.onExport("csv", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as CSV">
           <Download size={14} /> CSV
         </button>
+        <button className="export-button" onClick={() => props.onExport("log", filteredMessages)} disabled={filteredMessages.length === 0} title="Export filtered messages as custom log">
+          <Download size={14} /> LOG
+        </button>
         <span className={props.isConsuming ? "count live-count" : "count"}>{props.isConsuming ? "Live" : ""} {filteredMessages.length}/{props.messages.length} messages</span>
       </div>
       <div className="filter-bar">
@@ -1631,6 +2305,8 @@ function ConsumePanel(props: {
           <option value="all">All</option>
           <option value="key">Key</option>
           <option value="value">Value</option>
+          <option value="headers">Headers</option>
+          <option value="headersEmpty">Empty Headers</option>
           <option value="offset">Offset</option>
           <option value="partition">Partition</option>
           <option value="timestamp">Timestamp</option>
@@ -1648,6 +2324,7 @@ function ConsumePanel(props: {
                 <th>Offset</th>
                 <th>Timestamp</th>
                 <th>Key</th>
+                <th>Headers</th>
                 <th>Value</th>
               </tr>
             </thead>
@@ -1659,11 +2336,12 @@ function ConsumePanel(props: {
                   style={{ borderLeftColor: getPartitionColor(message.partition) }}
                   onClick={() => props.onSelectMessage(message)}
                 >
-                  <td>{filteredMessages.length - index}</td>
+                  <td>{getRowNo(index)}</td>
                   <td><span className="partition-badge" style={{ color: getPartitionColor(message.partition), borderColor: getPartitionColor(message.partition) }}>{message.partition}</span></td>
                   <td title={message.offset}>{message.offset}</td>
                   <td title={message.timestamp}>{formatTimestamp(message.timestamp)}</td>
                   <td title={message.key || "-"}>{message.key || "-"}</td>
+                  <td title={formatHeaders(message.headers)}>{previewHeaders(message.headers)}</td>
                   <td title={message.value}>{previewValue(message.value)}</td>
                 </tr>
               ))}
@@ -1781,6 +2459,19 @@ function previewValue(value: string) {
   return value.length > 80 ? `${value.slice(0, 80)}...` : value;
 }
 
+function formatHeaders(headers: Record<string, string>) {
+  const entries = Object.entries(headers);
+  if (entries.length === 0) return "-";
+  return JSON.stringify(headers);
+}
+
+function previewHeaders(headers: Record<string, string>) {
+  const entries = Object.entries(headers);
+  if (entries.length === 0) return "-";
+  const text = entries.map(([key, value]) => `${key}=${value}`).join(", ");
+  return text.length > 80 ? `${text.slice(0, 80)}...` : text;
+}
+
 function parseTopicCount(value?: string) {
   if (!value || !/^\d+$/.test(value)) return 0n;
   return BigInt(value);
@@ -1799,18 +2490,50 @@ function formatCompactNumber(value: number) {
   return value.toLocaleString();
 }
 
-function formatBytes(value?: string) {
-  if (!value || !/^\d+$/.test(value)) return "Size n/a";
-  const bytes = Number(BigInt(value));
-  if (!Number.isFinite(bytes)) return "Size n/a";
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
+function formatPercent(value: number) {
+  if (!Number.isFinite(value)) return "-";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function isTopicWorkView(view: View): view is TopicWorkView {
+  return view === "info" || view === "consume" || view === "produce";
+}
+
+function getTopicSortLabel(value: TopicSortMode) {
+  return topicSortOptions.find((option) => option.value === value)?.label ?? "Name A-Z";
+}
+
+function sortTopics(topics: TopicSummary[], sortMode: TopicSortMode, favoriteTopicNames: string[]) {
+  const favorites = new Set(favoriteTopicNames);
+  return [...topics].sort((left, right) => {
+    if (sortMode === "favoritesFirst") {
+      const favoriteCompare = Number(favorites.has(right.name)) - Number(favorites.has(left.name));
+      if (favoriteCompare !== 0) return favoriteCompare;
+    }
+    if (sortMode === "messagesDesc") {
+      const countCompare = compareBigInt(parseTopicCount(right.messageCount), parseTopicCount(left.messageCount));
+      if (countCompare !== 0) return countCompare;
+    }
+    if (sortMode === "partitionsDesc") {
+      const partitionCompare = right.partitions - left.partitions;
+      if (partitionCompare !== 0) return partitionCompare;
+    }
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function compareBigInt(left: bigint, right: bigint) {
+  if (left > right) return 1;
+  if (left < right) return -1;
+  return 0;
 }
 
 function filterMessages(messages: ConsumedMessage[], filterText: string, filterField: ConsumeFilterField) {
   const query = filterText.trim().toLowerCase();
+  if (filterField === "headersEmpty") {
+    return messages.filter((message) => Object.keys(message.headers ?? {}).length === 0);
+  }
   if (!query) return messages;
 
   return messages.filter((message) => {
@@ -1827,6 +2550,8 @@ function filterMessages(messages: ConsumedMessage[], filterText: string, filterF
       value: message.value,
       offset: message.offset,
       partition: String(message.partition),
+      headers: JSON.stringify(message.headers),
+      headersEmpty: Object.keys(message.headers ?? {}).length === 0 ? "true" : "false",
       timestamp: message.timestamp
     };
     return fields[filterField].toLowerCase().includes(query);
@@ -1883,6 +2608,29 @@ function validateJsonLikeValue(value: string) {
     const detail = error instanceof Error ? error.message : String(error);
     return `Value JSON 형식이 올바르지 않습니다. ${detail}`;
   }
+}
+
+function parseProduceHeaders(value: string): Record<string, string> | string {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      return "Headers must be a JSON object.";
+    }
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>)
+        .filter(([, headerValue]) => headerValue !== null && headerValue !== undefined)
+        .map(([key, headerValue]) => [key, typeof headerValue === "string" ? headerValue : JSON.stringify(headerValue)])
+    );
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return `Headers JSON 형식이 올바르지 않습니다. ${detail}`;
+  }
+}
+
+function sanitizeFontFamily(value: string) {
+  return value.replace(/[;{}]/g, "").trim();
 }
 
 function stringifyPrimitive(value: unknown) {
@@ -1957,8 +2705,10 @@ function getEpochTitle(value: unknown) {
 function ProducePanel(props: {
   topic: string;
   keyText: string;
+  headers: string;
   value: string;
   onKey: (value: string) => void;
+  onHeaders: (value: string) => void;
   onValue: (value: string) => void;
   onProduce: () => void;
 }) {
@@ -1969,6 +2719,7 @@ function ProducePanel(props: {
         <span>{props.topic || "topic required"}</span>
       </div>
       <label>Key<input value={props.keyText} onChange={(event) => props.onKey(event.target.value)} placeholder="optional key" /></label>
+      <label>Headers<textarea className="headers-editor" value={props.headers} onChange={(event) => props.onHeaders(event.target.value)} placeholder="{ }" /></label>
       <label>Value<textarea value={props.value} onChange={(event) => props.onValue(event.target.value)} /></label>
       <button className="primary wide" onClick={props.onProduce} disabled={!props.topic}><Send size={16} /> 메시지 전송</button>
     </section>
@@ -1986,7 +2737,7 @@ function GroupsPanel(props: {
   return (
     <section className="panel groups-panel">
       <div className="section-title">
-        <h2>Consumer Groups</h2>
+        <h2>Consumers</h2>
         <button className="ghost compact" onClick={props.onRefresh}><RefreshCw size={15} /> 조회</button>
       </div>
       <div className="groups-layout">

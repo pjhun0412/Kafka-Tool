@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, UpdateStatus } from "../shared/types.js";
+import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -13,7 +13,10 @@ const api: KafkaApi = {
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
   listTopics: (serverId: string) => ipcRenderer.invoke("kafka:topics", serverId),
+  listBrokers: (serverId: string) => ipcRenderer.invoke("kafka:brokers", serverId),
   getTopicDetail: (serverId: string, topic: string) => ipcRenderer.invoke("kafka:topic-detail", serverId, topic),
+  deleteTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-delete", request),
+  purgeTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-purge", request),
   listConsumerGroups: (serverId: string) => ipcRenderer.invoke("kafka:groups", serverId),
   getConsumerGroupLag: (serverId: string, groupId: string) => ipcRenderer.invoke("kafka:group-lag", serverId, groupId),
   exportMessages: (request: MessageExportRequest) => ipcRenderer.invoke("messages:export", request),
@@ -46,6 +49,11 @@ const api: KafkaApi = {
     const listener = (_event: Electron.IpcRendererEvent, error: string) => callback(error);
     ipcRenderer.on("settings:error", listener);
     return () => ipcRenderer.removeListener("settings:error", listener);
+  },
+  onPreferencesOpen: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("preferences:open", listener);
+    return () => ipcRenderer.removeListener("preferences:open", listener);
   },
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status);

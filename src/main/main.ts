@@ -10,6 +10,7 @@ import type {
   ConsumeTimeRangeRequest,
   AppPreferences,
   AppSettingsBundle,
+  BrokerSummary,
   ConsumerGroupLagDetail,
   ConsumerGroupSummary,
   ImportSettingsResult,
@@ -20,6 +21,7 @@ import type {
   StartConsumeRequest,
   StopConsumeRequest,
   TopicDetail,
+  TopicMutationRequest,
   TopicSummary,
   UpdateStatus
 } from "../shared/types.js";
@@ -41,7 +43,12 @@ function preferencesPath() {
 const defaultPreferences: AppPreferences = {
   favoriteTopicsByServer: {},
   consumeDefaultsByServer: {},
-  layout: {}
+  layout: {},
+  appearance: {
+    fontFamily: "D2Coding, Consolas, 'Courier New', monospace",
+    fontSize: 13
+  },
+  exportFormatTemplate: "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"
 };
 
 async function readProfiles(): Promise<ServerProfile[]> {
@@ -77,6 +84,8 @@ function normalizePreferences(preferences?: Partial<AppPreferences>): AppPrefere
     favoriteTopicsByServer: preferences?.favoriteTopicsByServer ?? {},
     consumeDefaultsByServer: preferences?.consumeDefaultsByServer ?? {},
     layout: preferences?.layout ?? {},
+    appearance: preferences?.appearance ?? defaultPreferences.appearance,
+    exportFormatTemplate: preferences?.exportFormatTemplate ?? defaultPreferences.exportFormatTemplate,
     windowBounds: preferences?.windowBounds
   };
 }
@@ -90,6 +99,10 @@ function mergePreferences(current: AppPreferences, next: AppPreferences): AppPre
     layout: {
       ...(current.layout ?? {}),
       ...(next.layout ?? {})
+    },
+    appearance: {
+      ...(current.appearance ?? {}),
+      ...(next.appearance ?? {})
     },
     windowBounds: next.windowBounds ?? current.windowBounds
   };
@@ -201,6 +214,14 @@ function createApplicationMenu() {
               const message = error instanceof Error ? error.message : String(error);
               mainWindow.webContents.send("settings:error", message);
             }
+          }
+        },
+        { type: "separator" },
+        {
+          label: "Preferences...",
+          accelerator: "CmdOrCtrl+,",
+          click: () => {
+            mainWindow?.webContents.send("preferences:open");
           }
         },
         { type: "separator" },
@@ -339,6 +360,22 @@ function formatMessagesCsv(messages: ConsumedMessage[]) {
     JSON.stringify(message.headers)
   ].map(csvValue).join(","));
   return [header.join(","), ...rows].join("\n");
+}
+
+function formatMessageLog(messages: ConsumedMessage[], template?: string) {
+  const lineTemplate = template?.trim() || defaultPreferences.exportFormatTemplate || "{timestamp} {topic}[{partition}]@{offset} {key} {value}";
+  return messages.map((message) => {
+    const values: Record<string, string> = {
+      topic: message.topic,
+      partition: String(message.partition),
+      offset: message.offset,
+      timestamp: message.timestamp,
+      key: message.key,
+      value: message.value,
+      headers: JSON.stringify(message.headers)
+    };
+    return lineTemplate.replace(/\{(topic|partition|offset|timestamp|key|value|headers)\}/g, (_match, key: string) => values[key] ?? "");
+  }).join("\n");
 }
 
 async function stopActiveConsumer(request?: StopConsumeRequest) {
@@ -637,6 +674,70 @@ ipcMain.handle("kafka:topics", async (_event, serverId: string): Promise<TopicSu
   });
 });
 
+ipcMain.handle("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
+  return withAdmin(serverId, async (admin) => {
+    const [cluster, metadata] = await Promise.all([
+      admin.describeCluster(),
+      admin.fetchTopicMetadata()
+    ]);
+    const brokerStats = new Map<number, BrokerSummary>();
+    for (const broker of cluster.brokers) {
+      brokerStats.set(broker.nodeId, {
+        nodeId: broker.nodeId,
+        host: broker.host,
+        port: broker.port,
+        controller: broker.nodeId === cluster.controller,
+        leaderCount: 0,
+        replicaCount: 0,
+        inSyncReplicaCount: 0,
+        outOfSyncReplicaCount: 0,
+        onlinePartitionCount: 0,
+        underReplicatedPartitionCount: 0,
+        leaderSkewPercent: 0,
+        partitionSkewPercent: 0
+      });
+    }
+
+    let totalLeaders = 0;
+    let totalReplicas = 0;
+    for (const topic of metadata.topics.filter((item) => !item.name.startsWith("__"))) {
+      for (const partition of topic.partitions) {
+        const leader = brokerStats.get(partition.leader);
+        if (leader) {
+          leader.leaderCount += 1;
+          leader.onlinePartitionCount += 1;
+          totalLeaders += 1;
+          if (partition.isr.length < partition.replicas.length) {
+            leader.underReplicatedPartitionCount += 1;
+          }
+        }
+
+        for (const replicaId of partition.replicas) {
+          const replica = brokerStats.get(replicaId);
+          if (!replica) continue;
+          replica.replicaCount += 1;
+          totalReplicas += 1;
+          if (partition.isr.includes(replicaId)) {
+            replica.inSyncReplicaCount += 1;
+          } else {
+            replica.outOfSyncReplicaCount += 1;
+          }
+        }
+      }
+    }
+
+    const averageLeaders = brokerStats.size > 0 ? totalLeaders / brokerStats.size : 0;
+    const averageReplicas = brokerStats.size > 0 ? totalReplicas / brokerStats.size : 0;
+    return [...brokerStats.values()]
+      .map((broker) => ({
+        ...broker,
+        leaderSkewPercent: averageLeaders > 0 ? ((broker.leaderCount - averageLeaders) / averageLeaders) * 100 : 0,
+        partitionSkewPercent: averageReplicas > 0 ? ((broker.replicaCount - averageReplicas) / averageReplicas) * 100 : 0
+      }))
+      .sort((left, right) => left.nodeId - right.nodeId);
+  });
+});
+
 ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName: string): Promise<TopicDetail> => {
   return withAdmin(serverId, async (admin) => {
     const metadata = await admin.fetchTopicMetadata({ topics: [topicName] });
@@ -659,6 +760,35 @@ ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName:
         high: offset.high
       }))
     };
+  });
+});
+
+ipcMain.handle("kafka:topics-delete", async (_event, request: TopicMutationRequest): Promise<void> => {
+  const topics = request.topics.map((topic) => topic.trim()).filter(Boolean);
+  if (topics.length === 0) {
+    throw new Error("No topics selected.");
+  }
+  await withAdmin(request.serverId, async (admin) => {
+    await admin.deleteTopics({ topics, timeout: 15000 });
+  });
+});
+
+ipcMain.handle("kafka:topics-purge", async (_event, request: TopicMutationRequest): Promise<void> => {
+  const topics = request.topics.map((topic) => topic.trim()).filter(Boolean);
+  if (topics.length === 0) {
+    throw new Error("No topics selected.");
+  }
+  await withAdmin(request.serverId, async (admin) => {
+    for (const topic of topics) {
+      const offsets = await admin.fetchTopicOffsets(topic);
+      await admin.deleteTopicRecords({
+        topic,
+        partitions: offsets.map((offset) => ({
+          partition: offset.partition,
+          offset: offset.high
+        }))
+      });
+    }
   });
 });
 
@@ -727,7 +857,7 @@ ipcMain.handle("kafka:group-lag", async (_event, serverId: string, groupId: stri
 
 ipcMain.handle("messages:export", async (_event, request: MessageExportRequest): Promise<string | null> => {
   if (!mainWindow) return null;
-  const extension = request.format === "csv" ? "csv" : "json";
+  const extension = request.format === "csv" ? "csv" : request.format === "log" ? "log" : "json";
   const result = await dialog.showSaveDialog(mainWindow, {
     title: "Export consumed messages",
     defaultPath: `${sanitizeFileName(request.topic)}-${new Date().toISOString().slice(0, 10)}.${extension}`,
@@ -738,7 +868,9 @@ ipcMain.handle("messages:export", async (_event, request: MessageExportRequest):
   }
   const content = request.format === "csv"
     ? formatMessagesCsv(request.messages)
-    : JSON.stringify({
+    : request.format === "log"
+      ? formatMessageLog(request.messages, request.template)
+      : JSON.stringify({
       exportedAt: new Date().toISOString(),
       topic: request.topic,
       count: request.messages.length,
@@ -758,7 +890,8 @@ ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise
       messages: [
         {
           key: request.key || undefined,
-          value: request.value
+          value: request.value,
+          headers: request.headers
         }
       ]
     });

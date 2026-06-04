@@ -38,6 +38,21 @@ export type TopicDetail = {
   }>;
 };
 
+export type BrokerSummary = {
+  nodeId: number;
+  host: string;
+  port: number;
+  controller: boolean;
+  leaderCount: number;
+  replicaCount: number;
+  inSyncReplicaCount: number;
+  outOfSyncReplicaCount: number;
+  onlinePartitionCount: number;
+  underReplicatedPartitionCount: number;
+  leaderSkewPercent: number;
+  partitionSkewPercent: number;
+};
+
 export type ConsumerGroupSummary = {
   groupId: string;
   state?: string;
@@ -71,13 +86,18 @@ export type AppPreferences = {
     offsetOrder: "asc" | "desc";
     autoScroll: boolean;
     maxMessages: number;
-    filterField: "all" | "key" | "value" | "offset" | "partition" | "timestamp";
+    filterField: "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
   }>>;
   layout?: Partial<{
     sidebarWidth: number;
     serverPanelHeight: number;
     messagePaneHeight: number;
   }>;
+  appearance?: Partial<{
+    fontFamily: string;
+    fontSize: number;
+  }>;
+  exportFormatTemplate?: string;
   windowBounds?: Partial<{
     x: number;
     y: number;
@@ -116,12 +136,18 @@ export type ConsumedMessage = {
   headers: Record<string, string>;
 };
 
-export type MessageExportFormat = "json" | "csv";
+export type MessageExportFormat = "json" | "csv" | "log";
 
 export type MessageExportRequest = {
   topic: string;
   format: MessageExportFormat;
   messages: ConsumedMessage[];
+  template?: string;
+};
+
+export type TopicMutationRequest = {
+  serverId: string;
+  topics: string[];
 };
 
 export type UpdateStatus = {
@@ -148,6 +174,7 @@ export type ProduceRequest = {
   topic: string;
   key?: string;
   value: string;
+  headers?: Record<string, string>;
 };
 
 export type ConsumeOffsetRequest = {
@@ -179,7 +206,10 @@ export type KafkaApi = {
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
+  listBrokers: (serverId: string) => Promise<BrokerSummary[]>;
   getTopicDetail: (serverId: string, topic: string) => Promise<TopicDetail>;
+  deleteTopics: (request: TopicMutationRequest) => Promise<void>;
+  purgeTopics: (request: TopicMutationRequest) => Promise<void>;
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;
   getConsumerGroupLag: (serverId: string, groupId: string) => Promise<ConsumerGroupLagDetail>;
   exportMessages: (request: MessageExportRequest) => Promise<string | null>;
@@ -193,5 +223,6 @@ export type KafkaApi = {
   onSettingsImported: (callback: (result: ImportSettingsResult) => void) => () => void;
   onSettingsExported: (callback: (filePath: string) => void) => () => void;
   onSettingsError: (callback: (error: string) => void) => () => void;
+  onPreferencesOpen: (callback: () => void) => () => void;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 };
