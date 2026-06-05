@@ -5,9 +5,11 @@ import { AlertTriangle, ArrowUpDown, Braces, Calendar, CheckCircle2, ChevronDown
 import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupLagRow, ConsumerGroupSummary, ImportSettingsResult, ManualAvroSchema, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
 import { DataGrid } from "./components/DataGrid";
 import { QuickSearchPalette } from "./components/QuickSearchPalette";
+import { Button, IconButton } from "./components/ui";
 import { emptyConsumeState, emptyServer, fontOptions, topicSortOptions, type ConsumeDefaultPatch, type ConsumeFilterField, type ConsumeFilterMode, type ConsumeMode, type DragPayload, type JsonInspectorMode, type OffsetOrder, type SplitPaneState, type ToastState, type TopicAction, type TopicConsumeState, type TopicListFilter, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
 import { buildQuickSearchResults, fuzzyScore, parseQuickSearchScopedQuery, quickSearchCommands, type QuickSearchResult } from "./quickSearch";
-import { filterMessages, formatCompactNumber, formatCount, formatHeaders, formatMessagePayload, formatPercent, formatProduceValue, formatTimestamp, getEpochTitle, getMessageFilterHelpText, getPartitionColor, getTopicSortLabel, isTopicWorkView, parseJson, parseProduceHeaders, parseTopicCount, previewHeaders, previewValue, renderHighlightedText, renderRawJsonText, sanitizeFontFamily, sortTopics, stringifyPrimitive, validateJsonLikeValue } from "./utils";
+import { filterMessages, getMessageFilterHelpText } from "./messageFilters";
+import { formatCompactNumber, formatCount, formatHeaders, formatMessagePayload, formatPercent, formatProduceValue, formatTimestamp, getEpochTitle, getTopicSortLabel, isTopicWorkView, parseJson, parseProduceHeaders, parseTopicCount, previewHeaders, previewValue, renderHighlightedText, renderRawJsonText, sanitizeFontFamily, sortTopics, stringifyPrimitive, validateJsonLikeValue } from "./utils";
 import "./styles.css";
 
 const OFFSET_PAGING_THRESHOLD = 10000;
@@ -2298,29 +2300,29 @@ function App() {
               <option value="nonEmpty">Has messages</option>
             </select>
           </div>
+          {favoriteTopics.length > 0 && (
+            <div className="favorite-topic-section">
+              <div className="favorite-topic-title">Favorites</div>
+              {favoriteTopics.map((topic) => (
+                <TopicListItem
+                  key={topic.name}
+                  topic={topic}
+                  active={topic.name === selectedTopic}
+                  favorite
+                  hasAvroSchema={manualAvroTopicNames.has(topic.name)}
+                  onSelect={() => {
+                    if (activeWorkspacePane === "split" && visibleSplitPane) return;
+                    activateTopicView(topic.name);
+                    void loadTopicDetail(topic.name);
+                  }}
+                  onOpen={() => void openTopicTab(topic.name)}
+                  onToggleFavorite={() => toggleFavoriteTopic(topic.name)}
+                  onContextMenu={(event) => openTopicContextMenu(event, topic.name)}
+                />
+              ))}
+            </div>
+          )}
           <div className="topic-scroll">
-            {favoriteTopics.length > 0 && (
-              <div className="favorite-topic-section">
-                <div className="favorite-topic-title">Favorites</div>
-                {favoriteTopics.map((topic) => (
-                  <TopicListItem
-                    key={topic.name}
-                    topic={topic}
-                    active={topic.name === selectedTopic}
-                    favorite
-                    hasAvroSchema={manualAvroTopicNames.has(topic.name)}
-                    onSelect={() => {
-                      if (activeWorkspacePane === "split" && visibleSplitPane) return;
-                      activateTopicView(topic.name);
-                      void loadTopicDetail(topic.name);
-                    }}
-                    onOpen={() => void openTopicTab(topic.name)}
-                    onToggleFavorite={() => toggleFavoriteTopic(topic.name)}
-                    onContextMenu={(event) => openTopicContextMenu(event, topic.name)}
-                  />
-                ))}
-              </div>
-            )}
             {nonFavoriteFilteredTopics.map((topic) => (
               <TopicListItem
                 key={topic.name}
@@ -2566,7 +2568,7 @@ function App() {
                 updateConsumeDefaults({ filterField });
               }}
               onFilterMode={(filterMode) => updateSelectedConsumeState({ filterMode })}
-              onClearFilter={() => updateSelectedConsumeState({ filterText: "", filterField: "all" })}
+              onClearFilter={() => updateSelectedConsumeState({ filterText: "", filterField: "all", filterMode: "hide" })}
               onApplyFilter={(filterText) => updateSelectedConsumeState({ filterText, filterField: "all" })}
               onAutoScroll={(autoScroll) => {
                 updateSelectedConsumeState({ autoScroll });
@@ -3345,7 +3347,7 @@ function SplitWorkspacePane(props: {
             onFilterText={(filterText) => props.onUpdateConsume({ filterText })}
             onFilterField={(filterField) => props.onUpdateConsume({ filterField })}
             onFilterMode={(filterMode) => props.onUpdateConsume({ filterMode })}
-            onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all" })}
+            onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all", filterMode: "hide" })}
             onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
             onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
             onMaxMessages={(maxMessages) => props.onUpdateConsume({ maxMessages })}
@@ -3736,6 +3738,11 @@ function ConsumePanel(props: {
     messageTableRef.current?.scrollTo({ top: 0 });
   }, [props.autoScroll, props.messages.length, props.mode]);
 
+  function clearMessageFilter() {
+    setFilterDraft("");
+    props.onClearFilter();
+  }
+
   function startInspectorResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const startY = event.clientY;
@@ -3772,7 +3779,7 @@ function ConsumePanel(props: {
       cell: ({ row }) => {
         const partition = row.original.partition;
         return (
-          <span className="partition-badge" style={{ color: getPartitionColor(partition), borderColor: getPartitionColor(partition) }}>
+          <span className="partition-badge">
             {partition}
           </span>
         );
@@ -3857,9 +3864,9 @@ function ConsumePanel(props: {
           </>
         )}
         {props.isConsuming ? (
-          <button className="danger" onClick={props.onStop}><Square size={16} /> Pause</button>
+          <Button variant="danger" onClick={props.onStop}><Square size={16} /> Pause</Button>
         ) : (
-          <button className="primary" onClick={props.onStart}><Play size={16} /> {props.mode === "live" ? "Start" : "Consume"}</button>
+          <Button variant="primary" onClick={props.onStart}><Play size={16} /> {props.mode === "live" ? "Start" : "Consume"}</Button>
         )}
         {props.mode === "live" && (
           <label className="auto-scroll-toggle">
@@ -3886,7 +3893,8 @@ function ConsumePanel(props: {
           </span>
         )}
         <div className="export-menu">
-          <button
+          <Button
+            variant="subtle"
             className="export-button"
             onClick={() => setIsExportMenuOpen((current) => !current)}
             disabled={filteredMessages.length === 0}
@@ -3894,7 +3902,7 @@ function ConsumePanel(props: {
           >
             <Download size={14} />
             <ChevronDown size={13} />
-          </button>
+          </Button>
           {isExportMenuOpen && (
             <div className="export-menu-popover">
               <span className="export-menu-label">Current page</span>
@@ -3943,8 +3951,8 @@ function ConsumePanel(props: {
             {" "}· showing up to {OFFSET_PAGE_SIZE.toLocaleString()} messages
           </span>
           <div>
-            <button className="ghost compact" onClick={props.onPagePrev} disabled={!pagination || pagination.prevOffsets.length === 0}>Prev</button>
-            <button className="ghost compact" onClick={props.onPageNext} disabled={!pagination?.hasNext}>Next</button>
+            <Button variant="ghost" size="sm" onClick={props.onPagePrev} disabled={!pagination || pagination.prevOffsets.length === 0}>Prev</Button>
+            <Button variant="ghost" size="sm" onClick={props.onPageNext} disabled={!pagination?.hasNext}>Next</Button>
           </div>
         </div>
       )}
@@ -3963,11 +3971,22 @@ function ConsumePanel(props: {
           <input value={filterDraft} onChange={(event) => setFilterDraft(event.target.value)} placeholder="Filter messages" />
         </div>
         <div className="filter-help">
-          <button className="icon-button subtle" type="button" aria-label="Filter help">
+          <IconButton variant="subtle" aria-label="Filter help">
             <HelpCircle size={15} />
-          </button>
+          </IconButton>
           <div className="filter-help-popover" role="tooltip">
             <strong>Filter syntax</strong>
+            <div className="filter-help-content">
+              <span className="filter-help-row"><b>Text</b><code>PR1001 key:PR1001 value:OK</code></span>
+              <span className="filter-help-row"><b>JSON path</b><code>value.proc_id == "PR0116"</code></span>
+              <span className="filter-help-row"><b>Compare</b><code>decoded.speed &gt;= 80</code></span>
+              <span className="filter-help-row"><b>Exists</b><code>headers.traceId exists</code></span>
+              <span className="filter-help-row"><b>Exclude</b><code>!error -timeout</code></span>
+              <span className="filter-help-row"><b>Regex</b><code>/timeout|failed/i</code></span>
+              <span className="filter-help-row"><b>Empty</b><code>empty:headers empty:key empty:value</code></span>
+              <span className="filter-help-row"><b>Phrase</b><code>value:"process status"</code></span>
+              <span className="filter-help-note">Fields: key, value, headers, partition, offset, timestamp, topic, decoded</span>
+            </div>
             <span>{getMessageFilterHelpText()}</span>
             <span><b>JSON path</b>: value.proc_id == "PR0116", decoded.speed &gt;= 80</span>
             <span><b>비교</b>: ==, !=, &gt;, &gt;=, &lt;, &lt;=, ~=</span>
@@ -3979,16 +3998,17 @@ function ConsumePanel(props: {
             <span><b>문장</b>: value:"process status"</span>
           </div>
         </div>
-        <button
-          className={props.filterMode === "highlight" ? "filter-mode-toggle active" : "filter-mode-toggle"}
-          type="button"
+        <Button
+          variant={props.filterMode === "highlight" ? "secondary" : "ghost"}
+          className="filter-mode-toggle"
+          active={props.filterMode === "highlight"}
           onClick={() => props.onFilterMode(props.filterMode === "hide" ? "highlight" : "hide")}
           title={props.filterMode === "hide" ? "Hide unmatched rows" : "Highlight matched rows"}
         >
           {props.filterMode === "hide" ? <EyeOff size={14} /> : <Sparkles size={14} />}
           {props.filterMode === "hide" ? "Hide" : "Highlight"}
-        </button>
-        <button className="ghost compact" onClick={props.onClearFilter}>Clear</button>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={clearMessageFilter}>Clear</Button>
       </div>
       <div className="consume-grid" ref={consumeGridRef} style={{ gridTemplateRows: `${props.messagePaneHeight}px 8px minmax(0, 1fr)` }}>
         <div ref={messageTableRef} className="consume-grid-table-wrap">
@@ -4007,7 +4027,6 @@ function ConsumePanel(props: {
               }
               return classes.join(" ");
             }}
-            getRowStyle={(message) => ({ borderLeftColor: getPartitionColor(message.partition) })}
             onRowClick={props.onSelectMessage}
           />
         </div>

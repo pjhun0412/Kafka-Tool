@@ -1,6 +1,6 @@
 {
   "name": "kafka-tool",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A lightweight Electron Kafka desktop tool",
   "author": "Kafka Tool",
   "private": true,

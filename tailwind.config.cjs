@@ -4,15 +4,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: "#172126",
-        panel: "#ffffff",
-        line: "#d8e2e6",
-        muted: "#60727b",
-        brand: "#0f8b8d",
-        brandDark: "#0b6769"
+        ink: "#d4d4d4",
+        panel: "#252526",
+        line: "#3c3c3c",
+        muted: "#8b949e",
+        brand: "#3794ff",
+        brandDark: "#0e639c"
       },
       boxShadow: {
-        soft: "0 18px 45px rgba(23, 33, 38, 0.08)"
+        soft: "0 18px 45px rgba(0, 0, 0, 0.32)"
       }
     }
   },
