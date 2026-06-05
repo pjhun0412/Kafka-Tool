@@ -116,6 +116,7 @@ export type AppPreferences = {
     sidebarWidth: number;
     serverPanelHeight: number;
     messagePaneHeight: number;
+    sidebarCollapsed: boolean;
   }>;
   appearance?: Partial<{
     fontFamily: string;
@@ -151,6 +152,7 @@ export type ProducedMessage = {
 
 export type ConsumedMessage = {
   serverId?: string;
+  consumerId?: string;
   topic: string;
   partition: number;
   offset: string;
@@ -199,6 +201,7 @@ export type UpdateStatus = {
 export type StartConsumeRequest = {
   serverId: string;
   topic: string;
+  consumerId?: string;
   fromBeginning: boolean;
   partition?: number;
 };
@@ -206,6 +209,7 @@ export type StartConsumeRequest = {
 export type StopConsumeRequest = {
   serverId?: string;
   topic?: string;
+  consumerId?: string;
 };
 
 export type ProduceRequest = {
@@ -251,6 +255,7 @@ export type KafkaApi = {
   installUpdate: () => Promise<void>;
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
+  checkHealth: (serverId: string) => Promise<void>;
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
   listTopicMessageCounts: (serverId: string, topics: string[]) => Promise<TopicMessageCounts>;
   listBrokers: (serverId: string) => Promise<BrokerSummary[]>;

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, ArrowUpDown, Braces, Calendar, CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, Database, Download, EyeOff, Filter, FolderOpen, HardDrive, HelpCircle, Layers, ListTree, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Sparkles, Square, Star, Trash2, Unplug, Users, X, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Braces, Calendar, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Circle, Copy, Database, Download, EyeOff, Filter, FolderOpen, HardDrive, HelpCircle, Layers, ListTree, PanelLeftClose, PanelLeftOpen, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Sparkles, Square, Star, Trash2, Unplug, Users, X, XCircle } from "lucide-react";
 import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupLagRow, ConsumerGroupSummary, ImportSettingsResult, ManualAvroSchema, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
 import { DataGrid } from "./components/DataGrid";
 import { QuickSearchPalette } from "./components/QuickSearchPalette";
@@ -24,6 +24,23 @@ const emptyProduceDraft = {
 type ProduceDraft = typeof emptyProduceDraft;
 type PreferencePage = "editor-font" | "export-log" | "avro-schemas";
 type PreferenceGroup = "editor" | "export" | "avro";
+type WorkspacePaneId = "primary" | "split";
+type PaneToastState = { pane: WorkspacePaneId; message: string; kind: "loading" | "success" | "error" } | null;
+
+function toLocalDateTimeInputValue(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function getDefaultTimeRangeValues(state: Pick<TopicConsumeState, "timeStart" | "timeEnd">) {
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  return {
+    timeStart: state.timeStart || toLocalDateTimeInputValue(startOfToday),
+    timeEnd: state.timeEnd || toLocalDateTimeInputValue(now)
+  };
+}
 
 function parseTopicSearchQuery(query: string) {
   const trimmed = query.trim();
@@ -73,6 +90,7 @@ function App() {
   const [servers, setServers] = useState<ServerProfile[]>([]);
   const [connectedServerIds, setConnectedServerIds] = useState<string[]>([]);
   const [failedServerIds, setFailedServerIds] = useState<string[]>([]);
+  const [healthFailuresByServer, setHealthFailuresByServer] = useState<Record<string, number>>({});
   const [openClusterIds, setOpenClusterIds] = useState<string[]>([]);
   const [selectedServerId, setSelectedServerId] = useState("");
   const [serverQuery, setServerQuery] = useState("");
@@ -99,12 +117,17 @@ function App() {
   const [selectedGroupByServer, setSelectedGroupByServer] = useState<Record<string, string>>({});
   const [groupLagByServer, setGroupLagByServer] = useState<Record<string, Record<string, ConsumerGroupLagDetail>>>({});
   const [consumeStatesByServer, setConsumeStatesByServer] = useState<Record<string, Record<string, TopicConsumeState>>>({});
+  const [splitConsumeStatesByServer, setSplitConsumeStatesByServer] = useState<Record<string, Record<string, TopicConsumeState>>>({});
   const [produceDraftsByServer, setProduceDraftsByServer] = useState<Record<string, Record<string, ProduceDraft>>>({});
   const [streamingTopicsByServer, setStreamingTopicsByServer] = useState<Record<string, string[]>>({});
+  const liveMessageTargetByTopicRef = useRef<Record<string, WorkspacePaneId>>({});
   const [status, setStatus] = useState("서버를 등록하거나 선택하세요.");
   const [toast, setToast] = useState<ToastState>(null);
+  const [paneToast, setPaneToast] = useState<PaneToastState>(null);
   const [loading, setLoading] = useState(false);
+  const [activeConsumeTaskKeys, setActiveConsumeTaskKeys] = useState<string[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(288);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [serverPanelHeight, setServerPanelHeight] = useState(230);
   const [messagePaneHeight, setMessagePaneHeight] = useState(230);
   const [fontFamily, setFontFamily] = useState("D2Coding, Consolas, 'Courier New', monospace");
@@ -129,11 +152,13 @@ function App() {
   const [splitPane, setSplitPane] = useState<SplitPaneState | null>(null);
   const [splitDropSide, setSplitDropSide] = useState<"left" | "right" | null>(null);
   const [splitPrimaryPercent, setSplitPrimaryPercent] = useState(50);
-  const [activeWorkspacePane, setActiveWorkspacePane] = useState<"primary" | "split">("primary");
+  const [activeWorkspacePane, setActiveWorkspacePane] = useState<WorkspacePaneId>("primary");
   const [activeDragPayload, setActiveDragPayload] = useState<DragPayload | null>(null);
   const [connectionError, setConnectionError] = useState<{ serverName: string; brokers: string; message: string } | null>(null);
   const [draggingServerId, setDraggingServerId] = useState("");
   const [serverDropTarget, setServerDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
+  const [draggingFavoriteTopic, setDraggingFavoriteTopic] = useState("");
+  const [favoriteDropTarget, setFavoriteDropTarget] = useState<{ topic: string; position: "before" | "after" } | null>(null);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
   const [quickSearchQuery, setQuickSearchQuery] = useState("");
   const [quickSearchIndex, setQuickSearchIndex] = useState(0);
@@ -225,7 +250,7 @@ function App() {
   const splitGroups = visibleSplitPane ? groupsByServer[visibleSplitPane.serverId] ?? [] : [];
   const splitBrokers = visibleSplitPane ? brokersByServer[visibleSplitPane.serverId] ?? [] : [];
   const splitConsumeState = visibleSplitPane
-    ? (consumeStatesByServer[visibleSplitPane.serverId]?.[visibleSplitPane.topic] ?? getDefaultConsumeState(visibleSplitPane.serverId))
+    ? (splitConsumeStatesByServer[visibleSplitPane.serverId]?.[visibleSplitPane.topic] ?? getDefaultConsumeState(visibleSplitPane.serverId))
     : emptyConsumeState;
   const splitSelectedGroupId = visibleSplitPane ? selectedGroupByServer[visibleSplitPane.serverId] ?? "" : "";
   const splitSelectedGroupLag = visibleSplitPane ? groupLagByServer[visibleSplitPane.serverId]?.[splitSelectedGroupId] ?? null : null;
@@ -238,6 +263,31 @@ function App() {
       ...(consumeDefaultsByServer[serverId] ?? {}),
       mode: "offset"
     };
+  }
+
+  function getConsumeTaskKey(pane: "primary" | "split", serverId: string, topic: string) {
+    return `${pane}:${serverId}:${topic}`;
+  }
+
+  function getStreamingTopicKey(pane: WorkspacePaneId, topic: string) {
+    return `${pane}:${topic}`;
+  }
+
+  function readStreamingTopicKey(value: string): { pane: WorkspacePaneId; topic: string } {
+    const separatorIndex = value.indexOf(":");
+    const pane = value.slice(0, separatorIndex);
+    return {
+      pane: pane === "split" ? "split" : "primary",
+      topic: separatorIndex === -1 ? value : value.slice(separatorIndex + 1)
+    };
+  }
+
+  function isTopicStreaming(serverId: string, topic: string, pane: WorkspacePaneId) {
+    return (streamingTopicsByServer[serverId] ?? []).includes(getStreamingTopicKey(pane, topic));
+  }
+
+  function isConsumeTaskActive(pane: "primary" | "split", serverId: string, topic: string) {
+    return activeConsumeTaskKeys.includes(getConsumeTaskKey(pane, serverId, topic));
   }
 
   function renderServerStatus(serverId: string) {
@@ -288,18 +338,26 @@ function App() {
     if (!selectedServerId) return;
     setViewByServer((current) => ({ ...current, [selectedServerId]: view }));
     if (isTopicWorkView(view) && selectedTopic) {
-      setTopicViewByServer((current) => ({
-        ...current,
-        [selectedServerId]: {
-          ...(current[selectedServerId] ?? {}),
-          [selectedTopic]: view
-        }
-      }));
+      setTopicViewFor(selectedServerId, selectedTopic, view);
     }
   }
 
+  function setTopicViewFor(serverId: string, topic: string, view: TopicWorkView) {
+    setTopicViewByServer((current) => ({
+      ...current,
+      [serverId]: {
+        ...(current[serverId] ?? {}),
+        [topic]: view
+      }
+    }));
+  }
+
+  function getTopicViewFor(serverId: string, topic: string) {
+    return topicViewByServer[serverId]?.[topic] ?? "info";
+  }
+
   function getTopicView(topic: string) {
-    return topicViewByServer[selectedServerId]?.[topic] ?? "info";
+    return getTopicViewFor(selectedServerId, topic);
   }
 
   function activateTopicView(topic: string) {
@@ -310,6 +368,17 @@ function App() {
   function activateSelectedTopicView() {
     if (!selectedTopic) return;
     activateTopicView(selectedTopic);
+  }
+
+  async function selectPrimaryTopic(topic: string) {
+    if (!selectedServerId || !topic) return;
+    const nextView = getTopicViewFor(selectedServerId, topic);
+    setActiveWorkspacePane("primary");
+    setSelectedTopic(topic);
+    setViewByServer((current) => ({ ...current, [selectedServerId]: nextView }));
+    if (nextView === "info") {
+      await loadTopicDetailSilent(topic);
+    }
   }
 
   function setTopics(topics: TopicSummary[]) {
@@ -400,21 +469,32 @@ function App() {
     });
   }
 
-  function updateConsumeStateFor(serverId: string, topic: string, patch: Partial<TopicConsumeState>) {
-    setConsumeStatesByServer((current) => {
-      const serverStates = current[serverId] ?? {};
-      const previous = serverStates[topic] ?? getDefaultConsumeState(serverId);
-      return {
-        ...current,
-        [serverId]: {
-          ...serverStates,
-          [topic]: {
-            ...previous,
-            ...patch
-          }
+  function mergeConsumeState(
+    current: Record<string, Record<string, TopicConsumeState>>,
+    serverId: string,
+    topic: string,
+    patch: Partial<TopicConsumeState>
+  ) {
+    const serverStates = current[serverId] ?? {};
+    const previous = serverStates[topic] ?? getDefaultConsumeState(serverId);
+    return {
+      ...current,
+      [serverId]: {
+        ...serverStates,
+        [topic]: {
+          ...previous,
+          ...patch
         }
-      };
-    });
+      }
+    };
+  }
+
+  function updateConsumeStateFor(serverId: string, topic: string, patch: Partial<TopicConsumeState>, pane: WorkspacePaneId = "primary") {
+    if (pane === "split") {
+      setSplitConsumeStatesByServer((current) => mergeConsumeState(current, serverId, topic, patch));
+      return;
+    }
+    setConsumeStatesByServer((current) => mergeConsumeState(current, serverId, topic, patch));
   }
 
   const filteredTopics = useMemo(() => {
@@ -462,7 +542,7 @@ function App() {
     const entries: Array<{ group: PreferenceGroup; page: PreferencePage; keywords: string }> = [
       { group: "editor", page: "editor-font", keywords: "editor font family size d2coding 글꼴 폰트 크기" },
       { group: "export", page: "export-log", keywords: "export log format download csv json 로그 다운로드 포맷" },
-      { group: "avro", page: "avro-schemas", keywords: "avro schema schemas registry raw confluent 스키마" }
+      { group: "avro", page: "avro-schemas", keywords: "avro schema schemas registry raw confluent" }
     ];
     const matched = entries.filter((entry) => entry.keywords.toLowerCase().includes(normalizedPreferencesQuery));
     return {
@@ -619,6 +699,25 @@ function App() {
     });
   }
 
+  function reorderFavoriteTopic(draggedTopic: string, targetTopic: string, position: "before" | "after") {
+    if (!selectedServerId || draggedTopic === targetTopic) return;
+    setFavoriteTopicsByServer((current) => {
+      const favorites = current[selectedServerId] ?? [];
+      const draggedIndex = favorites.indexOf(draggedTopic);
+      const targetIndex = favorites.indexOf(targetTopic);
+      if (draggedIndex === -1 || targetIndex === -1) return current;
+      const nextFavorites = [...favorites];
+      const [dragged] = nextFavorites.splice(draggedIndex, 1);
+      const adjustedTargetIndex = nextFavorites.indexOf(targetTopic);
+      const insertIndex = position === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
+      nextFavorites.splice(insertIndex, 0, dragged);
+      return {
+        ...current,
+        [selectedServerId]: nextFavorites
+      };
+    });
+  }
+
   useEffect(() => {
     if (!kafkaApi) {
       setStatus("Electron preload API is not available. Restart npm run dev.");
@@ -642,6 +741,9 @@ function App() {
       setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
       if (typeof preferences.layout?.sidebarWidth === "number") {
         setSidebarWidth(preferences.layout.sidebarWidth);
+      }
+      if (typeof preferences.layout?.sidebarCollapsed === "boolean") {
+        setSidebarCollapsed(preferences.layout.sidebarCollapsed);
       }
       if (typeof preferences.layout?.serverPanelHeight === "number") {
         setServerPanelHeight(preferences.layout.serverPanelHeight);
@@ -675,6 +777,7 @@ function App() {
       manualAvroSchemasByServer,
       layout: {
         sidebarWidth,
+        sidebarCollapsed,
         serverPanelHeight,
         messagePaneHeight
       },
@@ -684,7 +787,7 @@ function App() {
       },
       exportFormatTemplate
     }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
-  }, [kafkaApi, preferencesLoaded, favoriteTopicsByServer, consumeDefaultsByServer, manualAvroSchemasByServer, sidebarWidth, serverPanelHeight, messagePaneHeight, fontFamily, fontSize, exportFormatTemplate]);
+  }, [kafkaApi, preferencesLoaded, favoriteTopicsByServer, consumeDefaultsByServer, manualAvroSchemasByServer, sidebarWidth, sidebarCollapsed, serverPanelHeight, messagePaneHeight, fontFamily, fontSize, exportFormatTemplate]);
 
   useEffect(() => {
     if (!normalizedPreferencesQuery || preferenceSearchMatches.pages.has(activePreferencesPage)) return;
@@ -705,6 +808,20 @@ function App() {
       if ((event.ctrlKey || event.metaKey) && (key === "p" || key === "k")) {
         event.preventDefault();
         openQuickSearch();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === ",") {
+        event.preventDefault();
+        closeQuickSearch();
+        setActivePreferencesPage("editor-font");
+        setPreferencesQuery("");
+        setIsPreferencesOpen(true);
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && key === "b") {
+        event.preventDefault();
+        closeQuickSearch();
+        setSidebarCollapsed((current) => !current);
         return;
       }
       if (!isQuickSearchOpen) return;
@@ -737,24 +854,26 @@ function App() {
       return;
     }
     const offMessage = kafkaApi.onConsumeMessage((message) => {
-      setConsumeStatesByServer((current) => {
-        const serverId = message.serverId ?? selectedServerId;
-        if (!serverId) return current;
+      const serverId = message.serverId ?? selectedServerId;
+      if (!serverId) return;
+      const targetPane =
+        message.consumerId === "split" || message.consumerId === "primary"
+          ? message.consumerId
+          : liveMessageTargetByTopicRef.current[`${serverId}:${message.topic}`] ?? "primary";
+      const applyMessage = (current: Record<string, Record<string, TopicConsumeState>>) => {
         const serverStates = current[serverId] ?? {};
         const previous = serverStates[message.topic] ?? getDefaultConsumeState(serverId);
         const maxMessages = previous.maxMessages || emptyConsumeState.maxMessages;
-        return {
-          ...current,
-          [serverId]: {
-            ...serverStates,
-            [message.topic]: {
-              ...previous,
-              messages: [message, ...previous.messages].slice(0, maxMessages),
-              selectedMessage: previous.selectedMessage ?? message
-            }
-          }
-        };
-      });
+        return mergeConsumeState(current, serverId, message.topic, {
+          messages: [message, ...previous.messages].slice(0, maxMessages),
+          selectedMessage: previous.selectedMessage ?? message
+        });
+      };
+      if (targetPane === "split") {
+        setSplitConsumeStatesByServer(applyMessage);
+      } else {
+        setConsumeStatesByServer(applyMessage);
+      }
     });
     const offError = kafkaApi.onConsumeError((error) => {
       setStatus(error);
@@ -764,6 +883,69 @@ function App() {
       offError();
     };
   }, [kafkaApi, selectedServerId, consumeDefaultsByServer]);
+
+  useEffect(() => {
+    if (!kafkaApi) return;
+    const monitoredServerIds = [
+      ...connectedServerIds,
+      ...failedServerIds.filter((serverId) => openClusterIds.includes(serverId))
+    ].filter((serverId, index, array) => array.indexOf(serverId) === index);
+    if (monitoredServerIds.length === 0) return;
+    let cancelled = false;
+
+    const checkConnectedServers = async () => {
+      await Promise.all(monitoredServerIds.map(async (serverId) => {
+        const server = servers.find((item) => item.id === serverId);
+        if (!server) return;
+        try {
+          await kafkaApi.checkHealth(serverId);
+          if (cancelled) return;
+          setHealthFailuresByServer((current) => {
+            if (!current[serverId]) return current;
+            const next = { ...current };
+            delete next[serverId];
+            return next;
+          });
+          setFailedServerIds((current) => {
+            if (!current.includes(serverId)) return current;
+            setToast({ message: `${server.name} 서버 연결이 복구되었습니다.`, kind: "success" });
+            setStatus(`${server.name} server connection restored.`);
+            return current.filter((id) => id !== serverId);
+          });
+          setConnectedServerIds((current) => (current.includes(serverId) ? current : [...current, serverId]));
+        } catch (error) {
+          if (cancelled) return;
+          const message = error instanceof Error ? error.message : String(error);
+          setHealthFailuresByServer((current) => {
+            const failures = (current[serverId] ?? 0) + 1;
+            if (failures >= 2) {
+              setConnectedServerIds((ids) => ids.filter((id) => id !== serverId));
+              setFailedServerIds((ids) => {
+                if (ids.includes(serverId)) return ids;
+                setToast({ message: `${server.name} 서버 연결이 끊겼습니다.`, kind: "error" });
+                setStatus(`${server.name} server disconnected: ${message}`);
+                return [...ids, serverId];
+              });
+            }
+            return { ...current, [serverId]: failures };
+          });
+        }
+      }));
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      void checkConnectedServers();
+    }, 5000);
+    const intervalId = window.setInterval(() => {
+      void checkConnectedServers();
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [kafkaApi, connectedServerIds, failedServerIds, openClusterIds, servers]);
 
   useEffect(() => {
     if (!kafkaApi) {
@@ -851,23 +1033,56 @@ function App() {
     }
   }, [selectedServerId]);
 
-  async function runTask<T>(label: string, task: () => Promise<T>) {
+  async function runTask<T>(label: string, task: () => Promise<T>, options: { toast?: boolean } = {}) {
+    const showToast = options.toast !== false;
     setLoading(true);
     setStatus(label);
-    setToast({ message: label, kind: "loading" });
+    if (showToast) {
+      setToast({ message: label, kind: "loading" });
+    }
     try {
       const result = await task();
       setStatus("완료");
-      setToast({ message: "완료", kind: "success" });
+      if (showToast) {
+        setToast({ message: "완료", kind: "success" });
+      }
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setStatus(message);
-      setToast({ message, kind: "error" });
+      if (showToast) {
+        setToast({ message, kind: "error" });
+      }
       throw error;
     } finally {
       setLoading(false);
     }
+  }
+
+  async function runPaneTask<T>(pane: WorkspacePaneId, label: string, task: () => Promise<T>) {
+    setLoading(true);
+    setStatus(label);
+    setToast(null);
+    setPaneToast({ pane, message: label, kind: "loading" });
+    try {
+      const result = await task();
+      setStatus("완료");
+      setPaneToast({ pane, message: "완료", kind: "success" });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatus(message);
+      setPaneToast({ pane, message, kind: "error" });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function showPaneToast(pane: WorkspacePaneId, message: string, kind: "success" | "error" = "success") {
+    setStatus(message);
+    setToast(null);
+    setPaneToast({ pane, message, kind });
   }
 
   useEffect(() => {
@@ -876,6 +1091,13 @@ function App() {
     const timer = window.setTimeout(() => setToast(null), 2600);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!paneToast) return;
+    if (paneToast.kind === "loading") return;
+    const timer = window.setTimeout(() => setPaneToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [paneToast]);
 
   useEffect(() => {
     if (!serverContextMenu) return;
@@ -951,7 +1173,7 @@ function App() {
 
   async function saveServer() {
     if (!kafkaApi) return;
-    const nextServers = await runTask("서버 저장 중", () =>
+    const nextServers = await runTask("Saving server...", () =>
       kafkaApi.saveServer({
         id: editingServerId ?? undefined,
         name: serverForm.name,
@@ -969,7 +1191,7 @@ function App() {
 
   async function deleteServer(id: string) {
     if (!kafkaApi) return;
-    const nextServers = await runTask("서버 삭제 중", () => kafkaApi.deleteServer(id));
+    const nextServers = await runTask("Deleting server...", () => kafkaApi.deleteServer(id));
     setServers(nextServers);
     setConnectedServerIds((current) => current.filter((serverId) => serverId !== id));
     setFailedServerIds((current) => current.filter((serverId) => serverId !== id));
@@ -979,6 +1201,11 @@ function App() {
     setSelectedTopic("");
     setTopicDetail(null);
     setConsumeStates({});
+    setSplitConsumeStatesByServer((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
     setViewByServer((current) => {
       const next = { ...current };
       delete next[id];
@@ -1033,11 +1260,16 @@ function App() {
     if (!kafkaApi) return false;
     setSelectedServerId(server.id);
     try {
-      await runTask("서버 연결 확인 중", async () => {
+      await runTask("Checking server connection...", async () => {
         await refreshTopicsForServer(server.id);
         return true;
       });
       setFailedServerIds((current) => current.filter((serverId) => serverId !== server.id));
+      setHealthFailuresByServer((current) => {
+        const next = { ...current };
+        delete next[server.id];
+        return next;
+      });
       setConnectedServerIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
       setOpenClusterIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
       void refreshBrokersForServer(server.id);
@@ -1223,23 +1455,35 @@ function App() {
 
   async function openSplitForTopic(serverId: string, topic: string) {
     if (!topic || serverId !== selectedServerId) return;
+    const nextView = getTopicViewFor(serverId, topic);
     setSplitPane((current) => {
       const previousTabs = current?.serverId === serverId ? current.topicTabs : [];
       return {
         serverId,
         topic,
         topicTabs: previousTabs.includes(topic) ? previousTabs : [...previousTabs, topic],
-        view: getTopicView(topic) === "consume" ? "consume" : "info",
+        view: nextView,
         detail: null
       };
     });
     setActiveWorkspacePane("split");
-    await loadSplitTopicDetail(serverId, topic);
+    if (nextView === "info") {
+      await loadSplitTopicDetailSilent(serverId, topic);
+    }
   }
 
   async function loadSplitTopicDetail(serverId: string, topic: string) {
     if (!kafkaApi || !topic) return;
-    const detail = await runTask("split topic detail 조회 중", () => kafkaApi.getTopicDetail(serverId, topic));
+    const detail = await runPaneTask("split", "토픽 상세 조회 중", () => kafkaApi.getTopicDetail(serverId, topic));
+    setSplitPane((current) => current && current.serverId === serverId && current.topic === topic
+      ? { ...current, detail }
+      : current
+    );
+  }
+
+  async function loadSplitTopicDetailSilent(serverId: string, topic: string) {
+    if (!kafkaApi || !topic) return;
+    const detail = await kafkaApi.getTopicDetail(serverId, topic);
     setSplitPane((current) => current && current.serverId === serverId && current.topic === topic
       ? { ...current, detail }
       : current
@@ -1297,10 +1541,8 @@ function App() {
   }
 
   async function openPrimaryTopicTab(topic: string) {
-    setActiveWorkspacePane("primary");
     setOpenedTopicTabs((current) => (current.includes(topic) ? current : [...current, topic]));
-    activateTopicView(topic);
-    await loadTopicDetail(topic);
+    await selectPrimaryTopic(topic);
   }
 
   async function moveSplitTopicToPrimary(topic: string) {
@@ -1316,46 +1558,50 @@ function App() {
     setOpenedTopicTabs(nextTabs);
     if (selectedTopic !== topic) return;
     const nextTopic = nextTabs[nextTabs.length - 1] ?? "";
-    setSelectedTopic(nextTopic);
     if (nextTopic) {
-      activateTopicView(nextTopic);
-      await loadTopicDetail(nextTopic);
+      await selectPrimaryTopic(nextTopic);
       return;
     }
+    setSelectedTopic("");
     setTopicDetail(null);
   }
 
   async function closeSplitPane() {
     const pane = splitPane;
     if (!pane) return;
-    if ((streamingTopicsByServer[pane.serverId] ?? []).includes(pane.topic)) {
-      await stopConsume(pane.serverId, pane.topic);
+    if (isTopicStreaming(pane.serverId, pane.topic, "split")) {
+      await stopConsume(pane.serverId, pane.topic, "split");
     }
     setSplitPane(null);
     setActiveWorkspacePane("primary");
   }
 
-  async function activateSplitTopic(topic: string, view: View = "info") {
+  async function activateSplitTopic(topic: string, view?: TopicWorkView) {
     const pane = splitPane;
     if (!pane || !topic) return;
+    const nextView = view ?? getTopicViewFor(pane.serverId, topic);
+    const shouldLoadDetail = nextView === "info" && (pane.topic !== topic || !pane.detail);
+    setActiveWorkspacePane("split");
     setSplitPane((current) => current
       ? {
           ...current,
           topic,
           topicTabs: current.topicTabs.includes(topic) ? current.topicTabs : [...current.topicTabs, topic],
-          view,
-          detail: null
+          view: nextView,
+          detail: shouldLoadDetail ? null : current.detail
         }
       : current
     );
-    await loadSplitTopicDetail(pane.serverId, topic);
+    if (shouldLoadDetail) {
+      await loadSplitTopicDetailSilent(pane.serverId, topic);
+    }
   }
 
   async function closeSplitTopicTab(topic: string) {
     const pane = splitPane;
     if (!pane) return;
-    if ((streamingTopicsByServer[pane.serverId] ?? []).includes(topic)) {
-      await stopConsume(pane.serverId, topic);
+    if (isTopicStreaming(pane.serverId, topic, "split")) {
+      await stopConsume(pane.serverId, topic, "split");
     }
     const nextTabs = pane.topicTabs.filter((item) => item !== topic);
     if (nextTabs.length === 0) {
@@ -1364,24 +1610,31 @@ function App() {
       return;
     }
     const nextTopic = pane.topic === topic ? nextTabs[nextTabs.length - 1] ?? "" : pane.topic;
+    const nextView = nextTopic ? getTopicViewFor(pane.serverId, nextTopic) : "topics";
     setSplitPane({
       ...pane,
       topic: nextTopic,
       topicTabs: nextTabs,
-      view: nextTopic ? pane.view : "topics",
-      detail: null
+      view: nextView,
+      detail: pane.topic === nextTopic ? pane.detail : null
     });
-    if (nextTopic) {
-      await loadSplitTopicDetail(pane.serverId, nextTopic);
+    if (nextTopic && nextView === "info" && pane.topic !== nextTopic) {
+      await loadSplitTopicDetailSilent(pane.serverId, nextTopic);
     }
   }
 
   async function disconnectServer(serverId: string) {
-    for (const topic of streamingTopicsByServer[serverId] ?? []) {
-      await stopConsume(serverId, topic);
+    for (const streamingTopic of streamingTopicsByServer[serverId] ?? []) {
+      const parsed = readStreamingTopicKey(streamingTopic);
+      await stopConsume(serverId, parsed.topic, parsed.pane);
     }
     setConnectedServerIds((current) => current.filter((id) => id !== serverId));
     setFailedServerIds((current) => current.filter((id) => id !== serverId));
+    setHealthFailuresByServer((current) => {
+      const next = { ...current };
+      delete next[serverId];
+      return next;
+    });
     setOpenClusterIds((current) => current.filter((id) => id !== serverId));
     if (selectedServerId === serverId) {
       setTopics([]);
@@ -1391,6 +1644,7 @@ function App() {
       setSelectedTopic("");
       setTopicDetail(null);
       setConsumeStates({});
+      setSplitConsumeStatesByServer((current) => ({ ...current, [serverId]: {} }));
       setStatus("Disconnected.");
       const nextCluster = openClusterIds.find((id) => id !== serverId) ?? "";
       setSelectedServerId(nextCluster);
@@ -1398,10 +1652,17 @@ function App() {
   }
 
   async function closeClusterTab(serverId: string) {
-    for (const topic of streamingTopicsByServer[serverId] ?? []) {
-      await stopConsume(serverId, topic);
+    for (const streamingTopic of streamingTopicsByServer[serverId] ?? []) {
+      const parsed = readStreamingTopicKey(streamingTopic);
+      await stopConsume(serverId, parsed.topic, parsed.pane);
     }
     setOpenClusterIds((current) => current.filter((id) => id !== serverId));
+    setFailedServerIds((current) => current.filter((id) => id !== serverId));
+    setHealthFailuresByServer((current) => {
+      const next = { ...current };
+      delete next[serverId];
+      return next;
+    });
     if (selectedServerId === serverId) {
       const nextCluster = openClusterIds.find((id) => id !== serverId) ?? "";
       setSelectedServerId(nextCluster);
@@ -1431,7 +1692,8 @@ function App() {
       [serverId]: (current[serverId] ?? []).filter((topic) => topicNames.has(topic))
     }));
     const previousSelectedTopic = selectedTopicByServer[serverId] ?? "";
-    const nextTopic = previousSelectedTopic && items.some((topic) => topic.name === previousSelectedTopic) ? previousSelectedTopic : items[0]?.name ?? "";
+    const favoriteTopic = (favoriteTopicsByServer[serverId] ?? []).find((topicName) => topicNames.has(topicName));
+    const nextTopic = previousSelectedTopic && items.some((topic) => topic.name === previousSelectedTopic) ? previousSelectedTopic : favoriteTopic ?? items[0]?.name ?? "";
     setSelectedTopicByServer((current) => ({ ...current, [serverId]: nextTopic }));
     if (nextTopic) {
       const detail = await runTask("토픽 상세 조회 중", () => kafkaApi.getTopicDetail(serverId, nextTopic));
@@ -1440,6 +1702,7 @@ function App() {
       setTopicDetailByServer((current) => ({ ...current, [serverId]: null }));
       setOpenedTopicTabsByServer((current) => ({ ...current, [serverId]: [] }));
       setConsumeStatesByServer((current) => ({ ...current, [serverId]: {} }));
+      setSplitConsumeStatesByServer((current) => ({ ...current, [serverId]: {} }));
     }
   }
 
@@ -1472,6 +1735,13 @@ function App() {
     if (!kafkaApi || !selectedServerId || !topic) return;
     setSelectedTopic(topic);
     const detail = await runTask("토픽 상세 조회 중", () => kafkaApi.getTopicDetail(selectedServerId, topic));
+    setTopicDetail(detail);
+  }
+
+  async function loadTopicDetailSilent(topic: string) {
+    if (!kafkaApi || !selectedServerId || !topic) return;
+    setSelectedTopic(topic);
+    const detail = await kafkaApi.getTopicDetail(selectedServerId, topic);
     setTopicDetail(detail);
   }
 
@@ -1627,6 +1897,13 @@ function App() {
       }
       return { ...current, [serverId]: nextServerStates };
     });
+    setSplitConsumeStatesByServer((current) => {
+      const nextServerStates = { ...(current[serverId] ?? {}) };
+      for (const topic of deleted) {
+        delete nextServerStates[topic];
+      }
+      return { ...current, [serverId]: nextServerStates };
+    });
     setTopicViewByServer((current) => {
       const serverViews = { ...(current[serverId] ?? {}) };
       for (const topic of deleted) {
@@ -1657,7 +1934,7 @@ function App() {
       setSelectedTopicByServer((current) => ({ ...current, [serverId]: nextTopic }));
       if (nextTopic) {
         if (serverId === selectedServerId) {
-          void loadTopicDetail(nextTopic);
+          void selectPrimaryTopic(nextTopic);
         }
       } else {
         setTopicDetailByServer((current) => ({ ...current, [serverId]: null }));
@@ -1673,9 +1950,7 @@ function App() {
     setTopicActionConfirmText("");
     if (action.kind === "delete") {
       for (const topic of action.topics) {
-        if ((streamingTopicsByServer[action.serverId] ?? []).includes(topic)) {
-          await stopConsume(action.serverId, topic);
-        }
+        await stopConsume(action.serverId, topic);
       }
       await runTask(`Deleting ${action.topics.length} topic(s)`, () => kafkaApi.deleteTopics({ serverId: action.serverId, topics: action.topics }));
       cleanupDeletedTopics(action.serverId, action.topics);
@@ -1692,8 +1967,8 @@ function App() {
   }
 
   async function closeTopicTab(topic: string) {
-    if ((streamingTopicsByServer[selectedServerId] ?? []).includes(topic)) {
-      await stopConsume(selectedServerId, topic);
+    if (isTopicStreaming(selectedServerId, topic, "primary")) {
+      await stopConsume(selectedServerId, topic, "primary");
     }
     const nextTabs = openedTopicTabs.filter((item) => item !== topic);
     setOpenedTopicTabs(nextTabs);
@@ -1702,19 +1977,14 @@ function App() {
       delete next[topic];
       return next;
     });
-    setTopicViewByServer((current) => {
-      const serverViews = { ...(current[selectedServerId] ?? {}) };
-      delete serverViews[topic];
-      return { ...current, [selectedServerId]: serverViews };
-    });
     if (selectedTopic !== topic) {
       return;
     }
     const nextTopic = nextTabs[nextTabs.length - 1] ?? "";
-    setSelectedTopic(nextTopic);
     if (nextTopic) {
-      await loadTopicDetail(nextTopic);
+      await selectPrimaryTopic(nextTopic);
     } else {
+      setSelectedTopic("");
       setTopicDetail(null);
     }
   }
@@ -1761,22 +2031,43 @@ function App() {
   }
 
   async function produce() {
-    await produceFor(selectedServerId, selectedTopic);
+    await produceFor(selectedServerId, selectedTopic, visibleSplitPane ? "primary" : undefined);
   }
 
-  async function produceFor(serverId: string, topic: string) {
+  async function produceFor(serverId: string, topic: string, pane?: WorkspacePaneId) {
     if (!kafkaApi || !serverId || !topic) return;
     const draft = getProduceDraft(serverId, topic);
     const validationError = validateJsonLikeValue(draft.value);
     if (validationError) {
       setStatus(validationError);
-      setToast({ message: validationError, kind: "error" });
+      if (pane) {
+        showPaneToast(pane, validationError, "error");
+      } else {
+        setToast({ message: validationError, kind: "error" });
+      }
       return;
     }
     const headers = parseProduceHeaders(draft.headers);
     if (typeof headers === "string") {
       setStatus(headers);
-      setToast({ message: headers, kind: "error" });
+      if (pane) {
+        showPaneToast(pane, headers, "error");
+      } else {
+        setToast({ message: headers, kind: "error" });
+      }
+      return;
+    }
+    if (pane) {
+      const result = await runPaneTask(pane, "Producing message...", () =>
+        kafkaApi.produce({
+          serverId,
+          topic,
+          key: draft.key,
+          value: draft.value,
+          headers
+        })
+      );
+      setStatus(`전송 완료: ${result.map((item) => `p${item.partition}@${item.offset}`).join(", ")}`);
       return;
     }
     const result = await runTask("메시지 전송 중", () =>
@@ -1802,7 +2093,7 @@ function App() {
     } else {
       setView("produce");
     }
-    setToast({ message: "메시지를 Produce 탭으로 복사했습니다.", kind: "success" });
+    setStatus("Message copied to Produce.");
   }
 
   function applyImportedSettings(result: ImportSettingsResult) {
@@ -1844,13 +2135,14 @@ function App() {
     setSelectedGroupByServer({});
     setGroupLagByServer({});
     setConsumeStatesByServer({});
+    setSplitConsumeStatesByServer({});
     setStreamingTopicsByServer({});
   }
 
   async function exportSettings() {
     if (!kafkaApi) return;
     setLoading(true);
-      setToast({ message: "설정 내보내기 중", kind: "loading" });
+    setToast({ message: "설정 내보내기 중", kind: "loading" });
     try {
       const filePath = await kafkaApi.exportSettings();
       if (filePath) {
@@ -1893,8 +2185,29 @@ function App() {
     }
   }
 
-  async function exportConsumedMessages(format: MessageExportFormat, messages: ConsumedMessage[], topicName = selectedTopic) {
+  async function exportConsumedMessages(format: MessageExportFormat, messages: ConsumedMessage[], topicName = selectedTopic, pane?: WorkspacePaneId) {
     if (!kafkaApi || !topicName) return;
+    if (pane) {
+      if (messages.length === 0) {
+        showPaneToast(pane, "내보낼 메시지가 없습니다.", "error");
+        return;
+      }
+      const filePath = await runPaneTask(pane, "메시지 내보내기 중", () =>
+        kafkaApi.exportMessages({
+          topic: topicName,
+          format,
+          messages,
+          template: exportFormatTemplate
+        })
+      );
+      if (filePath) {
+        setStatus(`메시지 내보내기 완료: ${filePath}`);
+        setPaneToast({ pane, message: "메시지 내보내기 완료", kind: "success" });
+      } else {
+        setPaneToast(null);
+      }
+      return;
+    }
     if (messages.length === 0) {
       setToast({ message: "내보낼 메시지가 없습니다.", kind: "error" });
       return;
@@ -1923,9 +2236,31 @@ function App() {
     }
   }
 
-  async function exportOffsetConditionMessages(format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState) {
+  async function exportOffsetConditionMessages(format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) {
     if (!kafkaApi || !serverId || !topic) return;
     const partition = state.partition === "" ? 0 : Number(state.partition);
+    if (pane) {
+      const filePath = await runPaneTask(pane, "전체 조건 메시지 내보내기 중", () =>
+        kafkaApi.exportOffsetMessages({
+          serverId,
+          topic,
+          partition,
+          offset: state.offset,
+          limit: state.limit,
+          order: state.offsetOrder,
+          endOffsetExclusive: state.offsetPagination?.endOffsetExclusive,
+          format,
+          template: exportFormatTemplate
+        })
+      );
+      if (filePath) {
+        setStatus(`전체 조건 메시지 내보내기 완료: ${filePath}`);
+        setPaneToast({ pane, message: "전체 조건 메시지 내보내기 완료", kind: "success" });
+      } else {
+        setPaneToast(null);
+      }
+      return;
+    }
     setLoading(true);
     setToast({ message: "전체 조건 메시지 내보내기 중", kind: "loading" });
     try {
@@ -1958,7 +2293,7 @@ function App() {
   async function startConsume() {
     if (!kafkaApi || !selectedServerId || !selectedTopic) return;
     const state = consumeStates[selectedTopic] ?? selectedDefaultConsumeState;
-    await startConsumeFor(selectedServerId, selectedTopic, state);
+    await startConsumeFor(selectedServerId, selectedTopic, state, "primary");
   }
 
   function getOffsetPageLimit(state: TopicConsumeState, pageIndex: number) {
@@ -1978,111 +2313,131 @@ function App() {
     state: TopicConsumeState,
     pageOffset: string,
     pageIndex: number,
-    prevOffsets: string[]
+    prevOffsets: string[],
+    pane: "primary" | "split" = "primary"
   ) {
     if (!kafkaApi) return;
+    const taskKey = getConsumeTaskKey(pane, serverId, topic);
     const partition = state.partition === "" ? 0 : Number(state.partition);
     const pageLimit = getOffsetPageLimit(state, pageIndex);
     if (pageLimit <= 0) return;
-    updateConsumeStateFor(serverId, topic, { messages: [], selectedMessage: null });
-    const result = await runTask("offset consume 조회 중", () =>
-      kafkaApi.consumeFromOffset({
-        serverId,
-        topic,
-        partition,
-        offset: pageOffset,
-        limit: pageLimit,
-        order: state.offsetOrder,
-        endOffsetExclusive: state.offsetPagination?.endOffsetExclusive
-      })
-    );
-    const items = result.messages;
-    const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
-    const endOffsetExclusive = result.endOffsetExclusive ?? state.offsetPagination?.endOffsetExclusive;
-    const hasPaging = state.limit > OFFSET_PAGING_THRESHOLD;
-    const pagination = hasPaging
-      ? {
-          totalLimit: state.limit,
-          pageSize: OFFSET_PAGE_SIZE,
-          pageIndex,
-          currentOffset: pageOffset,
-          prevOffsets,
-          nextOffset: getNextPageOffset(state.offsetOrder, orderedItems),
-          hasNext: orderedItems.length === pageLimit && (pageIndex + 1) * OFFSET_PAGE_SIZE < state.limit,
-          endOffsetExclusive
-        }
-      : null;
-    updateConsumeStateFor(serverId, topic, {
-      messages: orderedItems,
-      selectedMessage: orderedItems[0] ?? null,
-      offsetPagination: pagination
-    });
+    setActiveConsumeTaskKeys((current) => current.includes(taskKey) ? current : [...current, taskKey]);
+    try {
+      updateConsumeStateFor(serverId, topic, { messages: [], selectedMessage: null }, pane);
+    const result = await runTask("메시지 전송 중", () =>
+        kafkaApi.consumeFromOffset({
+          serverId,
+          topic,
+          partition,
+          offset: pageOffset,
+          limit: pageLimit,
+          order: state.offsetOrder,
+          endOffsetExclusive: state.offsetPagination?.endOffsetExclusive
+        })
+      , { toast: false });
+      const items = result.messages;
+      const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
+      const endOffsetExclusive = result.endOffsetExclusive ?? state.offsetPagination?.endOffsetExclusive;
+      const hasPaging = state.limit > OFFSET_PAGING_THRESHOLD;
+      const pagination = hasPaging
+        ? {
+            totalLimit: state.limit,
+            pageSize: OFFSET_PAGE_SIZE,
+            pageIndex,
+            currentOffset: pageOffset,
+            prevOffsets,
+            nextOffset: getNextPageOffset(state.offsetOrder, orderedItems),
+            hasNext: orderedItems.length === pageLimit && (pageIndex + 1) * OFFSET_PAGE_SIZE < state.limit,
+            endOffsetExclusive
+          }
+        : null;
+      updateConsumeStateFor(serverId, topic, {
+        messages: orderedItems,
+        selectedMessage: orderedItems[0] ?? null,
+        offsetPagination: pagination
+      }, pane);
+    } finally {
+      setActiveConsumeTaskKeys((current) => current.filter((key) => key !== taskKey));
+    }
   }
 
-  async function moveOffsetPageFor(serverId: string, topic: string, state: TopicConsumeState, direction: "prev" | "next") {
+  async function moveOffsetPageFor(serverId: string, topic: string, state: TopicConsumeState, direction: "prev" | "next", pane: "primary" | "split" = "primary") {
     const pagination = state.offsetPagination;
     if (!pagination) return;
     if (direction === "next") {
-      await consumeOffsetPageFor(serverId, topic, state, pagination.nextOffset, pagination.pageIndex + 1, [...pagination.prevOffsets, pagination.currentOffset]);
+      await consumeOffsetPageFor(serverId, topic, state, pagination.nextOffset, pagination.pageIndex + 1, [...pagination.prevOffsets, pagination.currentOffset], pane);
       return;
     }
     const previousOffset = pagination.prevOffsets[pagination.prevOffsets.length - 1];
     if (previousOffset === undefined) return;
-    await consumeOffsetPageFor(serverId, topic, state, previousOffset, Math.max(0, pagination.pageIndex - 1), pagination.prevOffsets.slice(0, -1));
+    await consumeOffsetPageFor(serverId, topic, state, previousOffset, Math.max(0, pagination.pageIndex - 1), pagination.prevOffsets.slice(0, -1), pane);
   }
 
-  async function startConsumeFor(serverId: string, topic: string, state: TopicConsumeState) {
+  async function startConsumeFor(serverId: string, topic: string, state: TopicConsumeState, pane: "primary" | "split" = "primary") {
     if (!kafkaApi || !serverId || !topic) return;
+    const taskKey = getConsumeTaskKey(pane, serverId, topic);
+    setActiveConsumeTaskKeys((current) => current.includes(taskKey) ? current : [...current, taskKey]);
     const partition = state.partition === "" ? 0 : Number(state.partition);
-    if (state.mode === "offset") {
-      await consumeOffsetPageFor(serverId, topic, state, state.offset, 0, []);
-      return;
-    }
-    if (state.mode === "timeRange") {
-      const startTimestamp = state.timeStart ? new Date(state.timeStart).getTime() : NaN;
-      const endTimestamp = state.timeEnd ? new Date(state.timeEnd).getTime() : NaN;
-      if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp)) {
-        setStatus("Start and end datetime are required.");
+    try {
+      if (state.mode === "offset") {
+        await consumeOffsetPageFor(serverId, topic, state, state.offset, 0, [], pane);
         return;
       }
-      const items = await runTask("time range consume 조회 중", () =>
-        kafkaApi.consumeTimeRange({
+      if (state.mode === "timeRange") {
+        const startTimestamp = state.timeStart ? new Date(state.timeStart).getTime() : NaN;
+        const endTimestamp = state.timeEnd ? new Date(state.timeEnd).getTime() : NaN;
+        if (Number.isNaN(startTimestamp) || Number.isNaN(endTimestamp)) {
+          setStatus("Start and end datetime are required.");
+          return;
+        }
+        const items = await runTask("time range consume 조회 중", () =>
+          kafkaApi.consumeTimeRange({
+            serverId,
+            topic,
+            partition: state.partition === "" ? undefined : partition,
+            startTimestamp,
+            endTimestamp,
+            limit: state.limit
+          })
+        , { toast: false });
+        const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
+        updateConsumeStateFor(serverId, topic, { messages: orderedItems, selectedMessage: orderedItems[0] ?? null, offsetPagination: null }, pane);
+        return;
+      }
+      await runTask("실시간 consume 시작 중", () =>
+        kafkaApi.startConsume({
           serverId,
           topic,
-          partition: state.partition === "" ? undefined : partition,
-          startTimestamp,
-          endTimestamp,
-          limit: state.limit
+          consumerId: pane,
+          fromBeginning: false,
+          partition: state.partition === "" ? undefined : Number(state.partition)
         })
-      );
-      const orderedItems = state.offsetOrder === "desc" ? [...items].reverse() : items;
-      updateConsumeStateFor(serverId, topic, { messages: orderedItems, selectedMessage: orderedItems[0] ?? null, offsetPagination: null });
-      return;
+      , { toast: false });
+      liveMessageTargetByTopicRef.current[`${serverId}:${topic}`] = pane;
+      updateConsumeStateFor(serverId, topic, { offsetPagination: null }, pane);
+      setStreamingTopicsByServer((current) => {
+        const topicKey = getStreamingTopicKey(pane, topic);
+        const topics = current[serverId] ?? [];
+        return {
+          ...current,
+          [serverId]: topics.includes(topicKey) ? topics : [...topics, topicKey]
+        };
+      });
+      setStatus("실시간 consume 중");
+    } finally {
+      setActiveConsumeTaskKeys((current) => current.filter((key) => key !== taskKey));
     }
-    await runTask("실시간 consume 시작 중", () =>
-      kafkaApi.startConsume({
-        serverId,
-        topic,
-        fromBeginning: false,
-        partition: state.partition === "" ? undefined : Number(state.partition)
-      })
-    );
-    updateConsumeStateFor(serverId, topic, { offsetPagination: null });
-    setStreamingTopicsByServer((current) => {
-      const topics = current[serverId] ?? [];
-      return {
-        ...current,
-        [serverId]: topics.includes(topic) ? topics : [...topics, topic]
-      };
-    });
-    setStatus("실시간 consume 중");
   }
 
-  async function stopConsume(serverId = selectedServerId, topic = selectedTopic) {
+  async function stopConsume(serverId = selectedServerId, topic = selectedTopic, pane?: WorkspacePaneId) {
     if (!kafkaApi) return;
-    await runTask("live consume 일시정지 중", () => kafkaApi.stopConsume({ serverId, topic }));
+    await runTask("live consume 일시정지 중", () => kafkaApi.stopConsume({ serverId, topic, consumerId: pane }), { toast: false });
     setStreamingTopicsByServer((current) => {
-      const nextTopics = (current[serverId] ?? []).filter((item) => item !== topic);
+      const nextTopics = (current[serverId] ?? []).filter((item) => {
+        const parsed = readStreamingTopicKey(item);
+        if (parsed.topic !== topic) return true;
+        return pane ? parsed.pane !== pane : false;
+      });
       return {
         ...current,
         [serverId]: nextTopics
@@ -2090,7 +2445,7 @@ function App() {
     });
   }
 
-  async function refreshCurrentView() {
+  async function refreshCurrentView(pane?: WorkspacePaneId) {
     if (view === "brokers") {
       await refreshBrokers();
       return;
@@ -2108,27 +2463,73 @@ function App() {
     }
     if (view === "info") {
       if (selectedTopic) {
+        if (pane) {
+          await runPaneTask(pane, "Refreshing topic info...", () => loadTopicDetailSilent(selectedTopic));
+          return;
+        }
         await loadTopicDetail(selectedTopic);
       }
       return;
     }
     if (view === "consume") {
       if (!selectedTopic) return;
-      if ((streamingTopicsByServer[selectedServerId] ?? []).includes(selectedTopic)) {
-        await stopConsume();
+      if (isTopicStreaming(selectedServerId, selectedTopic, "primary")) {
+        await stopConsume(selectedServerId, selectedTopic, "primary");
       }
       updateSelectedConsumeState(selectedDefaultConsumeState);
-      setStatus("Consume tab reset.");
+      setStatus("실시간 consume 중");
+      if (pane) {
+        showPaneToast(pane, "Consume reset.");
+      }
       return;
     }
     updateProduceDraftFor(selectedServerId, selectedTopic, emptyProduceDraft);
     setStatus("Produce tab reset.");
+    if (pane) {
+      showPaneToast(pane, "Produce reset.");
+    }
+  }
+
+  async function refreshSplitPaneView(pane: SplitPaneState, state: TopicConsumeState) {
+    if (pane.view === "info") {
+      if (pane.topic) {
+        await runPaneTask("split", "Refreshing topic info...", () => loadSplitTopicDetailSilent(pane.serverId, pane.topic));
+      }
+      return;
+    }
+    if (pane.view === "consume") {
+      if (!pane.topic) return;
+      if (isTopicStreaming(pane.serverId, pane.topic, "split")) {
+        await stopConsume(pane.serverId, pane.topic, "split");
+      }
+      updateConsumeStateFor(pane.serverId, pane.topic, {
+        ...getDefaultConsumeState(pane.serverId),
+        mode: state.mode,
+        offsetOrder: state.offsetOrder,
+        partition: state.partition,
+        limit: state.limit,
+        autoScroll: state.autoScroll,
+        maxMessages: state.maxMessages,
+        messagePaneHeight: state.messagePaneHeight
+      }, "split");
+      setStatus("실시간 consume 중");
+      showPaneToast("split", "Consume reset.");
+      return;
+    }
+    if (pane.view === "produce") {
+      updateProduceDraftFor(pane.serverId, pane.topic, emptyProduceDraft);
+      setStatus("Produce tab reset.");
+      showPaneToast("split", "Produce reset.");
+    }
   }
 
   const isTopicView = view === "info" || view === "consume" || view === "produce";
 
   return (
-    <div className="app-shell" style={{ gridTemplateColumns: `${sidebarWidth}px 6px minmax(0, 1fr)` }}>
+    <div
+      className={sidebarCollapsed ? "app-shell sidebar-collapsed" : "app-shell"}
+      style={{ gridTemplateColumns: sidebarCollapsed ? "minmax(0, 1fr)" : `${sidebarWidth}px 6px minmax(0, 1fr)` }}
+    >
       <aside className="sidebar">
         <div className="brand">
           <Database size={24} />
@@ -2312,12 +2713,45 @@ function App() {
                   hasAvroSchema={manualAvroTopicNames.has(topic.name)}
                   onSelect={() => {
                     if (activeWorkspacePane === "split" && visibleSplitPane) return;
-                    activateTopicView(topic.name);
-                    void loadTopicDetail(topic.name);
+                    void selectPrimaryTopic(topic.name);
                   }}
                   onOpen={() => void openTopicTab(topic.name)}
                   onToggleFavorite={() => toggleFavoriteTopic(topic.name)}
                   onContextMenu={(event) => openTopicContextMenu(event, topic.name)}
+                  draggable
+                  dragging={draggingFavoriteTopic === topic.name}
+                  dropPosition={favoriteDropTarget?.topic === topic.name ? favoriteDropTarget.position : null}
+                  onDragStart={(event) => {
+                    setDraggingFavoriteTopic(topic.name);
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", topic.name);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setFavoriteDropTarget({
+                      topic: topic.name,
+                      position: event.clientY < rect.top + rect.height / 2 ? "before" : "after"
+                    });
+                  }}
+                  onDragLeave={() => {
+                    if (favoriteDropTarget?.topic === topic.name) {
+                      setFavoriteDropTarget(null);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const draggedTopic = event.dataTransfer.getData("text/plain") || draggingFavoriteTopic;
+                    const position = favoriteDropTarget?.topic === topic.name ? favoriteDropTarget.position : "before";
+                    reorderFavoriteTopic(draggedTopic, topic.name, position);
+                    setDraggingFavoriteTopic("");
+                    setFavoriteDropTarget(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingFavoriteTopic("");
+                    setFavoriteDropTarget(null);
+                  }}
                 />
               ))}
             </div>
@@ -2332,8 +2766,7 @@ function App() {
                 hasAvroSchema={manualAvroTopicNames.has(topic.name)}
                 onSelect={() => {
                   if (activeWorkspacePane === "split" && visibleSplitPane) return;
-                  activateTopicView(topic.name);
-                  void loadTopicDetail(topic.name);
+                  void selectPrimaryTopic(topic.name);
                 }}
                 onOpen={() => void openTopicTab(topic.name)}
                 onToggleFavorite={() => toggleFavoriteTopic(topic.name)}
@@ -2364,9 +2797,19 @@ function App() {
           onMouseDown={() => setActiveWorkspacePane("primary")}
         >
         <header className="topbar">
-          <div>
-            <span className="eyebrow" title={selectedServer ? selectedServer.brokers.join(", ") : "no server"}>{selectedServer ? selectedServer.brokers.join(", ") : "no server"}</span>
-            <h1>{selectedServer?.name ?? "Kafka Server"}</h1>
+          <div className="topbar-title">
+            <button
+              className={sidebarCollapsed ? "sidebar-toggle collapsed" : "sidebar-toggle"}
+              onClick={() => setSidebarCollapsed((current) => !current)}
+              title={sidebarCollapsed ? "Open sidebar (Ctrl+B)" : "Close sidebar (Ctrl+B)"}
+              aria-label={sidebarCollapsed ? "Open sidebar" : "Close sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+            </button>
+            <div>
+              <span className="eyebrow" title={selectedServer ? selectedServer.brokers.join(", ") : "no server"}>{selectedServer ? selectedServer.brokers.join(", ") : "no server"}</span>
+              <h1>{selectedServer?.name ?? "Kafka Server"}</h1>
+            </div>
           </div>
         </header>
 
@@ -2449,13 +2892,18 @@ function App() {
 
         <section
           className={activeWorkspacePane === "primary" ? "primary-topic-pane active-pane" : "primary-topic-pane inactive-pane"}
-          onMouseDown={() => setActiveWorkspacePane("primary")}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setActiveWorkspacePane("primary");
+            }
+          }}
         >
+        {visibleSplitPane && paneToast?.pane === "primary" && <PaneToastView toast={paneToast} />}
         {isTopicView && (
           <>
         <div className="topic-tabs" aria-label="Opened topics">
           {openedTopicTabs.length === 0 ? (
-            <div className="topic-tabs-empty">토픽을 더블 클릭하면 탭으로 열립니다.</div>
+            <div className="topic-tabs-empty">토픽을 선택하세요.</div>
           ) : (
             openedTopicTabs.map((topic) => (
               <button
@@ -2463,6 +2911,10 @@ function App() {
                 className={topic === selectedTopic ? "topic-tab active" : "topic-tab"}
                 draggable
                 title={topic}
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  setActiveWorkspacePane("primary");
+                }}
                 onDragStart={(event) => {
                   const payload: DragPayload = { type: "topic", serverId: selectedServerId, topic, source: "primary" };
                   setActiveDragPayload(payload);
@@ -2475,8 +2927,7 @@ function App() {
                 }}
                 onClick={() => {
                   setActiveWorkspacePane("primary");
-                  activateTopicView(topic);
-                  void loadTopicDetail(topic);
+                  void selectPrimaryTopic(topic);
                 }}
                 onAuxClick={(event) => {
                   if (event.button === 1) {
@@ -2498,7 +2949,7 @@ function App() {
           <button className={view === "consume" ? "active" : ""} onClick={() => setView("consume")} disabled={!selectedTopic}><Play size={16} /> Consume</button>
           <button className={view === "produce" ? "active" : ""} onClick={() => setView("produce")} disabled={!selectedTopic}><Send size={16} /> Produce</button>
           <button className="ghost schema-button refresh-side" onClick={() => openManualAvroSchema(selectedServerId, selectedTopic)} disabled={!selectedTopic}><Braces size={16} /> Schema</button>
-          <button className="ghost" onClick={() => void refreshCurrentView()} disabled={!isSelectedServerConnected || loading}><RefreshCw size={16} /> 새로고침</button>
+          <button className="ghost" onClick={() => void refreshCurrentView(visibleSplitPane ? "primary" : undefined)} disabled={!isSelectedServerConnected || loading}><RefreshCw size={16} /> 새로고침</button>
         </nav>
 
           </>
@@ -2513,8 +2964,7 @@ function App() {
               selectedTopics={selectedTopicRows}
               onOpen={(topic) => void openTopicTab(topic)}
               onSelect={(topic) => {
-                activateTopicView(topic);
-                void loadTopicDetail(topic);
+                void selectPrimaryTopic(topic);
               }}
               onToggleSelected={toggleTopicRow}
               onToggleAllSelected={toggleAllTopicRows}
@@ -2527,10 +2977,11 @@ function App() {
           {view === "consume" && (
             <ConsumePanel
               messages={selectedConsumeState.messages}
+              topic={selectedTopic}
               selectedMessage={selectedConsumeState.selectedMessage}
               mode={selectedConsumeState.mode}
               offsetOrder={selectedConsumeState.offsetOrder}
-              isConsuming={(streamingTopicsByServer[selectedServerId] ?? []).includes(selectedTopic)}
+              isConsuming={isTopicStreaming(selectedServerId, selectedTopic, "primary")}
               offset={selectedConsumeState.offset}
               limit={selectedConsumeState.limit}
               partition={selectedConsumeState.partition}
@@ -2539,12 +2990,18 @@ function App() {
               filterText={selectedConsumeState.filterText}
               filterField={selectedConsumeState.filterField}
               filterMode={selectedConsumeState.filterMode}
+              inspectorCollapsed={selectedConsumeState.inspectorCollapsed}
+              isQuerying={isConsumeTaskActive("primary", selectedServerId, selectedTopic)}
               autoScroll={selectedConsumeState.autoScroll}
               maxMessages={selectedConsumeState.maxMessages}
               offsetPagination={selectedConsumeState.offsetPagination}
-              messagePaneHeight={messagePaneHeight}
+              messagePaneHeight={selectedConsumeState.messagePaneHeight ?? messagePaneHeight}
               onMode={(mode) => {
-                updateSelectedConsumeState({ mode, offsetPagination: null });
+                updateSelectedConsumeState({
+                  mode,
+                  offsetPagination: null,
+                  ...(mode === "timeRange" ? getDefaultTimeRangeValues(selectedConsumeState) : {})
+                });
                 updateConsumeDefaults({ mode });
               }}
               onOffset={(offset) => updateSelectedConsumeState({ offset, offsetPagination: null })}
@@ -2568,6 +3025,7 @@ function App() {
                 updateConsumeDefaults({ filterField });
               }}
               onFilterMode={(filterMode) => updateSelectedConsumeState({ filterMode })}
+              onInspectorCollapsed={(inspectorCollapsed) => updateSelectedConsumeState({ inspectorCollapsed })}
               onClearFilter={() => updateSelectedConsumeState({ filterText: "", filterField: "all", filterMode: "hide" })}
               onApplyFilter={(filterText) => updateSelectedConsumeState({ filterText, filterField: "all" })}
               onAutoScroll={(autoScroll) => {
@@ -2578,15 +3036,15 @@ function App() {
                 updateSelectedConsumeState({ maxMessages });
                 updateConsumeDefaults({ maxMessages });
               }}
-              onPagePrev={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "prev")}
-              onPageNext={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "next")}
+              onPagePrev={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "prev", "primary")}
+              onPageNext={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "next", "primary")}
               onSelectMessage={(selectedMessage) => updateSelectedConsumeState({ selectedMessage })}
-              onMessagePaneHeight={setMessagePaneHeight}
+              onMessagePaneHeight={(messagePaneHeight) => updateSelectedConsumeState({ messagePaneHeight })}
               onSendToProduce={(message) => sendMessageToProduce(selectedServerId, selectedTopic, message, "primary")}
-              onExport={(format, messages) => void exportConsumedMessages(format, messages)}
-              onExportAll={(format) => void exportOffsetConditionMessages(format, selectedServerId, selectedTopic, selectedConsumeState)}
+              onExport={(format, messages) => void exportConsumedMessages(format, messages, selectedTopic, visibleSplitPane ? "primary" : undefined)}
+              onExportAll={(format) => void exportOffsetConditionMessages(format, selectedServerId, selectedTopic, selectedConsumeState, visibleSplitPane ? "primary" : undefined)}
               onStart={() => void startConsume()}
-              onStop={() => void stopConsume()}
+              onStop={() => void stopConsume(selectedServerId, selectedTopic, "primary")}
             />
           )}
           {view === "produce" && (
@@ -2633,8 +3091,9 @@ function App() {
             groupDetailsById={groupLagByServer[visibleSplitPane.serverId] ?? {}}
             consumeState={splitConsumeState}
             isConnected={connectedServerIds.includes(visibleSplitPane.serverId)}
-            isConsuming={(streamingTopicsByServer[visibleSplitPane.serverId] ?? []).includes(visibleSplitPane.topic)}
-            messagePaneHeight={messagePaneHeight}
+            isConsuming={isTopicStreaming(visibleSplitPane.serverId, visibleSplitPane.topic, "split")}
+            isQuerying={isConsumeTaskActive("split", visibleSplitPane.serverId, visibleSplitPane.topic)}
+            messagePaneHeight={splitConsumeState.messagePaneHeight ?? messagePaneHeight}
             onClose={() => void closeSplitPane()}
             active={activeWorkspacePane === "split"}
             onActivate={() => setActiveWorkspacePane("split")}
@@ -2650,6 +3109,12 @@ function App() {
             }}
             onView={(nextView) => {
               setSplitPane((current) => current ? { ...current, view: nextView } : current);
+              if (isTopicWorkView(nextView) && visibleSplitPane.topic) {
+                setTopicViewFor(visibleSplitPane.serverId, visibleSplitPane.topic, nextView);
+                if (nextView === "info" && !visibleSplitPane.detail) {
+                  void loadSplitTopicDetailSilent(visibleSplitPane.serverId, visibleSplitPane.topic);
+                }
+              }
               if (nextView === "brokers" && !brokersByServer[visibleSplitPane.serverId]) void refreshBrokersForServer(visibleSplitPane.serverId);
               if (nextView === "topics" && !topicsByServer[visibleSplitPane.serverId]) void refreshTopicsForServer(visibleSplitPane.serverId);
               if (nextView === "consumers" && !groupsByServer[visibleSplitPane.serverId]) void refreshGroupsForServer(visibleSplitPane.serverId);
@@ -2669,7 +3134,7 @@ function App() {
               setSplitDropSide(null);
             }}
             onRefresh={() => {
-              if (visibleSplitPane.view === "info" && visibleSplitPane.topic) void loadSplitTopicDetail(visibleSplitPane.serverId, visibleSplitPane.topic);
+              void refreshSplitPaneView(visibleSplitPane, splitConsumeState);
             }}
             onOpenSchema={() => openManualAvroSchema(visibleSplitPane.serverId, visibleSplitPane.topic)}
             manualAvroSchemas={manualAvroSchemasByServer[visibleSplitPane.serverId] ?? {}}
@@ -2678,24 +3143,25 @@ function App() {
             onRefreshGroupDetail={() => {
               if (splitSelectedGroupId) void loadConsumerGroupLagFor(visibleSplitPane.serverId, splitSelectedGroupId);
             }}
-            onUpdateConsume={(patch) => updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, patch)}
+            onUpdateConsume={(patch) => updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, patch, "split")}
             onOffsetOrder={(offsetOrder) => {
-              updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, { offsetOrder, offsetPagination: null });
+              updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, { offsetOrder, offsetPagination: null }, "split");
             }}
-            onOffsetPage={(direction) => void moveOffsetPageFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState, direction)}
-            onStartConsume={() => void startConsumeFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState)}
-            onStopConsume={() => void stopConsume(visibleSplitPane.serverId, visibleSplitPane.topic)}
+            onOffsetPage={(direction) => void moveOffsetPageFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState, direction, "split")}
+            onStartConsume={() => void startConsumeFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState, "split")}
+            onStopConsume={() => void stopConsume(visibleSplitPane.serverId, visibleSplitPane.topic, "split")}
             onSendToProduce={(message) => sendMessageToProduce(visibleSplitPane.serverId, visibleSplitPane.topic, message, "split")}
-            onExport={(format, messages) => void exportConsumedMessages(format, messages, visibleSplitPane.topic)}
-            onExportAll={(format) => void exportOffsetConditionMessages(format, visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState)}
-            onMessagePaneHeight={setMessagePaneHeight}
+            onExport={(format, messages) => void exportConsumedMessages(format, messages, visibleSplitPane.topic, "split")}
+            onExportAll={(format) => void exportOffsetConditionMessages(format, visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState, "split")}
+            onMessagePaneHeight={(messagePaneHeight) => updateConsumeStateFor(visibleSplitPane.serverId, visibleSplitPane.topic, { messagePaneHeight }, "split")}
             produceKey={splitProduceDraft.key}
             produceHeaders={splitProduceDraft.headers}
             produceValue={splitProduceDraft.value}
             onProduceKey={(key) => updateProduceDraftFor(visibleSplitPane.serverId, visibleSplitPane.topic, { key })}
             onProduceHeaders={(headers) => updateProduceDraftFor(visibleSplitPane.serverId, visibleSplitPane.topic, { headers })}
             onProduceValue={(value) => updateProduceDraftFor(visibleSplitPane.serverId, visibleSplitPane.topic, { value })}
-            onProduce={() => void produceFor(visibleSplitPane.serverId, visibleSplitPane.topic)}
+            onProduce={() => void produceFor(visibleSplitPane.serverId, visibleSplitPane.topic, "split")}
+            paneToast={paneToast?.pane === "split" ? paneToast : null}
           />
         )}
       </main>
@@ -3216,6 +3682,16 @@ function App() {
   );
 }
 
+function PaneToastView({ toast }: { toast: NonNullable<PaneToastState> }) {
+  const Icon = toast.kind === "loading" ? RefreshCw : toast.kind === "success" ? CheckCircle2 : XCircle;
+  return (
+    <div className={`pane-local-toast ${toast.kind}`}>
+      <Icon size={14} className={toast.kind === "loading" ? "spin" : ""} />
+      <span>{toast.message}</span>
+    </div>
+  );
+}
+
 function SplitWorkspacePane(props: {
   pane: SplitPaneState;
   server: ServerProfile;
@@ -3228,6 +3704,7 @@ function SplitWorkspacePane(props: {
   consumeState: TopicConsumeState;
   isConnected: boolean;
   isConsuming: boolean;
+  isQuerying: boolean;
   messagePaneHeight: number;
   active: boolean;
   onActivate: () => void;
@@ -3261,13 +3738,18 @@ function SplitWorkspacePane(props: {
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
   onProduce: () => void;
+  paneToast: PaneToastState;
 }) {
   const topicViews: View[] = ["info", "consume", "produce"];
   const isTopicView = props.pane.view === "info" || props.pane.view === "consume" || props.pane.view === "produce";
   const topicDetail = props.pane.detail;
 
   return (
-    <section className={props.active ? "workspace-pane split-pane active-pane" : "workspace-pane split-pane inactive-pane"} onMouseDown={props.onActivate}>
+    <section
+      className={props.active ? "workspace-pane split-pane active-pane" : "workspace-pane split-pane inactive-pane"}
+      onMouseDown={props.onActivate}
+    >
+      {props.paneToast && <PaneToastView toast={props.paneToast} />}
       {isTopicView && (
         <>
           <div className="split-topic-tabs-row">
@@ -3280,6 +3762,10 @@ function SplitWorkspacePane(props: {
                 className={topic === props.pane.topic ? "topic-tab active" : "topic-tab"}
                 draggable
                 title={topic}
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  props.onActivate();
+                }}
                 onDragStart={(event) => props.onTopicDragStart(event, topic)}
                 onDragEnd={props.onTopicDragEnd}
                 onClick={() => props.onTopic(topic)}
@@ -3309,7 +3795,7 @@ function SplitWorkspacePane(props: {
             <button className="ghost schema-button refresh-side" onClick={props.onOpenSchema} disabled={!props.pane.topic}>
               <Braces size={15} /> Schema
             </button>
-            <button className="ghost" onClick={props.onRefresh} disabled={!props.pane.topic || props.pane.view === "produce"}>
+            <button className="ghost" onClick={props.onRefresh} disabled={!props.pane.topic}>
               <RefreshCw size={15} /> 새로고침
             </button>
           </div>
@@ -3321,6 +3807,7 @@ function SplitWorkspacePane(props: {
         {props.pane.view === "consume" && (
           <ConsumePanel
             messages={props.consumeState.messages}
+            topic={props.pane.topic}
             selectedMessage={props.consumeState.selectedMessage}
             mode={props.consumeState.mode}
             offsetOrder={props.consumeState.offsetOrder}
@@ -3333,11 +3820,17 @@ function SplitWorkspacePane(props: {
             filterText={props.consumeState.filterText}
             filterField={props.consumeState.filterField}
             filterMode={props.consumeState.filterMode}
+            inspectorCollapsed={props.consumeState.inspectorCollapsed}
+            isQuerying={props.isQuerying}
             autoScroll={props.consumeState.autoScroll}
             maxMessages={props.consumeState.maxMessages}
             offsetPagination={props.consumeState.offsetPagination}
             messagePaneHeight={props.messagePaneHeight}
-            onMode={(mode) => props.onUpdateConsume({ mode, offsetPagination: null })}
+            onMode={(mode) => props.onUpdateConsume({
+              mode,
+              offsetPagination: null,
+              ...(mode === "timeRange" ? getDefaultTimeRangeValues(props.consumeState) : {})
+            })}
             onOffset={((offset) => props.onUpdateConsume({ offset, offsetPagination: null }))}
             onOffsetOrder={props.onOffsetOrder}
             onLimit={(limit) => props.onUpdateConsume({ limit, offsetPagination: null })}
@@ -3347,6 +3840,7 @@ function SplitWorkspacePane(props: {
             onFilterText={(filterText) => props.onUpdateConsume({ filterText })}
             onFilterField={(filterField) => props.onUpdateConsume({ filterField })}
             onFilterMode={(filterMode) => props.onUpdateConsume({ filterMode })}
+            onInspectorCollapsed={(inspectorCollapsed) => props.onUpdateConsume({ inspectorCollapsed })}
             onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all", filterMode: "hide" })}
             onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
             onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
@@ -3632,13 +4126,33 @@ function TopicListItem(props: {
   onOpen: () => void;
   onToggleFavorite: () => void;
   onContextMenu: (event: React.MouseEvent) => void;
+  draggable?: boolean;
+  dragging?: boolean;
+  dropPosition?: "before" | "after" | null;
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragOver?: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragLeave?: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onDrop?: (event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: (event: React.DragEvent<HTMLButtonElement>) => void;
 }) {
+  const classNames = [
+    props.active ? "topic active" : "topic",
+    props.dragging ? "dragging" : "",
+    props.dropPosition ? `drop-${props.dropPosition}` : ""
+  ].filter(Boolean).join(" ");
+
   return (
     <button
-      className={props.active ? "topic active" : "topic"}
+      className={classNames}
+      draggable={props.draggable}
       onClick={props.onSelect}
       onDoubleClick={props.onOpen}
       onContextMenu={props.onContextMenu}
+      onDragStart={props.onDragStart}
+      onDragOver={props.onDragOver}
+      onDragLeave={props.onDragLeave}
+      onDrop={props.onDrop}
+      onDragEnd={props.onDragEnd}
       title={`${props.topic.name} (${props.topic.partitions} partitions / RF ${props.topic.replicationFactor})`}
     >
       <span className={props.favorite ? "topic-favorite favorite" : "topic-favorite"} onClick={(event) => { event.stopPropagation(); props.onToggleFavorite(); }} title={props.favorite ? "Remove favorite" : "Add favorite"}>
@@ -3659,6 +4173,7 @@ function TopicListItem(props: {
 
 function ConsumePanel(props: {
   messages: ConsumedMessage[];
+  topic: string;
   selectedMessage: ConsumedMessage | null;
   mode: ConsumeMode;
   offsetOrder: OffsetOrder;
@@ -3671,6 +4186,8 @@ function ConsumePanel(props: {
   filterText: string;
   filterField: ConsumeFilterField;
   filterMode: ConsumeFilterMode;
+  inspectorCollapsed: boolean;
+  isQuerying: boolean;
   autoScroll: boolean;
   maxMessages: number;
   offsetPagination: TopicConsumeState["offsetPagination"];
@@ -3685,6 +4202,7 @@ function ConsumePanel(props: {
   onFilterText: (value: string) => void;
   onFilterField: (value: ConsumeFilterField) => void;
   onFilterMode: (value: ConsumeFilterMode) => void;
+  onInspectorCollapsed: (value: boolean) => void;
   onClearFilter: () => void;
   onApplyFilter: (value: string) => void;
   onAutoScroll: (value: boolean) => void;
@@ -3703,10 +4221,17 @@ function ConsumePanel(props: {
   const [inspectorSearch, setInspectorSearch] = useState("");
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [filterDraft, setFilterDraft] = useState(props.filterText);
+  const [isGridReady, setIsGridReady] = useState(false);
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
-  const selectedPayload = props.selectedMessage ? formatMessagePayload(props.selectedMessage) : null;
-  const selectedJson = selectedPayload ? JSON.stringify(selectedPayload, null, 2) : "";
+  const selectedPayload = useMemo(
+    () => (props.selectedMessage ? formatMessagePayload(props.selectedMessage) : null),
+    [props.selectedMessage]
+  );
+  const selectedJson = useMemo(
+    () => (selectedPayload ? JSON.stringify(selectedPayload, null, 2) : ""),
+    [selectedPayload]
+  );
   const filteredMessages = useMemo(
     () => filterMessages(props.messages, props.filterText, props.filterField),
     [props.filterField, props.filterText, props.messages]
@@ -3724,6 +4249,12 @@ function ConsumePanel(props: {
   useEffect(() => {
     setFilterDraft(props.filterText);
   }, [props.filterText]);
+
+  useEffect(() => {
+    setIsGridReady(false);
+    const frame = window.requestAnimationFrame(() => setIsGridReady(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     if (filterDraft === props.filterText) return;
@@ -3825,10 +4356,16 @@ function ConsumePanel(props: {
         );
       }
     }
-  ], [filteredMessages.length, props.mode, props.offsetOrder]);
+  ], []);
 
   return (
-    <section className="panel consume-workspace">
+    <section className={props.isQuerying ? "panel consume-workspace querying" : "panel consume-workspace"}>
+      {props.isQuerying && (
+        <div className="pane-local-toast">
+          <RefreshCw size={14} className="spin" />
+          <span>{props.topic || "Topic"} 조회 중</span>
+        </div>
+      )}
       <div className="toolbar">
         <div className="segmented">
           <button className={props.mode === "offset" ? "active" : ""} onClick={() => props.onMode("offset")} disabled={props.isConsuming}>Offset</button>
@@ -3948,7 +4485,7 @@ function ConsumePanel(props: {
           <span>
             Page {pagination ? pagination.pageIndex + 1 : 1}
             {" "}of {Math.max(1, Math.ceil(props.limit / OFFSET_PAGE_SIZE))}
-            {" "}· showing up to {OFFSET_PAGE_SIZE.toLocaleString()} messages
+            {" "}쨌 showing up to {OFFSET_PAGE_SIZE.toLocaleString()} messages
           </span>
           <div>
             <Button variant="ghost" size="sm" onClick={props.onPagePrev} disabled={!pagination || pagination.prevOffsets.length === 0}>Prev</Button>
@@ -3987,15 +4524,6 @@ function ConsumePanel(props: {
               <span className="filter-help-row"><b>Phrase</b><code>value:"process status"</code></span>
               <span className="filter-help-note">Fields: key, value, headers, partition, offset, timestamp, topic, decoded</span>
             </div>
-            <span>{getMessageFilterHelpText()}</span>
-            <span><b>JSON path</b>: value.proc_id == "PR0116", decoded.speed &gt;= 80</span>
-            <span><b>비교</b>: ==, !=, &gt;, &gt;=, &lt;, &lt;=, ~=</span>
-            <span><b>존재</b>: headers.traceId exists, value.error !exists</span>
-            <span><b>필드</b>: key, value, headers, partition, offset, timestamp, topic, decoded</span>
-            <span><b>제외</b>: !error 또는 -error</span>
-            <span><b>정규식</b>: /timeout|failed/i</span>
-            <span><b>빈 값</b>: empty:headers, empty:key, empty:value</span>
-            <span><b>문장</b>: value:"process status"</span>
           </div>
         </div>
         <Button
@@ -4010,39 +4538,60 @@ function ConsumePanel(props: {
         </Button>
         <Button variant="ghost" size="sm" onClick={clearMessageFilter}>Clear</Button>
       </div>
-      <div className="consume-grid" ref={consumeGridRef} style={{ gridTemplateRows: `${props.messagePaneHeight}px 8px minmax(0, 1fr)` }}>
+      <div
+        className={props.inspectorCollapsed ? "consume-grid inspector-collapsed" : "consume-grid"}
+        ref={consumeGridRef}
+        style={{ gridTemplateRows: props.inspectorCollapsed ? "minmax(0, 1fr) 34px" : `${props.messagePaneHeight}px 8px minmax(0, 1fr)` }}
+      >
         <div ref={messageTableRef} className="consume-grid-table-wrap">
-          <DataGrid
-            data={gridMessages}
-            columns={columns}
-            className="tanstack-message-table"
-            emptyText="No messages"
-            getRowKey={(message) => `${message.partition}-${message.offset}-${message.timestamp}`}
-            getRowClassName={(message) => {
-              const classes = [];
-              if (props.selectedMessage === message) classes.push("selected");
-              if (props.filterMode === "highlight" && hasActiveMessageFilter) {
-                const isMatched = highlightedMessageKeys.has(`${message.partition}-${message.offset}-${message.timestamp}`);
-                classes.push(isMatched ? "filter-highlight" : "filter-muted");
-              }
-              return classes.join(" ");
-            }}
-            onRowClick={props.onSelectMessage}
-          />
+          {isGridReady ? (
+            <DataGrid
+              data={gridMessages}
+              columns={columns}
+              className="tanstack-message-table"
+              emptyText="No messages"
+              getRowKey={(message) => `${message.partition}-${message.offset}-${message.timestamp}`}
+              getRowClassName={(message) => {
+                const classes = [];
+                if (props.selectedMessage === message) classes.push("selected");
+                if (props.filterMode === "highlight" && hasActiveMessageFilter) {
+                  const isMatched = highlightedMessageKeys.has(`${message.partition}-${message.offset}-${message.timestamp}`);
+                  classes.push(isMatched ? "filter-highlight" : "filter-muted");
+                }
+                return classes.join(" ");
+              }}
+              onRowClick={props.onSelectMessage}
+            />
+          ) : (
+            <div className="message-table tanstack-message-table table-warmup">
+              <div className="empty-list">Loading messages...</div>
+            </div>
+          )}
         </div>
-        <div className="consume-split-resizer" onPointerDown={startInspectorResize} title="Resize message grid and JSON viewer" />
-        <JsonInspector
-          mode={inspectorMode}
-          search={inspectorSearch}
-          payload={selectedPayload}
-          rawText={selectedJson}
-          valueText={props.selectedMessage?.value ?? ""}
-          selectedMessage={props.selectedMessage}
-          onMode={setInspectorMode}
-          onSearch={setInspectorSearch}
-          onApplyFilter={props.onApplyFilter}
-          onSendToProduce={props.onSendToProduce}
-        />
+        {props.inspectorCollapsed ? (
+          <button className="json-inspector-collapsed" onClick={() => props.onInspectorCollapsed(false)}>
+            <ChevronUp size={15} />
+            JSON Viewer
+            <span>{props.selectedMessage ? `${props.selectedMessage.topic}@${props.selectedMessage.offset}` : "No message selected"}</span>
+          </button>
+        ) : (
+          <>
+            <div className="consume-split-resizer" onPointerDown={startInspectorResize} title="Resize message grid and JSON viewer" />
+            <JsonInspector
+              mode={inspectorMode}
+              search={inspectorSearch}
+              payload={selectedPayload}
+              rawText={selectedJson}
+              valueText={props.selectedMessage?.value ?? ""}
+              selectedMessage={props.selectedMessage}
+              onMode={setInspectorMode}
+              onSearch={setInspectorSearch}
+              onApplyFilter={props.onApplyFilter}
+              onSendToProduce={props.onSendToProduce}
+              onCollapse={() => props.onInspectorCollapsed(true)}
+            />
+          </>
+        )}
       </div>
     </section>
   );
@@ -4059,6 +4608,7 @@ function JsonInspector(props: {
   onSearch: (value: string) => void;
   onApplyFilter: (value: string) => void;
   onSendToProduce: (message: ConsumedMessage) => void;
+  onCollapse: () => void;
 }) {
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
@@ -4075,6 +4625,7 @@ function JsonInspector(props: {
         <button className="ghost compact" onClick={() => void copyText(props.rawText)} disabled={!props.rawText}><Copy size={14} /> JSON</button>
         <button className="ghost compact" onClick={() => void copyText(props.valueText)} disabled={!props.valueText}><Copy size={14} /> Value</button>
         <button className="ghost compact" onClick={() => props.selectedMessage && props.onSendToProduce(props.selectedMessage)} disabled={!props.selectedMessage}><Send size={14} /> Produce</button>
+        <button className="ghost compact icon-only" onClick={props.onCollapse} title="Collapse JSON viewer" aria-label="Collapse JSON viewer"><ChevronDown size={15} /></button>
       </div>
       {props.payload ? (
         props.mode === "raw" ? (

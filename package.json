@@ -1,6 +1,6 @@
 {
   "name": "kafka-tool",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A lightweight Electron Kafka desktop tool",
   "author": "Kafka Tool",
   "private": true,
@@ -56,10 +56,12 @@
     ],
     "files": [
       "dist/**/*",
+      "build/icon.ico",
       "package.json"
     ],
     "win": {
       "target": "nsis",
+      "icon": "build/icon.ico",
       "signAndEditExecutable": false
     }
   }

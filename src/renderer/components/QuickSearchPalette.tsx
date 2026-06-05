@@ -23,12 +23,18 @@ function kindLabel(kind: QuickSearchResult["kind"]) {
 
 export function QuickSearchPalette(props: QuickSearchPaletteProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const selectedResultRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (props.open) {
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [props.open]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    selectedResultRef.current?.scrollIntoView({ block: "nearest" });
+  }, [props.open, props.selectedIndex, props.results.length]);
 
   if (!props.open) return null;
 
@@ -105,6 +111,7 @@ export function QuickSearchPalette(props: QuickSearchPaletteProps) {
             return (
               <button
                 key={result.id}
+                ref={index === props.selectedIndex ? selectedResultRef : undefined}
                 className={`${index === props.selectedIndex ? "active" : ""} ${disconnected ? "disconnected" : ""}`}
                 onMouseEnter={() => props.onIndex(index)}
                 onClick={() => props.onExecute(result)}

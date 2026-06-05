@@ -35,8 +35,10 @@ export type TopicConsumeState = {
   filterText: string;
   filterField: ConsumeFilterField;
   filterMode: ConsumeFilterMode;
+  inspectorCollapsed: boolean;
   autoScroll: boolean;
   maxMessages: number;
+  messagePaneHeight: number;
   offsetPagination: {
     totalLimit: number;
     pageSize: number;
@@ -79,8 +81,10 @@ export const emptyConsumeState: TopicConsumeState = {
   filterText: "",
   filterField: "all",
   filterMode: "hide",
+  inspectorCollapsed: false,
   autoScroll: true,
   maxMessages: 1000,
+  messagePaneHeight: 230,
   offsetPagination: null
 };
 

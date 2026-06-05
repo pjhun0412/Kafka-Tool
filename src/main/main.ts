@@ -37,6 +37,11 @@ let mainWindow: BrowserWindow | null = null;
 const activeConsumers = new Map<string, Consumer>();
 let windowBoundsSaveTimer: NodeJS.Timeout | null = null;
 let autoUpdaterConfigured = false;
+const appUserModelId = "local.kafka-tool";
+
+function appIconPath() {
+  return path.join(app.getAppPath(), "build/icon.ico");
+}
 
 function profilesPath() {
   return path.join(app.getPath("userData"), "servers.json");
@@ -329,8 +334,8 @@ async function withAdmin<T>(serverId: string, action: (admin: Admin) => Promise<
   }
 }
 
-function consumeKey(serverId: string, topic: string) {
-  return `${serverId}:${topic}`;
+function consumeKey(serverId: string, topic: string, consumerId = "default") {
+  return `${serverId}:${topic}:${consumerId}`;
 }
 
 function calculateLag(currentOffset: string, endOffset: string) {
@@ -503,10 +508,18 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
 
 async function stopActiveConsumer(request?: StopConsumeRequest) {
   if (request?.serverId && request.topic) {
-    const key = consumeKey(request.serverId, request.topic);
-    const consumer = activeConsumers.get(key);
-    activeConsumers.delete(key);
-    await consumer?.disconnect().catch(() => undefined);
+    const consumerId = request.consumerId;
+    const targets = consumerId
+      ? [consumeKey(request.serverId, request.topic, consumerId)]
+      : [...activeConsumers.keys()].filter((key) => key.startsWith(`${request.serverId}:${request.topic}:`));
+    const consumers = targets
+      .map((key) => {
+        const consumer = activeConsumers.get(key);
+        activeConsumers.delete(key);
+        return consumer;
+      })
+      .filter((consumer): consumer is Consumer => Boolean(consumer));
+    await Promise.all(consumers.map((consumer) => consumer.disconnect().catch(() => undefined)));
     return;
   }
 
@@ -639,6 +652,7 @@ async function createWindow() {
     minWidth: 1100,
     minHeight: 720,
     title: "Kafka Tool",
+    icon: appIconPath(),
     autoHideMenuBar: false,
     webPreferences: {
       preload: preloadPath,
@@ -784,6 +798,12 @@ ipcMain.handle("preferences:save", async (_event, preferences: AppPreferences) =
   const mergedPreferences = mergePreferences(await readPreferences(), preferences);
   await writePreferences(mergedPreferences);
   return mergedPreferences;
+});
+
+ipcMain.handle("kafka:health", async (_event, serverId: string): Promise<void> => {
+  await withAdmin(serverId, async (admin) => {
+    await admin.describeCluster();
+  });
 });
 
 ipcMain.handle("kafka:topics", async (_event, serverId: string): Promise<TopicSummary[]> => {
@@ -1301,14 +1321,15 @@ ipcMain.handle("kafka:consume-stop", async (_event, request?: StopConsumeRequest
 });
 
 ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
-  await stopActiveConsumer({ serverId: request.serverId, topic: request.topic });
+  const consumerId = request.consumerId ?? "default";
+  await stopActiveConsumer({ serverId: request.serverId, topic: request.topic, consumerId });
   const profile = await getProfile(request.serverId);
   const preferences = await readPreferences();
   const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
-  const groupId = `kafka-tool-${Date.now()}`;
+  const groupId = `kafka-tool-${consumerId}-${Date.now()}`;
   const consumer = kafka.consumer({ groupId });
-  activeConsumers.set(consumeKey(request.serverId, request.topic), consumer);
+  activeConsumers.set(consumeKey(request.serverId, request.topic, consumerId), consumer);
 
   await consumer.connect();
   await consumer.subscribe({ topic: request.topic, fromBeginning: request.fromBeginning });
@@ -1318,14 +1339,21 @@ ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeReques
       if (request.partition !== undefined && partition !== request.partition) {
         return;
       }
-      const payload = await toConsumedMessage(profile, topic, partition, message, manualSchema);
+      const payload = {
+        ...await toConsumedMessage(profile, topic, partition, message, manualSchema),
+        consumerId
+      };
       mainWindow?.webContents.send("kafka:consume-message", payload);
     }
   }).catch((error) => {
-    activeConsumers.delete(consumeKey(request.serverId, request.topic));
+    activeConsumers.delete(consumeKey(request.serverId, request.topic, consumerId));
     sendConsumeError(error);
   });
 });
+
+if (process.platform === "win32") {
+  app.setAppUserModelId(appUserModelId);
+}
 
 app.whenReady().then(createWindow);
 

@@ -12,6 +12,7 @@ const api: KafkaApi = {
   installUpdate: () => ipcRenderer.invoke("updates:install"),
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
+  checkHealth: (serverId: string) => ipcRenderer.invoke("kafka:health", serverId),
   listTopics: (serverId: string) => ipcRenderer.invoke("kafka:topics", serverId),
   listTopicMessageCounts: (serverId: string, topics: string[]) => ipcRenderer.invoke("kafka:topic-message-counts", serverId, topics),
   listBrokers: (serverId: string) => ipcRenderer.invoke("kafka:brokers", serverId),
