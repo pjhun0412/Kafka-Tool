@@ -1,62 +1,153 @@
 # Kafka Tool
 
-Kafka Tool is a lightweight desktop Kafka explorer built with Electron, React, TypeScript, KafkaJS, and Tailwind CSS.
+Kafka Tool is a lightweight desktop Kafka explorer built with Electron, React, TypeScript, KafkaJS, and KafkaJS-compatible admin/consumer APIs.
 
-It is designed for internal developer use: register Kafka clusters, browse topics, consume and produce messages, inspect JSON payloads, and monitor consumer groups from a single executable app.
+It is designed for internal developer and operations use: register Kafka clusters, browse topics, consume and produce messages, inspect payloads, manage schemas, and export operational data from a single executable app.
 
-## Features
+## Key Features
 
 - Manage multiple Kafka server profiles
-- Open multiple cluster tabs
-- Search, reorder, connect, disconnect, edit, and delete servers
-- Browse topic lists with per-server favorites
-- Filter and sort topic lists by name, message count, partitions, and favorites
-- View topic message counts in the sidebar and topic overview
+- Connect, disconnect, edit, delete, search, and reorder servers
+- Open multiple cluster tabs and close tabs with the middle mouse button
+- Browse brokers, topics, and consumer groups per cluster
+- Browse topic metadata such as partitions, replication factor, ISR, low/high offsets, and message counts
+- Search, sort, filter, and favorite topics per server
+- Keep favorite topics pinned above the normal topic list
 - Open topic tabs by double-clicking topics
 - Split topic tabs into left/right work areas for side-by-side inspection
-- View topic partition, replica, ISR, and offset information
-- Consume messages by offset, time range, or live streaming
-- Use `Newest` or `Oldest` offset lookup order
-- Automatically page large offset queries over 10,000 messages
-- Keep large offset paging and full export pinned to the same snapshot offset
-- Pause live streaming and control auto-scroll
-- Limit retained live messages to protect renderer memory
-- Filter consumed messages by key, value, offset, partition, or timestamp
-- Export consumed messages as JSON, CSV, or custom LOG format
-- Export current page or full offset range for large offset queries
-- Inspect selected messages with Raw and Tree JSON viewers
-- Search and highlight JSON contents
-- Copy full message JSON or only the Kafka value
-- Send consumed payloads to the Produce tab
-- Produce messages with key, headers, and value
-- Use sortable TanStack-based grids for messages, brokers, topics, and consumers
-- View consumer groups and group lag
-- Persist user settings locally
+- Persist user settings, server profiles, favorite topics, panel sizes, and window size locally
 - Import/export settings from the native File menu
-- Customize editor font family, font size, and LOG export template
-- GitHub Releases based auto-update support
-- Optional SSL/TLS and SASL/OAUTHBEARER server authentication
+- Check and install updates from GitHub Releases in packaged builds
+
+## Consume
+
+Messages can be consumed in three modes:
+
+- `Offset`: consume from a specific offset
+- `Time`: consume by timestamp range
+- `Live`: stream new messages in real time
+
+Consume features:
+
+- `Newest` and `Oldest` lookup direction
+- Pause/stop live streaming
+- Auto-scroll toggle for live mode
+- Max retained live messages to protect renderer memory
+- Message grid with sorting and column filters
+- Global text filter across key, value, headers, partition, offset, timestamp, topic, and decoded payload
+- Advanced filter syntax such as:
+
+```text
+key:PR1001
+value:OK
+headers.traceId exists
+!error
+/timeout|failed/i
+value.proc_id == "PR0116"
+decoded.speed >= 50
+```
+
+Filter modes:
+
+- `Hide`: rows that do not match are hidden
+- `Highlight`: all rows stay visible, matching rows are highlighted and non-matching rows are dimmed
 
 ## Large Offset Queries
 
-Offset consume supports large limits for operational debugging.
+Large operational lookups are supported without forcing all messages into renderer memory.
 
 When the offset `Limit` is `10,000` or lower, the app reads and displays the requested range directly.
 
 When the offset `Limit` is greater than `10,000`, the app switches to paged viewing:
 
 - The screen loads up to `5,000` messages per page.
-- `Prev` and `Next` move through the offset range without keeping all messages in renderer memory.
+- `Prev` and `Next` move through the captured offset range.
 - `Newest` starts from the high offset captured when `Consume` is clicked.
 - `Oldest` starts from the entered offset.
-- The captured high offset is reused for paging and full export, so newly arriving Kafka messages do not change the current query session.
+- The captured offset range is reused for paging and full export, so newly arriving Kafka messages do not change the current query session.
 
-The download menu has two groups in large offset mode:
+The download menu supports:
 
-- `Current page`: exports only the currently displayed page.
-- `Full offset range`: exports the full requested offset range directly from the Electron main process.
+- Current page export
+- Full offset range export
 
 This keeps the UI responsive while still allowing large exports such as 60,000 messages.
+
+## Message Viewer
+
+Selected messages are shown in the lower viewer.
+
+- Raw JSON view
+- Tree JSON view
+- JSON search and highlight
+- Copy full message JSON
+- Copy only Kafka value
+- Send selected payload to the Produce tab
+- Timestamp hover conversion for epoch-like values
+- Avro decoded payload display when schema information is available
+
+## Produce
+
+Produce supports:
+
+- Topic key
+- Message value
+- Headers
+- Payload copied from consumed messages
+- Produce templates from selected consumed data
+- Editing copied headers and values before sending
+
+## Avro And Schema Registry
+
+Kafka Tool supports optional Avro decoding.
+
+Schema Registry mode:
+
+- Register a Schema Registry URL on a server profile.
+- Confluent wire-format Avro messages can be decoded automatically when schema IDs are available.
+- Schema cache is scoped by server and schema ID to avoid multi-cluster collisions.
+- Concurrent requests for the same schema ID reuse the same in-flight request.
+
+Manual schema mode:
+
+- Register an Avro schema for a specific topic.
+- Open the schema dialog from the topic toolbar or topic context menu.
+- Paste schema JSON directly.
+- Upload a schema file.
+- Drag and drop a schema file into the schema editor.
+- View registered topic schemas from Preferences.
+
+If a message cannot be decoded, the grid shows an Avro error badge and preserves the original payload preview.
+
+## Brokers, Topics, Consumers
+
+Cluster-level pages are available from the main navigation:
+
+- `Brokers`: broker count, controller, partitions, ISR, OOS replica information, and broker table
+- `Topics`: topic table with partitions, replication factor, message count, and favorite state
+- `Consumers`: consumer group list, group state, members, assigned topics, coordinator, and group detail view
+
+All major tables use sortable/filterable TanStack-based grids.
+
+## Global Search
+
+Global search is available from keyboard shortcuts:
+
+```text
+Ctrl+P
+Ctrl+K
+```
+
+Search can find:
+
+- Servers
+- Topics
+- Open topic tabs
+- Avro schemas
+- Consumer groups
+- Quick actions
+
+Disconnected server results are marked before navigation. If needed, the app attempts to connect before opening a server-scoped result.
 
 ## Message Export
 
@@ -104,7 +195,8 @@ For SASL/OAUTHBEARER:
    - `Client secret`
    - Optional `Scope`
    - Optional `Audience`
-4. Save and connect.
+4. Enable `Use SSL/TLS` only when your Kafka endpoint requires TLS.
+5. Save and connect.
 
 For Keycloak client credentials, the token endpoint usually looks like this:
 
@@ -118,7 +210,7 @@ The `Client ID` is the Keycloak client name, for example:
 nzero-kafka-client
 ```
 
-Security note: server profiles are stored on the user's PC. Client secrets are currently saved in the local settings file, so treat exported settings files carefully.
+Security note: server profiles are stored on the user's PC. Client secrets are currently saved in the local settings file, so exported settings files should be handled carefully.
 
 ## Local Data
 
@@ -141,6 +233,7 @@ Stored information includes:
 
 - Server profiles
 - Favorite topics by server
+- Avro schemas by server/topic
 - Consume defaults
 - Font and LOG export template preferences
 - Window size and position
@@ -274,6 +367,7 @@ File > Check for Updates...
 - TypeScript
 - Vite
 - KafkaJS
+- Avro via `avsc`
 - TanStack Table
 - TanStack Virtual
 - Tailwind CSS
