@@ -1,15 +1,70 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, ArrowUpDown, Calendar, CheckCircle2, ChevronDown, ChevronRight, Copy, Database, Download, Filter, HardDrive, Layers, ListTree, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Square, Star, Trash2, Unplug, Users, X } from "lucide-react";
-import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupLagRow, ConsumerGroupSummary, ImportSettingsResult, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
+import { AlertTriangle, ArrowUpDown, Braces, Calendar, CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, Database, Download, EyeOff, Filter, FolderOpen, HardDrive, HelpCircle, Layers, ListTree, Pencil, Play, Plug, Plus, Power, RefreshCw, Send, Sparkles, Square, Star, Trash2, Unplug, Users, X, XCircle } from "lucide-react";
+import type { AppPreferences, BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupLagRow, ConsumerGroupSummary, ImportSettingsResult, ManualAvroSchema, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary, UpdateStatus } from "../shared/types";
 import { DataGrid } from "./components/DataGrid";
-import { emptyConsumeState, emptyServer, fontOptions, topicSortOptions, type ConsumeDefaultPatch, type ConsumeFilterField, type ConsumeMode, type DragPayload, type JsonInspectorMode, type OffsetOrder, type SplitPaneState, type ToastState, type TopicAction, type TopicConsumeState, type TopicListFilter, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
-import { filterMessages, formatCompactNumber, formatCount, formatHeaders, formatMessagePayload, formatPercent, formatProduceValue, formatTimestamp, getEpochTitle, getPartitionColor, getTopicSortLabel, isTopicWorkView, parseJson, parseProduceHeaders, parseTopicCount, previewHeaders, previewValue, renderHighlightedText, renderRawJsonText, sanitizeFontFamily, sortTopics, stringifyPrimitive, validateJsonLikeValue } from "./utils";
+import { QuickSearchPalette } from "./components/QuickSearchPalette";
+import { emptyConsumeState, emptyServer, fontOptions, topicSortOptions, type ConsumeDefaultPatch, type ConsumeFilterField, type ConsumeFilterMode, type ConsumeMode, type DragPayload, type JsonInspectorMode, type OffsetOrder, type SplitPaneState, type ToastState, type TopicAction, type TopicConsumeState, type TopicListFilter, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
+import { buildQuickSearchResults, fuzzyScore, parseQuickSearchScopedQuery, quickSearchCommands, type QuickSearchResult } from "./quickSearch";
+import { filterMessages, formatCompactNumber, formatCount, formatHeaders, formatMessagePayload, formatPercent, formatProduceValue, formatTimestamp, getEpochTitle, getMessageFilterHelpText, getPartitionColor, getTopicSortLabel, isTopicWorkView, parseJson, parseProduceHeaders, parseTopicCount, previewHeaders, previewValue, renderHighlightedText, renderRawJsonText, sanitizeFontFamily, sortTopics, stringifyPrimitive, validateJsonLikeValue } from "./utils";
 import "./styles.css";
 
 const OFFSET_PAGING_THRESHOLD = 10000;
 const OFFSET_PAGE_SIZE = 5000;
+const TOPIC_SEARCH_HISTORY_LIMIT = 6;
+const emptyProduceDraft = {
+  key: "",
+  headers: "{}",
+  value: "{\n  \"hello\": \"kafka\"\n}"
+};
+
+type ProduceDraft = typeof emptyProduceDraft;
+type PreferencePage = "editor-font" | "export-log" | "avro-schemas";
+type PreferenceGroup = "editor" | "export" | "avro";
+
+function parseTopicSearchQuery(query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return { include: [] as string[], exclude: [] as string[], regex: null as RegExp | null, error: "" };
+  }
+
+  if (trimmed.startsWith("/") && trimmed.lastIndexOf("/") > 0) {
+    const lastSlash = trimmed.lastIndexOf("/");
+    const pattern = trimmed.slice(1, lastSlash);
+    const flags = trimmed.slice(lastSlash + 1) || "i";
+    try {
+      return { include: [] as string[], exclude: [] as string[], regex: new RegExp(pattern, flags), error: "" };
+    } catch (error) {
+      return { include: [] as string[], exclude: [] as string[], regex: null, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  const tokens = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
+  return {
+    include: tokens.filter((token) => !token.startsWith("-")),
+    exclude: tokens.filter((token) => token.startsWith("-") && token.length > 1).map((token) => token.slice(1)),
+    regex: null,
+    error: ""
+  };
+}
+
+function matchesTopicSearch(topicName: string, query: ReturnType<typeof parseTopicSearchQuery>) {
+  if (query.error) return false;
+  if (query.regex) return query.regex.test(topicName);
+  const normalizedName = topicName.toLowerCase();
+  return query.include.every((token) => normalizedName.includes(token)) &&
+    query.exclude.every((token) => !normalizedName.includes(token));
+}
+
+const emptyManualAvroForm = {
+  serverId: "",
+  topic: "",
+  encoding: "raw" as ManualAvroSchema["encoding"],
+  schemaId: "",
+  schema: "",
+  error: ""
+};
 
 function App() {
   const kafkaApi = window.kafkaApi;
@@ -26,11 +81,13 @@ function App() {
   const [topicViewByServer, setTopicViewByServer] = useState<Record<string, Record<string, TopicWorkView>>>({});
   const [topicsByServer, setTopicsByServer] = useState<Record<string, TopicSummary[]>>({});
   const [topicQueryByServer, setTopicQueryByServer] = useState<Record<string, string>>({});
+  const [topicSearchHistoryByServer, setTopicSearchHistoryByServer] = useState<Record<string, string[]>>({});
   const [topicFilterByServer, setTopicFilterByServer] = useState<Record<string, TopicListFilter>>({});
   const [topicSortByServer, setTopicSortByServer] = useState<Record<string, TopicSortMode>>({});
   const [selectedTopicRowsByServer, setSelectedTopicRowsByServer] = useState<Record<string, string[]>>({});
   const [favoriteTopicsByServer, setFavoriteTopicsByServer] = useState<Record<string, string[]>>({});
   const [consumeDefaultsByServer, setConsumeDefaultsByServer] = useState<AppPreferences["consumeDefaultsByServer"]>({});
+  const [manualAvroSchemasByServer, setManualAvroSchemasByServer] = useState<NonNullable<AppPreferences["manualAvroSchemasByServer"]>>({});
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [selectedTopicByServer, setSelectedTopicByServer] = useState<Record<string, string>>({});
   const [openedTopicTabsByServer, setOpenedTopicTabsByServer] = useState<Record<string, string[]>>({});
@@ -40,9 +97,7 @@ function App() {
   const [selectedGroupByServer, setSelectedGroupByServer] = useState<Record<string, string>>({});
   const [groupLagByServer, setGroupLagByServer] = useState<Record<string, Record<string, ConsumerGroupLagDetail>>>({});
   const [consumeStatesByServer, setConsumeStatesByServer] = useState<Record<string, Record<string, TopicConsumeState>>>({});
-  const [produceValue, setProduceValue] = useState("{\n  \"hello\": \"kafka\"\n}");
-  const [produceKey, setProduceKey] = useState("");
-  const [produceHeaders, setProduceHeaders] = useState("{}");
+  const [produceDraftsByServer, setProduceDraftsByServer] = useState<Record<string, Record<string, ProduceDraft>>>({});
   const [streamingTopicsByServer, setStreamingTopicsByServer] = useState<Record<string, string[]>>({});
   const [status, setStatus] = useState("서버를 등록하거나 선택하세요.");
   const [toast, setToast] = useState<ToastState>(null);
@@ -54,11 +109,21 @@ function App() {
   const [fontSize, setFontSize] = useState(13);
   const [exportFormatTemplate, setExportFormatTemplate] = useState("[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}");
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  const [activePreferencesPage, setActivePreferencesPage] = useState<PreferencePage>("editor-font");
+  const [collapsedPreferenceGroups, setCollapsedPreferenceGroups] = useState<Record<PreferenceGroup, boolean>>({
+    editor: true,
+    export: true,
+    avro: true
+  });
+  const [preferencesQuery, setPreferencesQuery] = useState("");
   const [serverContextMenu, setServerContextMenu] = useState<{ serverId: string; x: number; y: number } | null>(null);
   const [topicContextMenu, setTopicContextMenu] = useState<{ topic: string; x: number; y: number } | null>(null);
   const [isTopicSortMenuOpen, setIsTopicSortMenuOpen] = useState(false);
   const [pendingTopicAction, setPendingTopicAction] = useState<TopicAction>(null);
   const [topicActionConfirmText, setTopicActionConfirmText] = useState("");
+  const [manualAvroForm, setManualAvroForm] = useState(emptyManualAvroForm);
+  const [isManualAvroOpen, setIsManualAvroOpen] = useState(false);
+  const [isSchemaDragOver, setIsSchemaDragOver] = useState(false);
   const [splitPane, setSplitPane] = useState<SplitPaneState | null>(null);
   const [splitDropSide, setSplitDropSide] = useState<"left" | "right" | null>(null);
   const [splitPrimaryPercent, setSplitPrimaryPercent] = useState(50);
@@ -67,6 +132,10 @@ function App() {
   const [connectionError, setConnectionError] = useState<{ serverName: string; brokers: string; message: string } | null>(null);
   const [draggingServerId, setDraggingServerId] = useState("");
   const [serverDropTarget, setServerDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
+  const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
+  const [quickSearchQuery, setQuickSearchQuery] = useState("");
+  const [quickSearchIndex, setQuickSearchIndex] = useState(0);
+  const [quickSearchRecentKeys, setQuickSearchRecentKeys] = useState<string[]>([]);
 
   const selectedServer = useMemo(
     () => servers.find((server) => server.id === selectedServerId),
@@ -84,9 +153,57 @@ function App() {
       server.brokers.join(", ").toLowerCase().includes(query)
     );
   }, [serverQuery, servers]);
+  const quickSearchBaseResults = useMemo(
+    () => buildQuickSearchResults({
+      servers,
+      topicsByServer,
+      openedTopicTabsByServer,
+      manualAvroSchemasByServer,
+      groupsByServer
+    }),
+    [groupsByServer, manualAvroSchemasByServer, openedTopicTabsByServer, servers, topicsByServer]
+  );
+  const quickSearchResults = useMemo(() => {
+    const rawQuery = quickSearchQuery.trim();
+    const commandMode = rawQuery.startsWith(">");
+    const scoped = parseQuickSearchScopedQuery(commandMode ? rawQuery.slice(1).trim() : rawQuery, servers);
+    const query = scoped.query;
+    const dynamicCommands: QuickSearchResult[] = [];
+    const lowerCommand = commandMode ? query.toLowerCase() : "";
+    const deleteMatch = lowerCommand.match(/^topic\s+(delete|purge)\s+(.+)$/);
+    if (deleteMatch) {
+      const action = deleteMatch[1];
+      const topicName = query.slice(`topic ${action}`.length).trim();
+      dynamicCommands.push({
+        id: `command:${action}-topic:${topicName}`,
+        kind: "command",
+        title: `${action === "delete" ? "Delete" : "Purge"} topic ${topicName}`,
+        subtitle: "Opens confirmation and refreshes the topic list after success",
+        keywords: `topic ${action} ${topicName}`,
+        command: `${action}-topic:${topicName}`,
+        serverId: scoped.serverId || selectedServerId,
+        topic: topicName
+      });
+    }
+    const source = commandMode ? [...dynamicCommands, ...quickSearchCommands()] : [...quickSearchCommands(), ...quickSearchBaseResults];
+    return source
+      .filter((item) => !scoped.serverId || !item.serverId || item.serverId === scoped.serverId)
+      .map((item) => {
+        const score = fuzzyScore(`${item.title} ${item.subtitle} ${item.keywords}`, query);
+        const recentBoost = item.recentKey && quickSearchRecentKeys.includes(item.recentKey) ? 120 - quickSearchRecentKeys.indexOf(item.recentKey) : 0;
+        const commandBoost = item.kind === "command" ? 20 : 0;
+        return { item, score: score + recentBoost + commandBoost };
+      })
+      .filter(({ score }) => !query || score > 0)
+      .sort((left, right) => right.score - left.score || left.item.title.localeCompare(right.item.title))
+      .slice(0, 80)
+      .map(({ item }) => item);
+  }, [quickSearchBaseResults, quickSearchQuery, quickSearchRecentKeys, selectedServerId, servers]);
+  const quickSearchScope = useMemo(() => parseQuickSearchScopedQuery(quickSearchQuery.trim().startsWith(">") ? quickSearchQuery.trim().slice(1) : quickSearchQuery, servers), [quickSearchQuery, servers]);
   const isSelectedServerConnected = connectedServerIds.includes(selectedServerId);
   const topics = topicsByServer[selectedServerId] ?? [];
   const topicQuery = topicQueryByServer[selectedServerId] ?? "";
+  const topicSearchHistory = topicSearchHistoryByServer[selectedServerId] ?? [];
   const topicFilter = topicFilterByServer[selectedServerId] ?? "all";
   const topicSort = topicSortByServer[selectedServerId] ?? "nameAsc";
   const selectedTopic = selectedTopicByServer[selectedServerId] ?? "";
@@ -110,6 +227,8 @@ function App() {
     : emptyConsumeState;
   const splitSelectedGroupId = visibleSplitPane ? selectedGroupByServer[visibleSplitPane.serverId] ?? "" : "";
   const splitSelectedGroupLag = visibleSplitPane ? groupLagByServer[visibleSplitPane.serverId]?.[splitSelectedGroupId] ?? null : null;
+  const selectedProduceDraft = getProduceDraft(selectedServerId, selectedTopic);
+  const splitProduceDraft = visibleSplitPane ? getProduceDraft(visibleSplitPane.serverId, visibleSplitPane.topic) : emptyProduceDraft;
 
   function getDefaultConsumeState(serverId = selectedServerId): TopicConsumeState {
     return {
@@ -117,6 +236,50 @@ function App() {
       ...(consumeDefaultsByServer[serverId] ?? {}),
       mode: "offset"
     };
+  }
+
+  function renderServerStatus(serverId: string) {
+    if (failedServerIds.includes(serverId)) {
+      return (
+        <span className="connection-dot failed" title="Connection failed">
+          <XCircle size={14} strokeWidth={2.6} />
+        </span>
+      );
+    }
+    if (connectedServerIds.includes(serverId)) {
+      return (
+        <span className="connection-dot connected" title="Connected">
+          <CheckCircle2 size={14} strokeWidth={2.6} />
+        </span>
+      );
+    }
+    return (
+      <span className="connection-dot" title="Disconnected">
+        <Circle size={14} strokeWidth={2.6} />
+      </span>
+    );
+  }
+
+  function getProduceDraft(serverId: string, topic: string): ProduceDraft {
+    if (!serverId || !topic) return emptyProduceDraft;
+    return produceDraftsByServer[serverId]?.[topic] ?? emptyProduceDraft;
+  }
+
+  function updateProduceDraftFor(serverId: string, topic: string, patch: Partial<ProduceDraft>) {
+    if (!serverId || !topic) return;
+    setProduceDraftsByServer((current) => {
+      const previous = current[serverId]?.[topic] ?? emptyProduceDraft;
+      return {
+        ...current,
+        [serverId]: {
+          ...(current[serverId] ?? {}),
+          [topic]: {
+            ...previous,
+            ...patch
+          }
+        }
+      };
+    });
   }
 
   function setView(view: View) {
@@ -157,6 +320,25 @@ function App() {
     setTopicQueryByServer((current) => ({ ...current, [selectedServerId]: topicQuery }));
   }
 
+  function commitTopicSearch(query = topicQuery) {
+    if (!selectedServerId) return;
+    const trimmed = query.trim();
+    if (!trimmed || parseTopicSearchQuery(trimmed).error) return;
+    setTopicSearchHistoryByServer((current) => {
+      const previous = current[selectedServerId] ?? [];
+      const next = [trimmed, ...previous.filter((item) => item !== trimmed)].slice(0, TOPIC_SEARCH_HISTORY_LIMIT);
+      return { ...current, [selectedServerId]: next };
+    });
+  }
+
+  function removeTopicSearchHistory(query: string) {
+    if (!selectedServerId) return;
+    setTopicSearchHistoryByServer((current) => ({
+      ...current,
+      [selectedServerId]: (current[selectedServerId] ?? []).filter((item) => item !== query)
+    }));
+  }
+
   function setTopicFilter(topicFilter: TopicListFilter) {
     if (!selectedServerId) return;
     setTopicFilterByServer((current) => ({ ...current, [selectedServerId]: topicFilter }));
@@ -165,6 +347,13 @@ function App() {
   function setTopicSort(topicSort: TopicSortMode) {
     if (!selectedServerId) return;
     setTopicSortByServer((current) => ({ ...current, [selectedServerId]: topicSort }));
+  }
+
+  function togglePreferenceGroup(group: PreferenceGroup) {
+    setCollapsedPreferenceGroups((current) => ({
+      ...current,
+      [group]: !current[group]
+    }));
   }
 
   function setSelectedTopicRows(action: string[] | ((current: string[]) => string[])) {
@@ -227,10 +416,10 @@ function App() {
   }
 
   const filteredTopics = useMemo(() => {
-    const query = topicQuery.trim().toLowerCase();
+    const searchQuery = parseTopicSearchQuery(topicQuery);
     const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
     return topics.filter((topic) => {
-      const matchesSearch = !query || topic.name.toLowerCase().includes(query);
+      const matchesSearch = !topicQuery.trim() || matchesTopicSearch(topic.name, searchQuery);
       const count = parseTopicCount(topic.messageCount);
       const matchesFilter =
         topicFilter === "all" ||
@@ -239,8 +428,48 @@ function App() {
       return matchesSearch && matchesFilter;
     });
   }, [favoriteTopicsByServer, selectedServerId, topicFilter, topicQuery, topics]);
+  const topicSearchError = useMemo(() => parseTopicSearchQuery(topicQuery).error, [topicQuery]);
 
   const favoriteTopicNames = favoriteTopicsByServer[selectedServerId] ?? [];
+  const manualAvroTopicNames = useMemo(
+    () => new Set(Object.keys(manualAvroSchemasByServer[selectedServerId] ?? {})),
+    [manualAvroSchemasByServer, selectedServerId]
+  );
+  const manualAvroSchemaRows = useMemo(
+    () => Object.entries(manualAvroSchemasByServer).flatMap(([serverId, schemas]) => {
+      const server = servers.find((item) => item.id === serverId);
+      return Object.entries(schemas).map(([topic, schema]) => ({
+        serverId,
+        serverName: server?.name ?? serverId,
+        topic,
+        schema
+      }));
+    }).sort((left, right) => `${left.serverName}:${left.topic}`.localeCompare(`${right.serverName}:${right.topic}`)),
+    [manualAvroSchemasByServer, servers]
+  );
+  const normalizedPreferencesQuery = preferencesQuery.trim().toLowerCase();
+  const preferenceSearchMatches = useMemo(() => {
+    if (!normalizedPreferencesQuery) {
+      return {
+        editor: true,
+        export: true,
+        avro: true,
+        pages: new Set<PreferencePage>(["editor-font", "export-log", "avro-schemas"])
+      };
+    }
+    const entries: Array<{ group: PreferenceGroup; page: PreferencePage; keywords: string }> = [
+      { group: "editor", page: "editor-font", keywords: "editor font family size d2coding 글꼴 폰트 크기" },
+      { group: "export", page: "export-log", keywords: "export log format download csv json 로그 다운로드 포맷" },
+      { group: "avro", page: "avro-schemas", keywords: "avro schema schemas registry raw confluent 스키마" }
+    ];
+    const matched = entries.filter((entry) => entry.keywords.toLowerCase().includes(normalizedPreferencesQuery));
+    return {
+      editor: matched.some((entry) => entry.group === "editor"),
+      export: matched.some((entry) => entry.group === "export"),
+      avro: matched.some((entry) => entry.group === "avro"),
+      pages: new Set<PreferencePage>(matched.map((entry) => entry.page))
+    };
+  }, [normalizedPreferencesQuery]);
   const sortedTopics = useMemo(
     () => sortTopics(filteredTopics, topicSort, favoriteTopicNames),
     [favoriteTopicNames, filteredTopics, topicSort]
@@ -408,6 +637,7 @@ function App() {
     void kafkaApi.loadPreferences().then((preferences) => {
       setFavoriteTopicsByServer(preferences.favoriteTopicsByServer ?? {});
       setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
+      setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
       if (typeof preferences.layout?.sidebarWidth === "number") {
         setSidebarWidth(preferences.layout.sidebarWidth);
       }
@@ -440,6 +670,7 @@ function App() {
     void kafkaApi.savePreferences({
       favoriteTopicsByServer,
       consumeDefaultsByServer,
+      manualAvroSchemasByServer,
       layout: {
         sidebarWidth,
         serverPanelHeight,
@@ -451,7 +682,53 @@ function App() {
       },
       exportFormatTemplate
     }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
-  }, [kafkaApi, preferencesLoaded, favoriteTopicsByServer, consumeDefaultsByServer, sidebarWidth, serverPanelHeight, messagePaneHeight, fontFamily, fontSize, exportFormatTemplate]);
+  }, [kafkaApi, preferencesLoaded, favoriteTopicsByServer, consumeDefaultsByServer, manualAvroSchemasByServer, sidebarWidth, serverPanelHeight, messagePaneHeight, fontFamily, fontSize, exportFormatTemplate]);
+
+  useEffect(() => {
+    if (!normalizedPreferencesQuery || preferenceSearchMatches.pages.has(activePreferencesPage)) return;
+    const nextPage = preferenceSearchMatches.pages.values().next().value as PreferencePage | undefined;
+    if (nextPage) {
+      setActivePreferencesPage(nextPage);
+    }
+  }, [activePreferencesPage, normalizedPreferencesQuery, preferenceSearchMatches.pages]);
+
+  useEffect(() => {
+    if (!isQuickSearchOpen) return;
+    setQuickSearchIndex((current) => Math.min(current, Math.max(0, quickSearchResults.length - 1)));
+  }, [isQuickSearchOpen, quickSearchResults.length]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && (key === "p" || key === "k")) {
+        event.preventDefault();
+        openQuickSearch();
+        return;
+      }
+      if (!isQuickSearchOpen) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeQuickSearch();
+        return;
+      }
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setQuickSearchIndex((current) => Math.min(current + 1, Math.max(0, quickSearchResults.length - 1)));
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setQuickSearchIndex((current) => Math.max(0, current - 1));
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void executeQuickSearch();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isQuickSearchOpen, quickSearchResults, quickSearchIndex]);
 
   useEffect(() => {
     if (!kafkaApi) {
@@ -490,7 +767,12 @@ function App() {
     if (!kafkaApi) {
       return;
     }
-    const offPreferencesOpen = kafkaApi.onPreferencesOpen(() => setIsPreferencesOpen(true));
+    const offPreferencesOpen = kafkaApi.onPreferencesOpen((section) => {
+      setActivePreferencesPage(section === "avro" ? "avro-schemas" : "editor-font");
+      setCollapsedPreferenceGroups({ editor: true, export: true, avro: true });
+      setPreferencesQuery("");
+      setIsPreferencesOpen(true);
+    });
     return () => {
       offPreferencesOpen();
     };
@@ -641,7 +923,27 @@ function App() {
           scope: serverForm.oauthScope.trim() || undefined,
           audience: serverForm.oauthAudience.trim() || undefined
         }
-        : undefined
+      : undefined
+    };
+  }
+
+  function buildSchemaRegistry(): ServerProfile["schemaRegistry"] | undefined {
+    const url = serverForm.schemaRegistryUrl.trim();
+    if (!url) return undefined;
+    return {
+      url,
+      auth: serverForm.schemaRegistryAuthType === "basic"
+        ? {
+          type: "basic",
+          username: serverForm.schemaRegistryUsername,
+          password: serverForm.schemaRegistryPassword
+        }
+        : serverForm.schemaRegistryAuthType === "bearer"
+          ? {
+            type: "bearer",
+            token: serverForm.schemaRegistryToken
+          }
+          : undefined
     };
   }
 
@@ -652,7 +954,8 @@ function App() {
         id: editingServerId ?? undefined,
         name: serverForm.name,
         brokers: serverForm.brokers.split(",").map((broker) => broker.trim()),
-        security: buildServerSecurity()
+        security: buildServerSecurity(),
+        schemaRegistry: buildSchemaRegistry()
       })
     );
     setServers(nextServers);
@@ -708,7 +1011,12 @@ function App() {
       oauthClientId: server.security?.sasl?.clientId ?? "",
       oauthClientSecret: server.security?.sasl?.clientSecret ?? "",
       oauthScope: server.security?.sasl?.scope ?? "",
-      oauthAudience: server.security?.sasl?.audience ?? ""
+      oauthAudience: server.security?.sasl?.audience ?? "",
+      schemaRegistryUrl: server.schemaRegistry?.url ?? "",
+      schemaRegistryAuthType: server.schemaRegistry?.auth?.type ?? "none",
+      schemaRegistryUsername: server.schemaRegistry?.auth?.username ?? "",
+      schemaRegistryPassword: server.schemaRegistry?.auth?.password ?? "",
+      schemaRegistryToken: server.schemaRegistry?.auth?.token ?? ""
     });
     setIsServerFormOpen(true);
   }
@@ -720,20 +1028,20 @@ function App() {
   }
 
   async function connectServer(server: ServerProfile) {
-    if (!kafkaApi) return;
+    if (!kafkaApi) return false;
     setSelectedServerId(server.id);
     try {
       await runTask("서버 연결 확인 중", async () => {
-        await kafkaApi.listTopics(server.id);
+        await refreshTopicsForServer(server.id);
         return true;
       });
       setFailedServerIds((current) => current.filter((serverId) => serverId !== server.id));
       setConnectedServerIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
       setOpenClusterIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
-      await refreshBrokersForServer(server.id);
-      await refreshTopicsForServer(server.id);
+      void refreshBrokersForServer(server.id);
       setViewByServer((current) => ({ ...current, [server.id]: current[server.id] ?? "info" }));
-      await refreshGroupsForServer(server.id);
+      void refreshGroupsForServer(server.id);
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setConnectedServerIds((current) => current.filter((serverId) => serverId !== server.id));
@@ -743,6 +1051,7 @@ function App() {
         brokers: server.brokers.join(", "),
         message
       });
+      return false;
     }
   }
 
@@ -750,9 +1059,154 @@ function App() {
     setSelectedServerId(server.id);
     if (connectedServerIds.includes(server.id)) {
       setOpenClusterIds((current) => (current.includes(server.id) ? current : [...current, server.id]));
+      return true;
+    }
+    return connectServer(server);
+  }
+
+  async function ensureServerConnected(serverId: string) {
+    const server = servers.find((item) => item.id === serverId);
+    if (!server) return false;
+    setSelectedServerId(serverId);
+    if (connectedServerIds.includes(serverId)) {
+      setOpenClusterIds((current) => (current.includes(serverId) ? current : [...current, serverId]));
+      return true;
+    }
+    setToast({ message: `Connecting to ${server.name}...`, kind: "loading" });
+    return openCluster(server);
+  }
+
+  async function openTopicFromQuickSearch(serverId: string, topic: string, nextView: TopicWorkView = "info") {
+    if (!await ensureServerConnected(serverId)) return;
+    setActiveWorkspacePane("primary");
+    setSelectedServerId(serverId);
+    setOpenClusterIds((current) => (current.includes(serverId) ? current : [...current, serverId]));
+    setOpenedTopicTabsByServer((current) => {
+      const tabs = current[serverId] ?? [];
+      return { ...current, [serverId]: tabs.includes(topic) ? tabs : [...tabs, topic] };
+    });
+    setSelectedTopicByServer((current) => ({ ...current, [serverId]: topic }));
+    setViewByServer((current) => ({ ...current, [serverId]: nextView }));
+    setTopicViewByServer((current) => ({
+      ...current,
+      [serverId]: {
+        ...(current[serverId] ?? {}),
+        [topic]: nextView
+      }
+    }));
+    if (nextView === "info" && kafkaApi) {
+      const detail = await runTask("topic detail loading", () => kafkaApi.getTopicDetail(serverId, topic));
+      setTopicDetailByServer((current) => ({ ...current, [serverId]: detail }));
+    }
+  }
+
+  async function openConsumerGroupFromQuickSearch(serverId: string, groupId: string) {
+    if (!await ensureServerConnected(serverId)) return;
+    setSelectedServerId(serverId);
+    setViewByServer((current) => ({ ...current, [serverId]: "consumers" }));
+    if (!groupsByServer[serverId]) {
+      await refreshGroupsForServer(serverId);
+    }
+    await loadConsumerGroupLagFor(serverId, groupId);
+  }
+
+  function openQuickSearch(initialQuery = "") {
+    setQuickSearchQuery(initialQuery);
+    setQuickSearchIndex(0);
+    setIsQuickSearchOpen(true);
+  }
+
+  function closeQuickSearch() {
+    setIsQuickSearchOpen(false);
+    setQuickSearchQuery("");
+    setQuickSearchIndex(0);
+  }
+
+  function rememberQuickSearch(result: QuickSearchResult) {
+    if (!result.recentKey) return;
+    setQuickSearchRecentKeys((current) => [result.recentKey!, ...current.filter((key) => key !== result.recentKey)].slice(0, 12));
+  }
+
+  async function executeQuickCommand(result: QuickSearchResult) {
+    const command = result.command ?? "";
+    if (command === "settings") {
+      setActivePreferencesPage("editor-font");
+      setIsPreferencesOpen(true);
       return;
     }
-    await connectServer(server);
+    if (command === "avro-settings") {
+      setActivePreferencesPage("avro-schemas");
+      setIsPreferencesOpen(true);
+      return;
+    }
+    if (command === "export-settings") {
+      setActivePreferencesPage("export-log");
+      setIsPreferencesOpen(true);
+      return;
+    }
+    if (command === "refresh-topics") {
+      await refreshTopics();
+      return;
+    }
+    if (command === "refresh-groups") {
+      await refreshGroups();
+      return;
+    }
+    if (command === "consume-current" && selectedTopic) {
+      setView("consume");
+      return;
+    }
+    if (command === "produce-current" && selectedTopic) {
+      setView("produce");
+      return;
+    }
+    if (command === "delete-current" && selectedTopic) {
+      requestTopicAction("delete", [selectedTopic]);
+      return;
+    }
+    if (command === "purge-current" && selectedTopic) {
+      requestTopicAction("purge", [selectedTopic]);
+      return;
+    }
+    if (command.startsWith("delete-topic:") && result.topic) {
+      const targetServerId = result.serverId || selectedServerId;
+      if (!await ensureServerConnected(targetServerId)) return;
+      requestTopicActionFor(targetServerId, "delete", [result.topic]);
+      return;
+    }
+    if (command.startsWith("purge-topic:") && result.topic) {
+      const targetServerId = result.serverId || selectedServerId;
+      if (!await ensureServerConnected(targetServerId)) return;
+      requestTopicActionFor(targetServerId, "purge", [result.topic]);
+    }
+  }
+
+  async function executeQuickSearch(result?: QuickSearchResult) {
+    const selected = result ?? quickSearchResults[quickSearchIndex];
+    if (!selected) return;
+    rememberQuickSearch(selected);
+    closeQuickSearch();
+    if (selected.kind === "command") {
+      await executeQuickCommand(selected);
+      return;
+    }
+    if (selected.kind === "server" && selected.serverId) {
+      await ensureServerConnected(selected.serverId);
+      return;
+    }
+    if ((selected.kind === "topic" || selected.kind === "tab") && selected.serverId && selected.topic) {
+      await openTopicFromQuickSearch(selected.serverId, selected.topic);
+      return;
+    }
+    if (selected.kind === "avro" && selected.serverId && selected.topic) {
+      if (await ensureServerConnected(selected.serverId)) {
+        openManualAvroSchema(selected.serverId, selected.topic);
+      }
+      return;
+    }
+    if (selected.kind === "consumer" && selected.serverId && selected.groupId) {
+      await openConsumerGroupFromQuickSearch(selected.serverId, selected.groupId);
+    }
   }
 
   function readDragPayload(event: React.DragEvent): DragPayload | null {
@@ -968,6 +1422,7 @@ function App() {
     setTopicQueryByServer((current) => ({ ...current, [serverId]: "" }));
     const items = await runTask("토픽 조회 중", () => kafkaApi.listTopics(serverId));
     setTopicsByServer((current) => ({ ...current, [serverId]: items }));
+    void refreshTopicMessageCountsForServer(serverId, items.map((topic) => topic.name));
     const topicNames = new Set(items.map((topic) => topic.name));
     setSelectedTopicRowsByServer((current) => ({
       ...current,
@@ -983,6 +1438,26 @@ function App() {
       setTopicDetailByServer((current) => ({ ...current, [serverId]: null }));
       setOpenedTopicTabsByServer((current) => ({ ...current, [serverId]: [] }));
       setConsumeStatesByServer((current) => ({ ...current, [serverId]: {} }));
+    }
+  }
+
+  async function refreshTopicMessageCountsForServer(serverId: string, topicNames: string[]) {
+    if (!kafkaApi || topicNames.length === 0) return;
+    try {
+      const counts = await kafkaApi.listTopicMessageCounts(serverId, topicNames);
+      setTopicsByServer((current) => {
+        const serverTopics = current[serverId];
+        if (!serverTopics) return current;
+        return {
+          ...current,
+          [serverId]: serverTopics.map((topic) => ({
+            ...topic,
+            messageCount: counts[topic.name] ?? topic.messageCount
+          }))
+        };
+      });
+    } catch {
+      // Message counts are best-effort. Metadata-only topic list should stay visible.
     }
   }
 
@@ -1033,59 +1508,182 @@ function App() {
 
   function requestTopicAction(kind: "delete" | "purge", topicsToMutate = selectedTopicRows) {
     if (topicsToMutate.length === 0) return;
-    setTopicActionConfirmText("");
-    setPendingTopicAction({ kind, topics: [...topicsToMutate] });
+    requestTopicActionFor(selectedServerId, kind, topicsToMutate);
   }
 
-  function cleanupDeletedTopics(deletedTopics: string[]) {
+  function requestTopicActionFor(serverId: string, kind: "delete" | "purge", topicsToMutate: string[]) {
+    if (!serverId || topicsToMutate.length === 0) return;
+    setSelectedServerId(serverId);
+    setTopicActionConfirmText("");
+    setPendingTopicAction({ serverId, kind, topics: [...topicsToMutate] });
+  }
+
+  function openManualAvroSchema(serverId: string, topic: string) {
+    if (!serverId || !topic) return;
+    const saved = manualAvroSchemasByServer[serverId]?.[topic];
+    setManualAvroForm({
+      serverId,
+      topic,
+      encoding: saved?.encoding ?? "raw",
+      schemaId: saved?.schemaId === undefined ? "" : String(saved.schemaId),
+      schema: saved?.schema ?? "",
+      error: ""
+    });
+    setIsSchemaDragOver(false);
+    setIsManualAvroOpen(true);
+  }
+
+  function closeManualAvroSchema() {
+    setIsManualAvroOpen(false);
+    setIsSchemaDragOver(false);
+    setManualAvroForm(emptyManualAvroForm);
+  }
+
+  async function readSchemaFile(file?: File) {
+    if (!file) return;
+    const text = await file.text();
+    setManualAvroForm((current) => ({ ...current, schema: text, error: "" }));
+  }
+
+  function validateManualAvroSchema() {
+    const schema = manualAvroForm.schema.trim();
+    if (!schema) {
+      return "Enter schema JSON or upload a schema file.";
+    }
+    try {
+      JSON.parse(schema);
+      if (manualAvroForm.encoding === "confluent") {
+        const schemaId = Number(manualAvroForm.schemaId);
+        if (!Number.isInteger(schemaId) || schemaId < 0) {
+          return "Confluent wire format requires a numeric schema id.";
+        }
+      }
+      return "";
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return `Schema JSON is invalid. ${detail}`;
+    }
+  }
+
+  function saveManualAvroSchema() {
+    const error = validateManualAvroSchema();
+    if (error) {
+      setManualAvroForm((current) => ({ ...current, error }));
+      return;
+    }
+    setManualAvroSchemasByServer((current) => ({
+      ...current,
+      [manualAvroForm.serverId]: {
+        ...(current[manualAvroForm.serverId] ?? {}),
+        [manualAvroForm.topic]: {
+          encoding: manualAvroForm.encoding,
+          schemaId: manualAvroForm.encoding === "confluent" ? Number(manualAvroForm.schemaId) : undefined,
+          schema: manualAvroForm.schema,
+          updatedAt: new Date().toISOString()
+        }
+      }
+    }));
+    setToast({ message: "Avro schema saved.", kind: "success" });
+    closeManualAvroSchema();
+  }
+
+  function deleteManualAvroSchema() {
+    deleteManualAvroSchemaFor(manualAvroForm.serverId, manualAvroForm.topic);
+    closeManualAvroSchema();
+  }
+
+  function deleteManualAvroSchemaFor(serverId: string, topic: string) {
+    setManualAvroSchemasByServer((current) => {
+      const serverSchemas = { ...(current[serverId] ?? {}) };
+      delete serverSchemas[topic];
+      return {
+        ...current,
+        [serverId]: serverSchemas
+      };
+    });
+    setToast({ message: "Avro schema deleted.", kind: "success" });
+  }
+
+  function cleanupDeletedTopics(serverId: string, deletedTopics: string[]) {
     const deleted = new Set(deletedTopics);
-    setSelectedTopicRows((current) => current.filter((topic) => !deleted.has(topic)));
-    setOpenedTopicTabs((current) => current.filter((topic) => !deleted.has(topic)));
+    setSelectedTopicRowsByServer((current) => ({
+      ...current,
+      [serverId]: (current[serverId] ?? []).filter((topic) => !deleted.has(topic))
+    }));
+    setOpenedTopicTabsByServer((current) => ({
+      ...current,
+      [serverId]: (current[serverId] ?? []).filter((topic) => !deleted.has(topic))
+    }));
     setFavoriteTopicsByServer((current) => ({
       ...current,
-      [selectedServerId]: (current[selectedServerId] ?? []).filter((topic) => !deleted.has(topic))
+      [serverId]: (current[serverId] ?? []).filter((topic) => !deleted.has(topic))
     }));
-    setConsumeStates((current) => {
-      const next = { ...current };
+    setConsumeStatesByServer((current) => {
+      const nextServerStates = { ...(current[serverId] ?? {}) };
       for (const topic of deleted) {
-        delete next[topic];
+        delete nextServerStates[topic];
       }
-      return next;
+      return { ...current, [serverId]: nextServerStates };
     });
     setTopicViewByServer((current) => {
-      const serverViews = { ...(current[selectedServerId] ?? {}) };
+      const serverViews = { ...(current[serverId] ?? {}) };
       for (const topic of deleted) {
         delete serverViews[topic];
       }
-      return { ...current, [selectedServerId]: serverViews };
+      return { ...current, [serverId]: serverViews };
     });
-    if (deleted.has(selectedTopic)) {
-      const nextTopic = topics.find((topic) => !deleted.has(topic.name))?.name ?? "";
-      setSelectedTopic(nextTopic);
+    setManualAvroSchemasByServer((current) => {
+      const serverSchemas = { ...(current[serverId] ?? {}) };
+      for (const topic of deleted) {
+        delete serverSchemas[topic];
+      }
+      return { ...current, [serverId]: serverSchemas };
+    });
+    if (splitPane?.serverId === serverId && splitPane.topicTabs.every((topic) => deleted.has(topic))) {
+      setActiveWorkspacePane("primary");
+    }
+    setSplitPane((current) => {
+      if (!current || current.serverId !== serverId) return current;
+      const nextTabs = current.topicTabs.filter((topic) => !deleted.has(topic));
+      if (nextTabs.length === 0) return null;
+      const nextTopic = deleted.has(current.topic) ? nextTabs[nextTabs.length - 1] : current.topic;
+      return { ...current, topic: nextTopic, topicTabs: nextTabs, detail: deleted.has(current.topic) ? null : current.detail };
+    });
+    const selectedForServer = selectedTopicByServer[serverId] ?? "";
+    if (deleted.has(selectedForServer)) {
+      const nextTopic = (topicsByServer[serverId] ?? []).find((topic) => !deleted.has(topic.name))?.name ?? "";
+      setSelectedTopicByServer((current) => ({ ...current, [serverId]: nextTopic }));
       if (nextTopic) {
-        void loadTopicDetail(nextTopic);
+        if (serverId === selectedServerId) {
+          void loadTopicDetail(nextTopic);
+        }
       } else {
-        setTopicDetail(null);
+        setTopicDetailByServer((current) => ({ ...current, [serverId]: null }));
       }
     }
   }
 
   async function confirmTopicAction() {
-    if (!kafkaApi || !selectedServerId || !pendingTopicAction) return;
+    if (!kafkaApi || !pendingTopicAction) return;
     const action = pendingTopicAction;
     if (topicActionConfirmText.trim().toUpperCase() !== action.kind.toUpperCase()) return;
     setPendingTopicAction(null);
     setTopicActionConfirmText("");
     if (action.kind === "delete") {
-      await runTask(`Deleting ${action.topics.length} topic(s)`, () => kafkaApi.deleteTopics({ serverId: selectedServerId, topics: action.topics }));
-      cleanupDeletedTopics(action.topics);
-      await refreshTopics();
+      for (const topic of action.topics) {
+        if ((streamingTopicsByServer[action.serverId] ?? []).includes(topic)) {
+          await stopConsume(action.serverId, topic);
+        }
+      }
+      await runTask(`Deleting ${action.topics.length} topic(s)`, () => kafkaApi.deleteTopics({ serverId: action.serverId, topics: action.topics }));
+      cleanupDeletedTopics(action.serverId, action.topics);
+      await refreshTopicsForServer(action.serverId);
       setToast({ message: `Deleted ${action.topics.length} topic(s).`, kind: "success" });
       return;
     }
-    await runTask(`Purging ${action.topics.length} topic(s)`, () => kafkaApi.purgeTopics({ serverId: selectedServerId, topics: action.topics }));
-    await refreshTopics();
-    if (selectedTopic && action.topics.includes(selectedTopic)) {
+    await runTask(`Purging ${action.topics.length} topic(s)`, () => kafkaApi.purgeTopics({ serverId: action.serverId, topics: action.topics }));
+    await refreshTopicsForServer(action.serverId);
+    if (action.serverId === selectedServerId && selectedTopic && action.topics.includes(selectedTopic)) {
       await loadTopicDetail(selectedTopic);
     }
     setToast({ message: `Purged ${action.topics.length} topic(s).`, kind: "success" });
@@ -1166,13 +1764,14 @@ function App() {
 
   async function produceFor(serverId: string, topic: string) {
     if (!kafkaApi || !serverId || !topic) return;
-    const validationError = validateJsonLikeValue(produceValue);
+    const draft = getProduceDraft(serverId, topic);
+    const validationError = validateJsonLikeValue(draft.value);
     if (validationError) {
       setStatus(validationError);
       setToast({ message: validationError, kind: "error" });
       return;
     }
-    const headers = parseProduceHeaders(produceHeaders);
+    const headers = parseProduceHeaders(draft.headers);
     if (typeof headers === "string") {
       setStatus(headers);
       setToast({ message: headers, kind: "error" });
@@ -1182,19 +1781,25 @@ function App() {
       kafkaApi.produce({
         serverId,
         topic,
-        key: produceKey,
-        value: produceValue,
+        key: draft.key,
+        value: draft.value,
         headers
       })
     );
     setStatus(`전송 완료: ${result.map((item) => `p${item.partition}@${item.offset}`).join(", ")}`);
   }
 
-  function sendMessageToProduce(message: ConsumedMessage) {
-    setProduceKey(message.key);
-    setProduceValue(formatProduceValue(message.value));
-    setProduceHeaders(JSON.stringify(message.headers ?? {}, null, 2));
-    setView("produce");
+  function sendMessageToProduce(serverId: string, topic: string, message: ConsumedMessage, targetPane: "primary" | "split") {
+    updateProduceDraftFor(serverId, topic, {
+      key: message.key,
+      value: message.decoded?.value === undefined ? formatProduceValue(message.value) : JSON.stringify(message.decoded.value, null, 2),
+      headers: JSON.stringify(message.headers ?? {}, null, 2)
+    });
+    if (targetPane === "split") {
+      setSplitPane((current) => current && current.serverId === serverId && current.topic === topic ? { ...current, view: "produce" } : current);
+    } else {
+      setView("produce");
+    }
     setToast({ message: "메시지를 Produce 탭으로 복사했습니다.", kind: "success" });
   }
 
@@ -1202,6 +1807,7 @@ function App() {
     setServers(result.servers);
     setFavoriteTopicsByServer(result.preferences.favoriteTopicsByServer ?? {});
     setConsumeDefaultsByServer(result.preferences.consumeDefaultsByServer ?? {});
+    setManualAvroSchemasByServer(result.preferences.manualAvroSchemasByServer ?? {});
     if (typeof result.preferences.layout?.sidebarWidth === "number") {
       setSidebarWidth(result.preferences.layout.sidebarWidth);
     }
@@ -1513,9 +2119,7 @@ function App() {
       setStatus("Consume tab reset.");
       return;
     }
-    setProduceKey("");
-    setProduceHeaders("{}");
-    setProduceValue("{\n  \"hello\": \"kafka\"\n}");
+    updateProduceDraftFor(selectedServerId, selectedTopic, emptyProduceDraft);
     setStatus("Produce tab reset.");
   }
 
@@ -1598,7 +2202,7 @@ function App() {
                 }}
               >
                 <span className="server-name">
-                  <span className={getServerConnectionClass(server.id)} />
+                  {renderServerStatus(server.id)}
                   <strong title={server.name}>{server.name}</strong>
                 </span>
                 <span className="server-host">
@@ -1650,13 +2254,43 @@ function App() {
             </div>
           </div>
           <div className="search-box topic-search">
-            <input value={topicQuery} onChange={(event) => setTopicQuery(event.target.value)} placeholder="Search topic" />
+            <input
+              value={topicQuery}
+              onChange={(event) => setTopicQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  commitTopicSearch();
+                }
+              }}
+              placeholder="Search topic"
+              title="Space: AND, -word: exclude, /pattern/: regex"
+            />
             {topicQuery && (
               <button onClick={() => setTopicQuery("")} title="Clear topic search">
                 <X size={13} />
               </button>
             )}
           </div>
+          {topicSearchError && <div className="topic-search-error">Invalid regex: {topicSearchError}</div>}
+          {!topicSearchError && topicQuery.trim() && (
+            <div className="topic-search-help">AND search, exclude with -word, regex with /pattern/</div>
+          )}
+          {topicSearchHistory.length > 0 && (
+            <div className="topic-search-history">
+              {topicSearchHistory.map((query) => (
+                <button key={query} onClick={() => setTopicQuery(query)} title={`Search ${query}`}>
+                  <span>{query}</span>
+                  <X
+                    size={12}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeTopicSearchHistory(query);
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="topic-filter-row">
             <select value={topicFilter} onChange={(event) => setTopicFilter(event.target.value as TopicListFilter)} title="Filter topics">
               <option value="all">All topics</option>
@@ -1674,6 +2308,7 @@ function App() {
                     topic={topic}
                     active={topic.name === selectedTopic}
                     favorite
+                    hasAvroSchema={manualAvroTopicNames.has(topic.name)}
                     onSelect={() => {
                       if (activeWorkspacePane === "split" && visibleSplitPane) return;
                       activateTopicView(topic.name);
@@ -1692,6 +2327,7 @@ function App() {
                 topic={topic}
                 active={topic.name === selectedTopic}
                 favorite={favoriteTopicNames.includes(topic.name)}
+                hasAvroSchema={manualAvroTopicNames.has(topic.name)}
                 onSelect={() => {
                   if (activeWorkspacePane === "split" && visibleSplitPane) return;
                   activateTopicView(topic.name);
@@ -1740,7 +2376,18 @@ function App() {
               const server = servers.find((item) => item.id === serverId);
               if (!server) return null;
               return (
-                <button key={serverId} className={serverId === selectedServerId ? "cluster-tab active" : "cluster-tab"} onClick={() => setSelectedServerId(serverId)} title={`${server.name} (${server.brokers.join(", ")})`}>
+                <button
+                  key={serverId}
+                  className={serverId === selectedServerId ? "cluster-tab active" : "cluster-tab"}
+                  onClick={() => setSelectedServerId(serverId)}
+                  onAuxClick={(event) => {
+                    if (event.button === 1) {
+                      event.preventDefault();
+                      void closeClusterTab(serverId);
+                    }
+                  }}
+                  title={`${server.name} (${server.brokers.join(", ")})`}
+                >
                   <span className={getServerConnectionClass(serverId)} />
                   <span className="cluster-tab-name">{server.name}</span>
                   <X size={14} onClick={(event) => { event.stopPropagation(); void closeClusterTab(serverId); }} />
@@ -1837,6 +2484,7 @@ function App() {
                 }}
               >
                 <span>{topic}</span>
+                {manualAvroTopicNames.has(topic) && <span className="topic-tab-badge" title="Avro schema registered">Avro</span>}
                 <X size={14} onClick={(event) => { event.stopPropagation(); void closeTopicTab(topic); }} />
               </button>
             ))
@@ -1847,6 +2495,7 @@ function App() {
           <button className={view === "info" ? "active" : ""} onClick={() => setView("info")} disabled={!selectedTopic}><Layers size={16} /> Info</button>
           <button className={view === "consume" ? "active" : ""} onClick={() => setView("consume")} disabled={!selectedTopic}><Play size={16} /> Consume</button>
           <button className={view === "produce" ? "active" : ""} onClick={() => setView("produce")} disabled={!selectedTopic}><Send size={16} /> Produce</button>
+          <button className="ghost schema-button refresh-side" onClick={() => openManualAvroSchema(selectedServerId, selectedTopic)} disabled={!selectedTopic}><Braces size={16} /> Schema</button>
           <button className="ghost" onClick={() => void refreshCurrentView()} disabled={!isSelectedServerConnected || loading}><RefreshCw size={16} /> 새로고침</button>
         </nav>
 
@@ -1887,6 +2536,7 @@ function App() {
               timeEnd={selectedConsumeState.timeEnd}
               filterText={selectedConsumeState.filterText}
               filterField={selectedConsumeState.filterField}
+              filterMode={selectedConsumeState.filterMode}
               autoScroll={selectedConsumeState.autoScroll}
               maxMessages={selectedConsumeState.maxMessages}
               offsetPagination={selectedConsumeState.offsetPagination}
@@ -1915,6 +2565,7 @@ function App() {
                 updateSelectedConsumeState({ filterField });
                 updateConsumeDefaults({ filterField });
               }}
+              onFilterMode={(filterMode) => updateSelectedConsumeState({ filterMode })}
               onClearFilter={() => updateSelectedConsumeState({ filterText: "", filterField: "all" })}
               onApplyFilter={(filterText) => updateSelectedConsumeState({ filterText, filterField: "all" })}
               onAutoScroll={(autoScroll) => {
@@ -1929,7 +2580,7 @@ function App() {
               onPageNext={() => void moveOffsetPageFor(selectedServerId, selectedTopic, selectedConsumeState, "next")}
               onSelectMessage={(selectedMessage) => updateSelectedConsumeState({ selectedMessage })}
               onMessagePaneHeight={setMessagePaneHeight}
-              onSendToProduce={sendMessageToProduce}
+              onSendToProduce={(message) => sendMessageToProduce(selectedServerId, selectedTopic, message, "primary")}
               onExport={(format, messages) => void exportConsumedMessages(format, messages)}
               onExportAll={(format) => void exportOffsetConditionMessages(format, selectedServerId, selectedTopic, selectedConsumeState)}
               onStart={() => void startConsume()}
@@ -1939,12 +2590,14 @@ function App() {
           {view === "produce" && (
             <ProducePanel
               topic={selectedTopic}
-              keyText={produceKey}
-              headers={produceHeaders}
-              value={produceValue}
-              onKey={setProduceKey}
-              onHeaders={setProduceHeaders}
-              onValue={setProduceValue}
+              keyText={selectedProduceDraft.key}
+              headers={selectedProduceDraft.headers}
+              value={selectedProduceDraft.value}
+              hasAvroSchema={manualAvroTopicNames.has(selectedTopic)}
+              avroEncoding={manualAvroSchemasByServer[selectedServerId]?.[selectedTopic]?.encoding}
+              onKey={(key) => updateProduceDraftFor(selectedServerId, selectedTopic, { key })}
+              onHeaders={(headers) => updateProduceDraftFor(selectedServerId, selectedTopic, { headers })}
+              onValue={(value) => updateProduceDraftFor(selectedServerId, selectedTopic, { value })}
               onProduce={() => void produce()}
             />
           )}
@@ -2016,6 +2669,8 @@ function App() {
             onRefresh={() => {
               if (visibleSplitPane.view === "info" && visibleSplitPane.topic) void loadSplitTopicDetail(visibleSplitPane.serverId, visibleSplitPane.topic);
             }}
+            onOpenSchema={() => openManualAvroSchema(visibleSplitPane.serverId, visibleSplitPane.topic)}
+            manualAvroSchemas={manualAvroSchemasByServer[visibleSplitPane.serverId] ?? {}}
             onSelectGroup={(groupId) => void loadConsumerGroupLagFor(visibleSplitPane.serverId, groupId)}
             onBackGroup={() => setSelectedGroupByServer((current) => ({ ...current, [visibleSplitPane.serverId]: "" }))}
             onRefreshGroupDetail={() => {
@@ -2028,16 +2683,16 @@ function App() {
             onOffsetPage={(direction) => void moveOffsetPageFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState, direction)}
             onStartConsume={() => void startConsumeFor(visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState)}
             onStopConsume={() => void stopConsume(visibleSplitPane.serverId, visibleSplitPane.topic)}
-            onSendToProduce={sendMessageToProduce}
+            onSendToProduce={(message) => sendMessageToProduce(visibleSplitPane.serverId, visibleSplitPane.topic, message, "split")}
             onExport={(format, messages) => void exportConsumedMessages(format, messages, visibleSplitPane.topic)}
             onExportAll={(format) => void exportOffsetConditionMessages(format, visibleSplitPane.serverId, visibleSplitPane.topic, splitConsumeState)}
             onMessagePaneHeight={setMessagePaneHeight}
-            produceKey={produceKey}
-            produceHeaders={produceHeaders}
-            produceValue={produceValue}
-            onProduceKey={setProduceKey}
-            onProduceHeaders={setProduceHeaders}
-            onProduceValue={setProduceValue}
+            produceKey={splitProduceDraft.key}
+            produceHeaders={splitProduceDraft.headers}
+            produceValue={splitProduceDraft.value}
+            onProduceKey={(key) => updateProduceDraftFor(visibleSplitPane.serverId, visibleSplitPane.topic, { key })}
+            onProduceHeaders={(headers) => updateProduceDraftFor(visibleSplitPane.serverId, visibleSplitPane.topic, { headers })}
+            onProduceValue={(value) => updateProduceDraftFor(visibleSplitPane.serverId, visibleSplitPane.topic, { value })}
             onProduce={() => void produceFor(visibleSplitPane.serverId, visibleSplitPane.topic)}
           />
         )}
@@ -2063,7 +2718,10 @@ function App() {
               브로커
               <input value={serverForm.brokers} onChange={(event) => setServerForm({ ...serverForm, brokers: event.target.value })} placeholder="localhost:9092, localhost:9093" />
             </label>
-            <section className="auth-settings">
+            <section className="form-section">
+              <div className="form-section-title">
+                <span>Kafka Security</span>
+              </div>
               <label className="checkbox-row">
                 <input
                   type="checkbox"
@@ -2105,6 +2763,50 @@ function App() {
                 </div>
               )}
             </section>
+            <section className="form-section schema-registry-section">
+              <div className="form-section-title">
+                <span>Schema Registry</span>
+              </div>
+              <div className="schema-registry-grid">
+                <label>
+                  Registry URL
+                  <input
+                    value={serverForm.schemaRegistryUrl}
+                    onChange={(event) => setServerForm({ ...serverForm, schemaRegistryUrl: event.target.value })}
+                    placeholder="http://schema-registry:8081"
+                  />
+                </label>
+                <label>
+                  Registry Auth
+                  <select
+                    value={serverForm.schemaRegistryAuthType}
+                    onChange={(event) => setServerForm({ ...serverForm, schemaRegistryAuthType: event.target.value as typeof serverForm.schemaRegistryAuthType })}
+                  >
+                    <option value="none">None</option>
+                    <option value="basic">Basic</option>
+                    <option value="bearer">Bearer</option>
+                  </select>
+                </label>
+              </div>
+              {serverForm.schemaRegistryAuthType === "basic" && (
+                <div className="auth-grid">
+                  <label>
+                    Username
+                    <input value={serverForm.schemaRegistryUsername} onChange={(event) => setServerForm({ ...serverForm, schemaRegistryUsername: event.target.value })} />
+                  </label>
+                  <label>
+                    Password
+                    <input type="password" value={serverForm.schemaRegistryPassword} onChange={(event) => setServerForm({ ...serverForm, schemaRegistryPassword: event.target.value })} />
+                  </label>
+                </div>
+              )}
+              {serverForm.schemaRegistryAuthType === "bearer" && (
+                <label>
+                  Bearer token
+                  <input type="password" value={serverForm.schemaRegistryToken} onChange={(event) => setServerForm({ ...serverForm, schemaRegistryToken: event.target.value })} />
+                </label>
+              )}
+            </section>
             <div className="modal-actions">
               <button className="ghost" onClick={closeServerForm}>취소</button>
               <button className="primary" onClick={saveServer} disabled={loading}>
@@ -2124,6 +2826,18 @@ function App() {
           <span className="toast-message">{toast.message}</span>
         </div>
       )}
+      <QuickSearchPalette
+        open={isQuickSearchOpen}
+        query={quickSearchQuery}
+        results={quickSearchResults}
+        selectedIndex={quickSearchIndex}
+        connectedServerIds={connectedServerIds}
+        scope={quickSearchScope}
+        onQuery={setQuickSearchQuery}
+        onIndex={setQuickSearchIndex}
+        onClose={closeQuickSearch}
+        onExecute={(result) => void executeQuickSearch(result)}
+      />
       {isPreferencesOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setIsPreferencesOpen(false)}>
           <section className="server-modal preferences-modal" role="dialog" aria-modal="true" aria-labelledby="preferences-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -2136,44 +2850,250 @@ function App() {
                 <X size={18} />
               </button>
             </div>
-            <section className="preferences-grid">
-              <label>
-                Editor: Font Family
-                <input list="font-family-options" value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} placeholder="D2Coding, Consolas, 'Courier New', monospace" />
-                <datalist id="font-family-options">
-                  {fontOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </datalist>
-              </label>
-              <label>
-                Editor: Font Size
-                <input type="number" min={11} max={16} value={fontSize} onChange={(event) => setFontSize(Number(event.target.value) || 13)} />
-              </label>
-              <label className="font-size-slider">
-                Size preview
-                <input type="range" min={11} max={16} value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} />
-              </label>
-              <div className="font-preview">
-                <strong>proc-status-t</strong>
-                <span>{"{\"system_time\":1780388670010,\"proc_id\":\"PR1001\"}"}</span>
-              </div>
-              <label>
-                User Format: Log Export
-                <textarea
-                  className="format-template-editor"
-                  value={exportFormatTemplate}
-                  onChange={(event) => setExportFormatTemplate(event.target.value)}
-                  placeholder="[{timestamp}] {topic}[{partition}]@{offset} key={key} value={value}"
-                />
-              </label>
-              <div className="format-help">
-                Placeholders: {"{timestamp}"}, {"{topic}"}, {"{partition}"}, {"{offset}"}, {"{key}"}, {"{headers}"}, {"{value}"}
+            <section className="preferences-layout">
+              <aside className="preferences-nav" aria-label="Preference sections">
+                <div className="preferences-search">
+                  <Filter size={14} />
+                  <input value={preferencesQuery} onChange={(event) => setPreferencesQuery(event.target.value)} placeholder="Search settings" />
+                  {preferencesQuery && (
+                    <button onClick={() => setPreferencesQuery("")} title="Clear settings search">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                {preferenceSearchMatches.editor && (
+                <div className="preferences-nav-group">
+                  <button className="preferences-nav-parent" type="button" onClick={() => togglePreferenceGroup("editor")} aria-expanded={!collapsedPreferenceGroups.editor}>
+                    {collapsedPreferenceGroups.editor && !normalizedPreferencesQuery ? <ChevronRight size={14} /> : <ChevronDown size={14} />} Editor
+                  </button>
+                  {(!collapsedPreferenceGroups.editor || normalizedPreferencesQuery) && preferenceSearchMatches.pages.has("editor-font") && (
+                    <button className={activePreferencesPage === "editor-font" ? "active child" : "child"} onClick={() => setActivePreferencesPage("editor-font")}>
+                      <span>Font</span>
+                      <small>Family and size</small>
+                    </button>
+                  )}
+                </div>
+                )}
+                {preferenceSearchMatches.export && (
+                <div className="preferences-nav-group">
+                  <button className="preferences-nav-parent" type="button" onClick={() => togglePreferenceGroup("export")} aria-expanded={!collapsedPreferenceGroups.export}>
+                    {collapsedPreferenceGroups.export && !normalizedPreferencesQuery ? <ChevronRight size={14} /> : <ChevronDown size={14} />} Export
+                  </button>
+                  {(!collapsedPreferenceGroups.export || normalizedPreferencesQuery) && preferenceSearchMatches.pages.has("export-log") && (
+                    <button className={activePreferencesPage === "export-log" ? "active child" : "child"} onClick={() => setActivePreferencesPage("export-log")}>
+                      <span>Log Format</span>
+                      <small>Custom download format</small>
+                    </button>
+                  )}
+                </div>
+                )}
+                {preferenceSearchMatches.avro && (
+                <div className="preferences-nav-group">
+                  <button className="preferences-nav-parent" type="button" onClick={() => togglePreferenceGroup("avro")} aria-expanded={!collapsedPreferenceGroups.avro}>
+                    {collapsedPreferenceGroups.avro && !normalizedPreferencesQuery ? <ChevronRight size={14} /> : <ChevronDown size={14} />} Avro
+                  </button>
+                  {(!collapsedPreferenceGroups.avro || normalizedPreferencesQuery) && preferenceSearchMatches.pages.has("avro-schemas") && (
+                    <button className={activePreferencesPage === "avro-schemas" ? "active child" : "child"} onClick={() => setActivePreferencesPage("avro-schemas")}>
+                      <span>Schemas</span>
+                      <small>{manualAvroSchemaRows.length} registered</small>
+                    </button>
+                  )}
+                </div>
+                )}
+                {!preferenceSearchMatches.editor && !preferenceSearchMatches.export && !preferenceSearchMatches.avro && (
+                  <div className="preferences-no-results">No settings found</div>
+                )}
+              </aside>
+              <div className="preferences-content">
+                {activePreferencesPage === "editor-font" && (
+                  <section className="preferences-page">
+                    <header className="preferences-page-header">
+                      <h3>Editor: Font</h3>
+                      <p>Control the font used by the topic list, message grid, JSON viewer, and editors.</p>
+                    </header>
+                    <div className="setting-card">
+                      <label>
+                        Font Family
+                        <span>Enter a CSS font-family list. The first installed font will be used.</span>
+                        <input list="font-family-options" value={fontFamily} onChange={(event) => setFontFamily(event.target.value)} placeholder="D2Coding, Consolas, 'Courier New', monospace" />
+                        <datalist id="font-family-options">
+                          {fontOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </datalist>
+                      </label>
+                    </div>
+                    <div className="setting-card">
+                      <label>
+                        Font Size
+                        <span>Controls the base font size in pixels.</span>
+                        <input type="number" min={11} max={16} value={fontSize} onChange={(event) => setFontSize(Number(event.target.value) || 13)} />
+                      </label>
+                      <label className="font-size-slider">
+                        Size preview
+                        <input type="range" min={11} max={16} value={fontSize} onChange={(event) => setFontSize(Number(event.target.value))} />
+                      </label>
+                    </div>
+                    <div className="font-preview">
+                      <strong>proc-status-t</strong>
+                      <span>{"{\"system_time\":1780388670010,\"proc_id\":\"PR1001\"}"}</span>
+                    </div>
+                  </section>
+                )}
+                {activePreferencesPage === "export-log" && (
+                  <section className="preferences-page">
+                    <header className="preferences-page-header">
+                      <h3>Export: Log Format</h3>
+                      <p>Customize the downloadable LOG format used by message exports.</p>
+                    </header>
+                    <div className="setting-card">
+                      <label>
+                        User Format: Log Export
+                        <span>Use placeholders to build one line per Kafka message.</span>
+                        <textarea
+                          className="format-template-editor"
+                          value={exportFormatTemplate}
+                          onChange={(event) => setExportFormatTemplate(event.target.value)}
+                          placeholder="[{timestamp}] {topic}[{partition}]@{offset} key={key} value={value}"
+                        />
+                      </label>
+                    </div>
+                    <div className="format-help">
+                      Placeholders: {"{timestamp}"}, {"{topic}"}, {"{partition}"}, {"{offset}"}, {"{key}"}, {"{headers}"}, {"{value}"}
+                    </div>
+                  </section>
+                )}
+                {activePreferencesPage === "avro-schemas" && (
+                  <section className="avro-schema-manager">
+                    <div className="manager-header">
+                      <div>
+                        <strong>Registered Avro Schemas</strong>
+                        <span>Manage topic-level schemas used for Consume decoding and Produce serialization.</span>
+                      </div>
+                    </div>
+                    {manualAvroSchemaRows.length === 0 ? (
+                      <div className="manager-empty">No Avro schemas registered. Use a topic context menu or the Schema button on an opened topic.</div>
+                    ) : (
+                      <div className="schema-manager-list">
+                        {manualAvroSchemaRows.map((row) => (
+                          <div className="schema-manager-row" key={`${row.serverId}:${row.topic}`}>
+                            <div className="schema-manager-main">
+                              <strong title={row.topic}>{row.topic}</strong>
+                              <span title={row.serverName}>{row.serverName}</span>
+                            </div>
+                            <span className="schema-manager-pill">{row.schema.encoding === "confluent" ? `Confluent #${row.schema.schemaId ?? "-"}` : "Raw"}</span>
+                            <span className="schema-manager-date">{new Date(row.schema.updatedAt).toLocaleString()}</span>
+                            <div className="schema-manager-actions">
+                              <button className="ghost compact" onClick={() => { setIsPreferencesOpen(false); openManualAvroSchema(row.serverId, row.topic); }}>
+                                <Pencil size={14} /> Edit
+                              </button>
+                              <button className="ghost compact danger-inline" onClick={() => deleteManualAvroSchemaFor(row.serverId, row.topic)}>
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
               </div>
             </section>
             <div className="modal-actions">
-              <button className="ghost" onClick={() => { setFontFamily("D2Coding, Consolas, 'Courier New', monospace"); setFontSize(13); setExportFormatTemplate("[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"); }}>Reset</button>
+              {activePreferencesPage === "editor-font" && (
+                <button className="ghost" onClick={() => { setFontFamily("D2Coding, Consolas, 'Courier New', monospace"); setFontSize(13); setExportFormatTemplate("[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"); }}>Reset</button>
+              )}
               <button className="primary" onClick={() => setIsPreferencesOpen(false)}>Done</button>
+            </div>
+          </section>
+        </div>
+      )}
+      {isManualAvroOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={closeManualAvroSchema}>
+          <section className="server-modal avro-schema-modal" role="dialog" aria-modal="true" aria-labelledby="manual-avro-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-title">
+              <div>
+                <span className="eyebrow">Manual Avro Schema</span>
+                <h2 id="manual-avro-title">Register schema</h2>
+              </div>
+              <button className="modal-close" onClick={closeManualAvroSchema} title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="schema-meta">
+              <span>Server</span>
+              <strong>{servers.find((server) => server.id === manualAvroForm.serverId)?.name ?? manualAvroForm.serverId}</strong>
+              <span>Topic</span>
+              <strong>{manualAvroForm.topic}</strong>
+            </div>
+            <label>
+              Wire format
+              <select
+                value={manualAvroForm.encoding}
+                onChange={(event) => setManualAvroForm((current) => ({ ...current, encoding: event.target.value as ManualAvroSchema["encoding"], error: "" }))}
+              >
+                <option value="raw">Raw Avro payload</option>
+                <option value="confluent">Confluent wire format</option>
+              </select>
+            </label>
+            {manualAvroForm.encoding === "confluent" && (
+              <label>
+                Schema ID
+                <input
+                  type="number"
+                  min={0}
+                  value={manualAvroForm.schemaId}
+                  onChange={(event) => setManualAvroForm((current) => ({ ...current, schemaId: event.target.value, error: "" }))}
+                  placeholder="1"
+                />
+              </label>
+            )}
+            <div className="schema-file-row">
+              <label className="ghost schema-file-button">
+                <FolderOpen size={15} /> Schema file upload
+                <input
+                  type="file"
+                  accept=".avsc,.json,application/json"
+                  onChange={(event) => {
+                    void readSchemaFile(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <span>Paste JSON directly, upload a file, or drop it below.</span>
+            </div>
+            <label
+              className={isSchemaDragOver ? "schema-drop-zone dragging" : "schema-drop-zone"}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsSchemaDragOver(true);
+              }}
+              onDragLeave={() => setIsSchemaDragOver(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsSchemaDragOver(false);
+                void readSchemaFile(event.dataTransfer.files?.[0]);
+              }}
+            >
+              Schema JSON
+              <textarea
+                spellCheck={false}
+                value={manualAvroForm.schema}
+                onChange={(event) => setManualAvroForm((current) => ({ ...current, schema: event.target.value, error: "" }))}
+                placeholder='{"type":"record","name":"Message","fields":[{"name":"id","type":"string"}]}'
+              />
+            </label>
+            {manualAvroForm.error && <div className="form-error">{manualAvroForm.error}</div>}
+            <div className="modal-actions">
+              {manualAvroSchemasByServer[manualAvroForm.serverId]?.[manualAvroForm.topic] && (
+                <button className="danger" onClick={deleteManualAvroSchema}>
+                  <Trash2 size={16} /> Delete
+                </button>
+              )}
+              <button className="ghost" onClick={closeManualAvroSchema}>Cancel</button>
+              <button className="primary" onClick={saveManualAvroSchema}>
+                <Braces size={16} /> Save
+              </button>
             </div>
           </section>
         </div>
@@ -2256,6 +3176,9 @@ function App() {
           <button onClick={() => { closeTopicContextMenu(); void copySelectedTopicNames([contextTopic]); }}>
             <Copy size={14} /> Copy name
           </button>
+          <button onClick={() => { closeTopicContextMenu(); openManualAvroSchema(selectedServerId, contextTopic); }}>
+            <Braces size={14} /> Register Avro Schema
+          </button>
           <button className="danger-item" onClick={() => { closeTopicContextMenu(); requestTopicAction("purge", [contextTopic]); }}>
             <Trash2 size={14} /> Purge
           </button>
@@ -2315,6 +3238,8 @@ function SplitWorkspacePane(props: {
   onTopicDragStart: (event: React.DragEvent, topic: string) => void;
   onTopicDragEnd: () => void;
   onRefresh: () => void;
+  onOpenSchema: () => void;
+  manualAvroSchemas: Record<string, ManualAvroSchema>;
   onSelectGroup: (groupId: string) => void;
   onBackGroup: () => void;
   onRefreshGroupDetail: () => void;
@@ -2364,6 +3289,7 @@ function SplitWorkspacePane(props: {
                 }}
               >
                 <span>{topic}</span>
+                {props.manualAvroSchemas[topic] && <span className="topic-tab-badge" title="Avro schema registered">Avro</span>}
                 <X size={14} onClick={(event) => { event.stopPropagation(); props.onCloseTopic(topic); }} />
               </button>
             ))}
@@ -2378,6 +3304,9 @@ function SplitWorkspacePane(props: {
                 {view === "info" ? "Info" : view === "consume" ? "Consume" : "Produce"}
               </button>
             ))}
+            <button className="ghost schema-button refresh-side" onClick={props.onOpenSchema} disabled={!props.pane.topic}>
+              <Braces size={15} /> Schema
+            </button>
             <button className="ghost" onClick={props.onRefresh} disabled={!props.pane.topic || props.pane.view === "produce"}>
               <RefreshCw size={15} /> 새로고침
             </button>
@@ -2401,6 +3330,7 @@ function SplitWorkspacePane(props: {
             timeEnd={props.consumeState.timeEnd}
             filterText={props.consumeState.filterText}
             filterField={props.consumeState.filterField}
+            filterMode={props.consumeState.filterMode}
             autoScroll={props.consumeState.autoScroll}
             maxMessages={props.consumeState.maxMessages}
             offsetPagination={props.consumeState.offsetPagination}
@@ -2414,6 +3344,7 @@ function SplitWorkspacePane(props: {
             onTimeEnd={(timeEnd) => props.onUpdateConsume({ timeEnd })}
             onFilterText={(filterText) => props.onUpdateConsume({ filterText })}
             onFilterField={(filterField) => props.onUpdateConsume({ filterField })}
+            onFilterMode={(filterMode) => props.onUpdateConsume({ filterMode })}
             onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all" })}
             onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
             onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
@@ -2435,6 +3366,8 @@ function SplitWorkspacePane(props: {
             keyText={props.produceKey}
             headers={props.produceHeaders}
             value={props.produceValue}
+            hasAvroSchema={Boolean(props.manualAvroSchemas[props.pane.topic])}
+            avroEncoding={props.manualAvroSchemas[props.pane.topic]?.encoding}
             onKey={props.onProduceKey}
             onHeaders={props.onProduceHeaders}
             onValue={props.onProduceValue}
@@ -2692,6 +3625,7 @@ function TopicListItem(props: {
   topic: TopicSummary;
   active: boolean;
   favorite: boolean;
+  hasAvroSchema: boolean;
   onSelect: () => void;
   onOpen: () => void;
   onToggleFavorite: () => void;
@@ -2709,7 +3643,10 @@ function TopicListItem(props: {
         <Star size={14} fill={props.favorite ? "currentColor" : "none"} />
       </span>
       <span className="topic-copy">
-        <strong title={props.topic.name}>{props.topic.name}</strong>
+        <strong title={props.topic.name}>
+          <span>{props.topic.name}</span>
+          {props.hasAvroSchema && <span className="topic-avro-badge" title="Avro schema registered">Avro</span>}
+        </strong>
         <small title={`${props.topic.partitions} partitions / RF ${props.topic.replicationFactor} / ${formatCount(props.topic.messageCount)} messages`}>
           P {props.topic.partitions} / RF {props.topic.replicationFactor} / {formatCount(props.topic.messageCount)} msgs
         </small>
@@ -2731,6 +3668,7 @@ function ConsumePanel(props: {
   timeEnd: string;
   filterText: string;
   filterField: ConsumeFilterField;
+  filterMode: ConsumeFilterMode;
   autoScroll: boolean;
   maxMessages: number;
   offsetPagination: TopicConsumeState["offsetPagination"];
@@ -2744,6 +3682,7 @@ function ConsumePanel(props: {
   onTimeEnd: (value: string) => void;
   onFilterText: (value: string) => void;
   onFilterField: (value: ConsumeFilterField) => void;
+  onFilterMode: (value: ConsumeFilterMode) => void;
   onClearFilter: () => void;
   onApplyFilter: (value: string) => void;
   onAutoScroll: (value: boolean) => void;
@@ -2761,6 +3700,7 @@ function ConsumePanel(props: {
   const [inspectorMode, setInspectorMode] = useState<JsonInspectorMode>("raw");
   const [inspectorSearch, setInspectorSearch] = useState("");
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [filterDraft, setFilterDraft] = useState(props.filterText);
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
   const selectedPayload = props.selectedMessage ? formatMessagePayload(props.selectedMessage) : null;
@@ -2769,9 +3709,27 @@ function ConsumePanel(props: {
     () => filterMessages(props.messages, props.filterText, props.filterField),
     [props.filterField, props.filterText, props.messages]
   );
+  const hasActiveMessageFilter = props.filterText.trim().length > 0 || props.filterField === "headersEmpty";
+  const highlightedMessageKeys = useMemo(
+    () => new Set(filteredMessages.map((message) => `${message.partition}-${message.offset}-${message.timestamp}`)),
+    [filteredMessages]
+  );
+  const gridMessages = props.filterMode === "highlight" && hasActiveMessageFilter ? props.messages : filteredMessages;
   const isLargeOffsetRequest = props.mode === "offset" && props.limit > OFFSET_PAGING_THRESHOLD;
   const pagination = props.offsetPagination;
   const canExportFullOffsetRange = isLargeOffsetRequest && Boolean(pagination?.endOffsetExclusive);
+
+  useEffect(() => {
+    setFilterDraft(props.filterText);
+  }, [props.filterText]);
+
+  useEffect(() => {
+    if (filterDraft === props.filterText) return;
+    const timer = window.setTimeout(() => {
+      props.onFilterText(filterDraft);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [filterDraft, props.filterText, props.onFilterText]);
 
   useEffect(() => {
     if (props.mode !== "live" || !props.autoScroll) return;
@@ -2844,9 +3802,21 @@ function ConsumePanel(props: {
       cell: ({ row }) => <span title={formatHeaders(row.original.headers)}>{previewHeaders(row.original.headers)}</span>
     },
     {
-      accessorKey: "value",
+      id: "value",
       header: "Value",
-      cell: ({ row }) => <span title={row.original.value}>{previewValue(row.original.value)}</span>
+      accessorFn: (message) => message.decoded?.value !== undefined ? JSON.stringify(message.decoded.value) : message.value,
+      cell: ({ row }) => {
+        const decoded = row.original.decoded;
+        const hasDecodedValue = decoded?.value !== undefined;
+        const displayValue = hasDecodedValue ? JSON.stringify(decoded.value) : row.original.value;
+        return (
+          <span title={decoded?.error ?? displayValue}>
+            {hasDecodedValue && <span className="decode-badge">Avro</span>}
+            {decoded?.error && <span className="decode-badge error">Avro error</span>}
+            {previewValue(displayValue)}
+          </span>
+        );
+      }
     }
   ], [filteredMessages.length, props.mode, props.offsetOrder]);
 
@@ -2961,7 +3931,9 @@ function ConsumePanel(props: {
             </div>
           )}
         </div>
-        <span className={props.isConsuming ? "count live-count" : "count"}>{props.isConsuming ? "Live" : ""} {filteredMessages.length}/{props.messages.length} messages</span>
+        <span className={props.isConsuming ? "count live-count" : "count"}>
+          {props.isConsuming ? "Live" : ""} {props.filterMode === "highlight" && hasActiveMessageFilter ? `${filteredMessages.length} highlighted` : filteredMessages.length}/{props.messages.length} messages
+        </span>
       </div>
       {isLargeOffsetRequest && (
         <div className="paging-bar">
@@ -2987,18 +3959,54 @@ function ConsumePanel(props: {
           <option value="partition">Partition</option>
           <option value="timestamp">Timestamp</option>
         </select>
-        <input value={props.filterText} onChange={(event) => props.onFilterText(event.target.value)} placeholder="Filter messages" />
+        <div className="filter-input-wrap">
+          <input value={filterDraft} onChange={(event) => setFilterDraft(event.target.value)} placeholder="Filter messages" />
+        </div>
+        <div className="filter-help">
+          <button className="icon-button subtle" type="button" aria-label="Filter help">
+            <HelpCircle size={15} />
+          </button>
+          <div className="filter-help-popover" role="tooltip">
+            <strong>Filter syntax</strong>
+            <span>{getMessageFilterHelpText()}</span>
+            <span><b>JSON path</b>: value.proc_id == "PR0116", decoded.speed &gt;= 80</span>
+            <span><b>비교</b>: ==, !=, &gt;, &gt;=, &lt;, &lt;=, ~=</span>
+            <span><b>존재</b>: headers.traceId exists, value.error !exists</span>
+            <span><b>필드</b>: key, value, headers, partition, offset, timestamp, topic, decoded</span>
+            <span><b>제외</b>: !error 또는 -error</span>
+            <span><b>정규식</b>: /timeout|failed/i</span>
+            <span><b>빈 값</b>: empty:headers, empty:key, empty:value</span>
+            <span><b>문장</b>: value:"process status"</span>
+          </div>
+        </div>
+        <button
+          className={props.filterMode === "highlight" ? "filter-mode-toggle active" : "filter-mode-toggle"}
+          type="button"
+          onClick={() => props.onFilterMode(props.filterMode === "hide" ? "highlight" : "hide")}
+          title={props.filterMode === "hide" ? "Hide unmatched rows" : "Highlight matched rows"}
+        >
+          {props.filterMode === "hide" ? <EyeOff size={14} /> : <Sparkles size={14} />}
+          {props.filterMode === "hide" ? "Hide" : "Highlight"}
+        </button>
         <button className="ghost compact" onClick={props.onClearFilter}>Clear</button>
       </div>
       <div className="consume-grid" ref={consumeGridRef} style={{ gridTemplateRows: `${props.messagePaneHeight}px 8px minmax(0, 1fr)` }}>
         <div ref={messageTableRef} className="consume-grid-table-wrap">
           <DataGrid
-            data={filteredMessages}
+            data={gridMessages}
             columns={columns}
             className="tanstack-message-table"
             emptyText="No messages"
             getRowKey={(message) => `${message.partition}-${message.offset}-${message.timestamp}`}
-            getRowClassName={(message) => (props.selectedMessage === message ? "selected" : "")}
+            getRowClassName={(message) => {
+              const classes = [];
+              if (props.selectedMessage === message) classes.push("selected");
+              if (props.filterMode === "highlight" && hasActiveMessageFilter) {
+                const isMatched = highlightedMessageKeys.has(`${message.partition}-${message.offset}-${message.timestamp}`);
+                classes.push(isMatched ? "filter-highlight" : "filter-muted");
+              }
+              return classes.join(" ");
+            }}
             getRowStyle={(message) => ({ borderLeftColor: getPartitionColor(message.partition) })}
             onRowClick={props.onSelectMessage}
           />
@@ -3113,6 +4121,8 @@ function ProducePanel(props: {
   keyText: string;
   headers: string;
   value: string;
+  hasAvroSchema: boolean;
+  avroEncoding?: ManualAvroSchema["encoding"];
   onKey: (value: string) => void;
   onHeaders: (value: string) => void;
   onValue: (value: string) => void;
@@ -3124,6 +4134,12 @@ function ProducePanel(props: {
         <h2>Produce</h2>
         <span>{props.topic || "topic required"}</span>
       </div>
+      {props.hasAvroSchema && (
+        <div className="produce-schema-notice">
+          <Braces size={15} />
+          Avro serialization enabled ({props.avroEncoding === "confluent" ? "Confluent" : "Raw"})
+        </div>
+      )}
       <label>Key<input value={props.keyText} onChange={(event) => props.onKey(event.target.value)} placeholder="optional key" /></label>
       <label>Headers<textarea className="headers-editor" value={props.headers} onChange={(event) => props.onHeaders(event.target.value)} placeholder="{ }" /></label>
       <label>Value<textarea value={props.value} onChange={(event) => props.onValue(event.target.value)} /></label>

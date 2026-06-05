@@ -3,8 +3,10 @@ import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Kafka, logLevel, type Admin, type Consumer, type KafkaMessage } from "kafkajs";
+import { Kafka, logLevel, type Admin, type Consumer } from "kafkajs";
 import { autoUpdater } from "electron-updater";
+import { encodeManualAvro } from "./avroDecoder.js";
+import { toConsumedMessage } from "./messageMapper.js";
 import type {
   ConsumedMessage,
   ConsumeOffsetRequest,
@@ -24,6 +26,7 @@ import type {
   StartConsumeRequest,
   StopConsumeRequest,
   TopicDetail,
+  TopicMessageCounts,
   TopicMutationRequest,
   TopicSummary,
   UpdateStatus
@@ -46,6 +49,7 @@ function preferencesPath() {
 const defaultPreferences: AppPreferences = {
   favoriteTopicsByServer: {},
   consumeDefaultsByServer: {},
+  manualAvroSchemasByServer: {},
   layout: {},
   appearance: {
     fontFamily: "D2Coding, Consolas, 'Courier New', monospace",
@@ -86,6 +90,7 @@ function normalizePreferences(preferences?: Partial<AppPreferences>): AppPrefere
   return {
     favoriteTopicsByServer: preferences?.favoriteTopicsByServer ?? {},
     consumeDefaultsByServer: preferences?.consumeDefaultsByServer ?? {},
+    manualAvroSchemasByServer: preferences?.manualAvroSchemasByServer ?? {},
     layout: preferences?.layout ?? {},
     appearance: preferences?.appearance ?? defaultPreferences.appearance,
     exportFormatTemplate: preferences?.exportFormatTemplate ?? defaultPreferences.exportFormatTemplate,
@@ -99,6 +104,7 @@ function mergePreferences(current: AppPreferences, next: AppPreferences): AppPre
     ...next,
     favoriteTopicsByServer: next.favoriteTopicsByServer ?? current.favoriteTopicsByServer,
     consumeDefaultsByServer: next.consumeDefaultsByServer ?? current.consumeDefaultsByServer,
+    manualAvroSchemasByServer: next.manualAvroSchemasByServer ?? current.manualAvroSchemasByServer,
     layout: {
       ...(current.layout ?? {}),
       ...(next.layout ?? {})
@@ -128,7 +134,8 @@ function normalizeImportedServers(servers: unknown): ServerProfile[] {
       id: typeof item.id === "string" && item.id.trim() ? item.id : randomUUID(),
       name,
       brokers,
-      security: item.security
+      security: item.security,
+      schemaRegistry: item.schemaRegistry
     };
   });
 }
@@ -224,7 +231,13 @@ function createApplicationMenu() {
           label: "Preferences...",
           accelerator: "CmdOrCtrl+,",
           click: () => {
-            mainWindow?.webContents.send("preferences:open");
+            mainWindow?.webContents.send("preferences:open", "general");
+          }
+        },
+        {
+          label: "Avro Schemas...",
+          click: () => {
+            mainWindow?.webContents.send("preferences:open", "avro");
           }
         },
         { type: "separator" },
@@ -391,6 +404,8 @@ function nextOffset(offset: string) {
 
 async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> {
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
   const consumer = kafka.consumer({ groupId: `kafka-tool-offset-${Date.now()}` });
   const messages: ConsumedMessage[] = [];
@@ -469,7 +484,7 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
           finish();
           return;
         }
-        messages.push(toConsumedMessage(request.serverId, topic, partition, message));
+        messages.push(await toConsumedMessage(profile, topic, partition, message, manualSchema));
         if (messages.length >= limit) {
           finish();
         }
@@ -695,13 +710,33 @@ ipcMain.handle("servers:save", async (_event, server: Omit<ServerProfile, "id"> 
       throw new Error("SASL/OAUTHBEARER requires token endpoint, client ID, and client secret.");
     }
   }
+  if (server.schemaRegistry?.url && !/^https?:\/\//i.test(server.schemaRegistry.url.trim())) {
+    throw new Error("Schema Registry URL must start with http:// or https://.");
+  }
 
   const profiles = await readProfiles();
   const nextProfile: ServerProfile = {
     id: server.id ?? randomUUID(),
     name: server.name.trim(),
     brokers,
-    security: server.security
+    security: server.security,
+    schemaRegistry: server.schemaRegistry?.url?.trim()
+      ? {
+        url: server.schemaRegistry.url.trim(),
+        auth: server.schemaRegistry.auth?.type === "basic"
+          ? {
+            type: "basic",
+            username: server.schemaRegistry.auth.username ?? "",
+            password: server.schemaRegistry.auth.password ?? ""
+          }
+          : server.schemaRegistry.auth?.type === "bearer"
+            ? {
+              type: "bearer",
+              token: server.schemaRegistry.auth.token ?? ""
+            }
+            : undefined
+      }
+      : undefined
   };
   const nextProfiles = profiles.some((item) => item.id === nextProfile.id)
     ? profiles.map((item) => (item.id === nextProfile.id ? nextProfile : item))
@@ -754,31 +789,35 @@ ipcMain.handle("preferences:save", async (_event, preferences: AppPreferences) =
 ipcMain.handle("kafka:topics", async (_event, serverId: string): Promise<TopicSummary[]> => {
   return withAdmin(serverId, async (admin) => {
     const metadata = await admin.fetchTopicMetadata();
-    const topics = metadata.topics
+    return metadata.topics
       .filter((topic) => !topic.name.startsWith("__"))
       .map((topic) => ({
         name: topic.name,
         partitions: topic.partitions.length,
         replicationFactor: topic.partitions[0]?.replicas.length ?? 0
-      }));
-    const topicsWithOffsets = await mapWithConcurrency(topics, 8, async (topic) => {
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+});
+
+ipcMain.handle("kafka:topic-message-counts", async (_event, serverId: string, topicNames: string[]): Promise<TopicMessageCounts> => {
+  const uniqueTopicNames = [...new Set(topicNames.map((topic) => topic.trim()).filter(Boolean))];
+  if (uniqueTopicNames.length === 0) return {};
+  return withAdmin(serverId, async (admin) => {
+    const entries = await mapWithConcurrency(uniqueTopicNames, 6, async (topicName) => {
       try {
-        const offsets = await admin.fetchTopicOffsets(topic.name);
+        const offsets = await admin.fetchTopicOffsets(topicName);
         const messageCount = offsets.reduce((total, offset) => {
           const high = /^\d+$/.test(offset.high) ? BigInt(offset.high) : 0n;
           const low = /^\d+$/.test(offset.low) ? BigInt(offset.low) : 0n;
           return total + (high > low ? high - low : 0n);
         }, 0n);
-        return {
-          ...topic,
-          messageCount: messageCount.toString()
-        };
+        return [topicName, messageCount.toString()] as const;
       } catch {
-        return topic;
+        return [topicName, "0"] as const;
       }
     });
-    return topicsWithOffsets
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return Object.fromEntries(entries);
   });
 });
 
@@ -1126,15 +1165,18 @@ ipcMain.handle("messages:export-offset", async (_event, request: OffsetMessageEx
 
 ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise<ProducedMessage[]> => {
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const producer = createKafka(profile).producer();
   await producer.connect();
   try {
+    const value = encodeManualAvro(profile, request.topic, request.value, manualSchema);
     const result = await producer.send({
       topic: request.topic,
       messages: [
         {
           key: request.key || undefined,
-          value: request.value,
+          value,
           headers: request.headers
         }
       ]
@@ -1149,33 +1191,14 @@ ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise
   }
 });
 
-function toConsumedMessage(serverId: string | undefined, topic: string, partition: number, message: KafkaMessage): ConsumedMessage {
-  const headers: Record<string, string> = {};
-  for (const [key, value] of Object.entries(message.headers ?? {})) {
-    if (Array.isArray(value)) {
-      headers[key] = value.map((item) => (Buffer.isBuffer(item) ? item.toString("utf8") : String(item))).join(", ");
-    } else if (value !== undefined) {
-      headers[key] = Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
-    }
-  }
-  return {
-    serverId,
-    topic,
-    partition,
-    offset: message.offset,
-    timestamp: new Date(Number(message.timestamp)).toISOString(),
-    key: message.key?.toString("utf8") ?? "",
-    value: message.value?.toString("utf8") ?? "",
-    headers
-  };
-}
-
 ipcMain.handle("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> => {
   return consumeOffsetBatch(request);
 });
 
 ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRangeRequest): Promise<ConsumedMessage[]> => {
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
   const limit = Math.max(1, Number(request.limit) || 100);
   const messages: ConsumedMessage[] = [];
@@ -1249,7 +1272,7 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
         }
 
         if (timestamp >= request.startTimestamp) {
-          messages.push(toConsumedMessage(request.serverId, topic, partition, message));
+          messages.push(await toConsumedMessage(profile, topic, partition, message, manualSchema));
           if (messages.length >= limit) {
             finish();
           }
@@ -1280,6 +1303,8 @@ ipcMain.handle("kafka:consume-stop", async (_event, request?: StopConsumeRequest
 ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
   await stopActiveConsumer({ serverId: request.serverId, topic: request.topic });
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
   const groupId = `kafka-tool-${Date.now()}`;
   const consumer = kafka.consumer({ groupId });
@@ -1293,7 +1318,7 @@ ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeReques
       if (request.partition !== undefined && partition !== request.partition) {
         return;
       }
-      const payload = toConsumedMessage(request.serverId, topic, partition, message);
+      const payload = await toConsumedMessage(profile, topic, partition, message, manualSchema);
       mainWindow?.webContents.send("kafka:consume-message", payload);
     }
   }).catch((error) => {

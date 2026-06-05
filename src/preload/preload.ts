@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppPreferenceSection, AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -13,6 +13,7 @@ const api: KafkaApi = {
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
   listTopics: (serverId: string) => ipcRenderer.invoke("kafka:topics", serverId),
+  listTopicMessageCounts: (serverId: string, topics: string[]) => ipcRenderer.invoke("kafka:topic-message-counts", serverId, topics),
   listBrokers: (serverId: string) => ipcRenderer.invoke("kafka:brokers", serverId),
   getTopicDetail: (serverId: string, topic: string) => ipcRenderer.invoke("kafka:topic-detail", serverId, topic),
   deleteTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-delete", request),
@@ -51,8 +52,8 @@ const api: KafkaApi = {
     ipcRenderer.on("settings:error", listener);
     return () => ipcRenderer.removeListener("settings:error", listener);
   },
-  onPreferencesOpen: (callback: () => void) => {
-    const listener = () => callback();
+  onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, section?: AppPreferenceSection) => callback(section);
     ipcRenderer.on("preferences:open", listener);
     return () => ipcRenderer.removeListener("preferences:open", listener);
   },

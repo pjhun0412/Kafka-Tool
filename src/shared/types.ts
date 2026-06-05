@@ -2,6 +2,15 @@ export type ServerProfile = {
   id: string;
   name: string;
   brokers: string[];
+  schemaRegistry?: {
+    url: string;
+    auth?: {
+      type: "basic" | "bearer";
+      username?: string;
+      password?: string;
+      token?: string;
+    };
+  };
   security?: {
     ssl?: boolean;
     sasl?: {
@@ -22,6 +31,8 @@ export type TopicSummary = {
   messageCount?: string;
   sizeBytes?: string;
 };
+
+export type TopicMessageCounts = Record<string, string>;
 
 export type TopicDetail = {
   name: string;
@@ -82,6 +93,13 @@ export type ConsumerGroupLagDetail = {
   rows: ConsumerGroupLagRow[];
 };
 
+export type ManualAvroSchema = {
+  encoding: "raw" | "confluent";
+  schemaId?: number;
+  schema: string;
+  updatedAt: string;
+};
+
 export type AppPreferences = {
   favoriteTopicsByServer: Record<string, string[]>;
   consumeDefaultsByServer: Record<string, Partial<{
@@ -93,6 +111,7 @@ export type AppPreferences = {
     maxMessages: number;
     filterField: "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
   }>>;
+  manualAvroSchemasByServer?: Record<string, Record<string, ManualAvroSchema>>;
   layout?: Partial<{
     sidebarWidth: number;
     serverPanelHeight: number;
@@ -139,9 +158,19 @@ export type ConsumedMessage = {
   key: string;
   value: string;
   headers: Record<string, string>;
+  decoded?: {
+    format: "avro";
+    schemaId?: number;
+    source?: "registry" | "manual";
+    encoding?: "raw" | "confluent";
+    value?: unknown;
+    error?: string;
+  };
 };
 
 export type MessageExportFormat = "json" | "csv" | "log";
+
+export type AppPreferenceSection = "general" | "avro";
 
 export type MessageExportRequest = {
   topic: string;
@@ -223,6 +252,7 @@ export type KafkaApi = {
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
+  listTopicMessageCounts: (serverId: string, topics: string[]) => Promise<TopicMessageCounts>;
   listBrokers: (serverId: string) => Promise<BrokerSummary[]>;
   getTopicDetail: (serverId: string, topic: string) => Promise<TopicDetail>;
   deleteTopics: (request: TopicMutationRequest) => Promise<void>;
@@ -241,6 +271,6 @@ export type KafkaApi = {
   onSettingsImported: (callback: (result: ImportSettingsResult) => void) => () => void;
   onSettingsExported: (callback: (filePath: string) => void) => () => void;
   onSettingsError: (callback: (error: string) => void) => () => void;
-  onPreferencesOpen: (callback: () => void) => () => void;
+  onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => () => void;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 };

@@ -4,13 +4,14 @@ export type View = "brokers" | "topics" | "consumers" | "info" | "consume" | "pr
 export type TopicWorkView = "info" | "consume" | "produce";
 export type ConsumeMode = "offset" | "timeRange" | "live";
 export type ConsumeFilterField = "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
+export type ConsumeFilterMode = "hide" | "highlight";
 export type OffsetOrder = "asc" | "desc";
 export type JsonInspectorMode = "raw" | "tree";
 export type TopicListFilter = "all" | "favorites" | "nonEmpty";
 export type TopicSortMode = "nameAsc" | "messagesDesc" | "partitionsDesc" | "favoritesFirst";
 export type ToastState = { message: string; kind: "loading" | "success" | "error" } | null;
 export type ConsumeDefaultPatch = AppPreferences["consumeDefaultsByServer"][string];
-export type TopicAction = { kind: "delete" | "purge"; topics: string[] } | null;
+export type TopicAction = { serverId: string; kind: "delete" | "purge"; topics: string[] } | null;
 export type DragPayload = { type: "topic"; serverId: string; topic: string; source: "primary" | "split" } | { type: "split-pane" };
 
 export type SplitPaneState = {
@@ -33,6 +34,7 @@ export type TopicConsumeState = {
   timeEnd: string;
   filterText: string;
   filterField: ConsumeFilterField;
+  filterMode: ConsumeFilterMode;
   autoScroll: boolean;
   maxMessages: number;
   offsetPagination: {
@@ -56,7 +58,12 @@ export const emptyServer = {
   oauthClientId: "",
   oauthClientSecret: "",
   oauthScope: "",
-  oauthAudience: ""
+  oauthAudience: "",
+  schemaRegistryUrl: "",
+  schemaRegistryAuthType: "none" as "none" | "basic" | "bearer",
+  schemaRegistryUsername: "",
+  schemaRegistryPassword: "",
+  schemaRegistryToken: ""
 };
 
 export const emptyConsumeState: TopicConsumeState = {
@@ -71,6 +78,7 @@ export const emptyConsumeState: TopicConsumeState = {
   timeEnd: "",
   filterText: "",
   filterField: "all",
+  filterMode: "hide",
   autoScroll: true,
   maxMessages: 1000,
   offsetPagination: null
