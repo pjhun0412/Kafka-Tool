@@ -11,6 +11,7 @@ import {
   type ColumnFiltersState,
   type Header,
   type Row,
+  type OnChangeFn,
   type SortingState
 } from "@tanstack/react-table";
 
@@ -85,10 +86,14 @@ export function DataGrid<TData extends object>(props: {
   getRowKey?: (row: TData, index: number) => string;
   getRowClassName?: (row: TData) => string;
   getRowStyle?: (row: TData) => React.CSSProperties;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
 }) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
+  const sorting = props.sorting ?? internalSorting;
+  const setSorting = props.onSortingChange ?? setInternalSorting;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [openFilterColumnId, setOpenFilterColumnId] = useState("");
   const table = useReactTable({
