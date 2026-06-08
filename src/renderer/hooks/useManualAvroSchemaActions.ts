@@ -1,30 +1,26 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ManualAvroSchema } from "../../shared/types";
 import type { ToastState } from "../uiTypes";
-import type { ManualAvroForm } from "./useManualAvroSchemaForm";
 import { buildManualAvroSchema, validateManualAvroSchemaForm } from "../manualAvroSchema";
+import { useManualAvroSchemaStore } from "../stores/ui/manualAvroSchemaStore";
 
 type ManualAvroSchemaActionParams = {
-  manualAvroForm: ManualAvroForm;
-  setManualAvroForm: Dispatch<SetStateAction<ManualAvroForm>>;
   manualAvroSchemasByServer: Record<string, Record<string, ManualAvroSchema>>;
   setManualAvroSchemasByServer: Dispatch<SetStateAction<Record<string, Record<string, ManualAvroSchema>>>>;
-  setIsManualAvroOpen: Dispatch<SetStateAction<boolean>>;
-  setIsSchemaDragOver: Dispatch<SetStateAction<boolean>>;
-  closeManualAvroForm: () => void;
   setToast: Dispatch<SetStateAction<ToastState>>;
 };
 
 export function useManualAvroSchemaActions({
-  manualAvroForm,
-  setManualAvroForm,
   manualAvroSchemasByServer,
   setManualAvroSchemasByServer,
-  setIsManualAvroOpen,
-  setIsSchemaDragOver,
-  closeManualAvroForm,
   setToast
 }: ManualAvroSchemaActionParams) {
+  const manualAvroForm = useManualAvroSchemaStore((state) => state.manualAvroForm);
+  const setManualAvroForm = useManualAvroSchemaStore((state) => state.setManualAvroForm);
+  const setIsManualAvroOpen = useManualAvroSchemaStore((state) => state.setIsManualAvroOpen);
+  const setIsSchemaDragOver = useManualAvroSchemaStore((state) => state.setIsSchemaDragOver);
+  const closeManualAvroForm = useManualAvroSchemaStore((state) => state.closeManualAvroForm);
+
   function openManualAvroSchema(serverId: string, topic: string) {
     if (!serverId || !topic) return;
     const saved = manualAvroSchemasByServer[serverId]?.[topic];

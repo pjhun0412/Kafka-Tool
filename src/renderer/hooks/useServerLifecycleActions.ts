@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { BrokerSummary, ConsumerGroupSummary, KafkaApi, ServerProfile, TopicSummary } from "../../shared/types";
-import type { ServerForm } from "../serverProfileForm";
 import { buildServerProfileInput } from "../serverProfileForm";
+import { useServerFormStore } from "../stores/ui/serverFormStore";
 import type { ToastState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget } from "../uiTypes";
 import { readStreamingTopicKey } from "../workspaceState";
 
@@ -12,8 +12,6 @@ type ServerLifecycleActionsParams = {
   openClusterIds: string[];
   selectedServerId: string;
   streamingTopicsByServer: Record<string, string[]>;
-  editingServerId: string | null;
-  serverForm: ServerForm;
   runTask: <T>(label: string, task: () => Promise<T>, options?: { toast?: boolean }) => Promise<T>;
   stopConsume: (serverId: string, topic: string, pane?: "primary" | "split") => Promise<void>;
   refreshTopicsForServer: (
@@ -23,7 +21,6 @@ type ServerLifecycleActionsParams = {
   ) => Promise<void>;
   refreshBrokersForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
   refreshGroupsForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
-  closeServerForm: () => void;
   setServers: Dispatch<SetStateAction<ServerProfile[]>>;
   setSelectedServerId: Dispatch<SetStateAction<string>>;
   setConnectedServerIds: Dispatch<SetStateAction<string[]>>;
@@ -59,14 +56,11 @@ export function useServerLifecycleActions({
   openClusterIds,
   selectedServerId,
   streamingTopicsByServer,
-  editingServerId,
-  serverForm,
   runTask,
   stopConsume,
   refreshTopicsForServer,
   refreshBrokersForServer,
   refreshGroupsForServer,
-  closeServerForm,
   setServers,
   setSelectedServerId,
   setConnectedServerIds,
@@ -88,6 +82,10 @@ export function useServerLifecycleActions({
   setToast,
   setStatus
 }: ServerLifecycleActionsParams) {
+  const editingServerId = useServerFormStore((state) => state.editingServerId);
+  const serverForm = useServerFormStore((state) => state.serverForm);
+  const closeServerForm = useServerFormStore((state) => state.closeServerForm);
+
   async function saveServer() {
     if (!kafkaApi) return;
     const nextServers = await runTask("Saving server...", () =>

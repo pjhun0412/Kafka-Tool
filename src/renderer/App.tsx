@@ -16,7 +16,6 @@ import { emptyProduceDraft, useProduceDraftStore } from "./hooks/useProduceDraft
 import { useLayoutPreferences } from "./hooks/useLayoutPreferences";
 import { useWorkspacePaneState } from "./hooks/useWorkspacePaneState";
 import { useSidebarInteractionState } from "./hooks/useSidebarInteractionState";
-import { useManualAvroSchemaForm } from "./hooks/useManualAvroSchemaForm";
 import { useManualAvroSchemaActions } from "./hooks/useManualAvroSchemaActions";
 import { useServerFormState } from "./hooks/useServerFormState";
 import { useFeedbackState } from "./hooks/useFeedbackState";
@@ -83,11 +82,8 @@ export function App() {
     setSelectedServerId
   } = useServerClusterState();
   const {
-    serverForm,
-    editingServerId,
     openNewServerForm,
-    openEditServerForm,
-    closeServerForm
+    openEditServerForm
   } = useServerFormState();
   const {
     viewByServer,
@@ -267,26 +263,14 @@ export function App() {
   useDismissOnWindowInteraction(Boolean(topicContextMenu), closeTopicContextMenu);
   useDismissOnWindowInteraction(isTopicSortMenuOpen, () => setIsTopicSortMenuOpen(false));
   const {
-    manualAvroForm,
-    setManualAvroForm,
-    setIsManualAvroOpen,
-    setIsSchemaDragOver,
-    closeManualAvroForm
-  } = useManualAvroSchemaForm();
-  const {
     openManualAvroSchema,
     readSchemaFile,
     saveManualAvroSchema,
     deleteManualAvroSchema,
     deleteManualAvroSchemaFor
   } = useManualAvroSchemaActions({
-    manualAvroForm,
-    setManualAvroForm,
     manualAvroSchemasByServer,
     setManualAvroSchemasByServer,
-    setIsManualAvroOpen,
-    setIsSchemaDragOver,
-    closeManualAvroForm,
     setToast
   });
   const {
@@ -660,14 +644,11 @@ export function App() {
     openClusterIds,
     selectedServerId,
     streamingTopicsByServer,
-    editingServerId,
-    serverForm,
     runTask,
     stopConsume,
     refreshTopicsForServer,
     refreshBrokersForServer,
     refreshGroupsForServer,
-    closeServerForm,
     setServers,
     setSelectedServerId,
     setConnectedServerIds,
