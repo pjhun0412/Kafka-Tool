@@ -1,5 +1,5 @@
 import type { ManualAvroSchema } from "../shared/types";
-import type { ManualAvroForm } from "./hooks/useManualAvroSchemaForm";
+import type { ManualAvroForm } from "./stores/ui/manualAvroSchemaStore";
 
 export function validateManualAvroSchemaForm(form: ManualAvroForm) {
   const schema = form.schema.trim();

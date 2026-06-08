@@ -17,7 +17,6 @@ import { useLayoutPreferences } from "./hooks/useLayoutPreferences";
 import { useWorkspacePaneState } from "./hooks/useWorkspacePaneState";
 import { useSidebarInteractionState } from "./hooks/useSidebarInteractionState";
 import { useManualAvroSchemaActions } from "./hooks/useManualAvroSchemaActions";
-import { useServerFormState } from "./hooks/useServerFormState";
 import { useFeedbackState } from "./hooks/useFeedbackState";
 import { useServerClusterState } from "./hooks/useServerClusterState";
 import { useKafkaResourceState } from "./hooks/useKafkaResourceState";
@@ -65,6 +64,7 @@ import { useSidebarDragActions } from "./hooks/useSidebarDragActions";
 import { usePrimaryPaneCallbacks } from "./hooks/usePrimaryPaneCallbacks";
 import { useSplitPaneCallbacks } from "./hooks/useSplitPaneCallbacks";
 import { useWorkspaceOverlayCallbacks } from "./hooks/useWorkspaceOverlayCallbacks";
+import { useServerFormStore } from "./stores/ui/serverFormStore";
 
 export function App() {
   const kafkaApi = window.kafkaApi;
@@ -81,10 +81,8 @@ export function App() {
     selectedServerId,
     setSelectedServerId
   } = useServerClusterState();
-  const {
-    openNewServerForm,
-    openEditServerForm
-  } = useServerFormState();
+  const openNewServerForm = useServerFormStore((state) => state.openNewServerForm);
+  const openEditServerForm = useServerFormStore((state) => state.openEditServerForm);
   const {
     viewByServer,
     setViewByServer,

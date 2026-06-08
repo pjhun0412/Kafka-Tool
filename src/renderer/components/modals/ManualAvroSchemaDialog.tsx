@@ -1,7 +1,7 @@
 import { Braces, FolderOpen, Trash2, X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ManualAvroSchema, ServerProfile } from "../../../shared/types";
-import type { ManualAvroForm } from "../../hooks/useManualAvroSchemaForm";
+import type { ManualAvroForm } from "../../stores/ui/manualAvroSchemaStore";
 
 type ManualAvroSchemaDialogProps = {
   form: ManualAvroForm;
