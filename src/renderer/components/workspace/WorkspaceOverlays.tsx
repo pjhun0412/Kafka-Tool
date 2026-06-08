@@ -1,12 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ServerProfile } from "../../../shared/types";
 import type { QuickSearchResult, QuickSearchScopedQuery } from "../../quickSearch";
-import type { ServerForm } from "../../serverProfileForm";
-import type { TopicAction } from "../../uiTypes";
-import type { ManualAvroForm } from "../../hooks/useManualAvroSchemaForm";
 import type { ManualAvroSchemaRow } from "../../hooks/useManualAvroSchemaSummary";
-import type { PreferenceGroup, PreferencePage, PreferenceSearchMatches } from "../../hooks/usePreferenceNavigation";
+import { usePreferenceNavigation } from "../../hooks/usePreferenceNavigation";
 import type { ServerContextMenuState, TopicContextMenuState } from "../../hooks/useSidebarInteractionState";
+import { useFeedbackStore } from "../../stores/ui/feedbackStore";
+import { useManualAvroSchemaStore } from "../../stores/ui/manualAvroSchemaStore";
+import { useServerFormStore } from "../../stores/ui/serverFormStore";
+import { useSidebarInteractionStore } from "../../stores/ui/sidebarInteractionStore";
 import { QuickSearchPalette } from "../QuickSearchPalette";
 import { ConnectionErrorDialog } from "../modals/ConnectionErrorDialog";
 import { ManualAvroSchemaDialog } from "../modals/ManualAvroSchemaDialog";
@@ -15,19 +16,8 @@ import { ServerProfileDialog } from "../modals/ServerProfileDialog";
 import { TopicActionDialog } from "../modals/TopicActionDialog";
 import { WorkspaceContextMenus } from "./WorkspaceContextMenus";
 
-type ConnectionError = {
-  serverName: string;
-  brokers: string;
-  message: string;
-};
-
 type WorkspaceOverlaysProps = {
-  isServerFormOpen: boolean;
-  serverForm: ServerForm;
-  editingServerId: string | null;
   loading: boolean;
-  onServerForm: (form: ServerForm) => void;
-  onCloseServerForm: () => void;
   onSaveServer: () => void;
 
   isQuickSearchOpen: boolean;
@@ -41,45 +31,22 @@ type WorkspaceOverlaysProps = {
   onCloseQuickSearch: () => void;
   onExecuteQuickSearch: (result: QuickSearchResult) => void;
 
-  isPreferencesOpen: boolean;
-  activePreferencesPage: PreferencePage;
-  collapsedPreferenceGroups: Record<PreferenceGroup, boolean>;
-  preferencesQuery: string;
-  normalizedPreferencesQuery: string;
-  preferenceSearchMatches: PreferenceSearchMatches;
   fontFamily: string;
   fontSize: number;
   exportFormatTemplate: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
-  onActivePreferencesPage: (page: PreferencePage) => void;
-  onTogglePreferenceGroup: (group: PreferenceGroup) => void;
-  onPreferencesQuery: (query: string) => void;
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
-  onOpenManualAvroFromPreferences: (serverId: string, topic: string) => void;
+  onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchemaFor: (serverId: string, topic: string) => void;
-  onClosePreferences: () => void;
 
-  isManualAvroOpen: boolean;
-  manualAvroForm: ManualAvroForm;
   servers: ServerProfile[];
   manualAvroSchemasByServer: Record<string, Record<string, unknown>>;
-  isSchemaDragOver: boolean;
-  onManualAvroForm: Dispatch<SetStateAction<ManualAvroForm>>;
-  onSchemaDragOver: (isDragOver: boolean) => void;
   onReadSchemaFile: (file?: File) => Promise<void>;
   onDeleteManualAvroSchema: () => void;
-  onCloseManualAvroSchema: () => void;
   onSaveManualAvroSchema: () => void;
 
-  connectionError: ConnectionError | null;
-  onCloseConnectionError: () => void;
-
-  pendingTopicAction: TopicAction;
-  topicActionConfirmText: string;
-  onTopicActionConfirmText: (text: string) => void;
-  onCloseTopicAction: () => void;
   onConfirmTopicAction: () => void;
 
   topicContextMenu: TopicContextMenuState;
@@ -100,12 +67,7 @@ type WorkspaceOverlaysProps = {
 };
 
 export function WorkspaceOverlays({
-  isServerFormOpen,
-  serverForm,
-  editingServerId,
   loading,
-  onServerForm,
-  onCloseServerForm,
   onSaveServer,
   isQuickSearchOpen,
   quickSearchQuery,
@@ -117,42 +79,20 @@ export function WorkspaceOverlays({
   onQuickSearchIndex,
   onCloseQuickSearch,
   onExecuteQuickSearch,
-  isPreferencesOpen,
-  activePreferencesPage,
-  collapsedPreferenceGroups,
-  preferencesQuery,
-  normalizedPreferencesQuery,
-  preferenceSearchMatches,
   fontFamily,
   fontSize,
   exportFormatTemplate,
   manualAvroSchemaRows,
-  onActivePreferencesPage,
-  onTogglePreferenceGroup,
-  onPreferencesQuery,
   onFontFamily,
   onFontSize,
   onExportFormatTemplate,
-  onOpenManualAvroFromPreferences,
+  onOpenManualAvroSchema,
   onDeleteManualAvroSchemaFor,
-  onClosePreferences,
-  isManualAvroOpen,
-  manualAvroForm,
   servers,
   manualAvroSchemasByServer,
-  isSchemaDragOver,
-  onManualAvroForm,
-  onSchemaDragOver,
   onReadSchemaFile,
   onDeleteManualAvroSchema,
-  onCloseManualAvroSchema,
   onSaveManualAvroSchema,
-  connectionError,
-  onCloseConnectionError,
-  pendingTopicAction,
-  topicActionConfirmText,
-  onTopicActionConfirmText,
-  onCloseTopicAction,
   onConfirmTopicAction,
   topicContextMenu,
   serverContextMenu,
@@ -170,6 +110,36 @@ export function WorkspaceOverlays({
   onEditServer,
   onDeleteServer
 }: WorkspaceOverlaysProps) {
+  const isServerFormOpen = useServerFormStore((state) => state.isServerFormOpen);
+  const serverForm = useServerFormStore((state) => state.serverForm);
+  const editingServerId = useServerFormStore((state) => state.editingServerId);
+  const setServerForm = useServerFormStore((state) => state.setServerForm);
+  const closeServerForm = useServerFormStore((state) => state.closeServerForm);
+  const isManualAvroOpen = useManualAvroSchemaStore((state) => state.isManualAvroOpen);
+  const manualAvroForm = useManualAvroSchemaStore((state) => state.manualAvroForm);
+  const setManualAvroForm = useManualAvroSchemaStore((state) => state.setManualAvroForm);
+  const isSchemaDragOver = useManualAvroSchemaStore((state) => state.isSchemaDragOver);
+  const setIsSchemaDragOver = useManualAvroSchemaStore((state) => state.setIsSchemaDragOver);
+  const closeManualAvroForm = useManualAvroSchemaStore((state) => state.closeManualAvroForm);
+  const connectionError = useFeedbackStore((state) => state.connectionError);
+  const setConnectionError = useFeedbackStore((state) => state.setConnectionError);
+  const pendingTopicAction = useSidebarInteractionStore((state) => state.pendingTopicAction);
+  const topicActionConfirmText = useSidebarInteractionStore((state) => state.topicActionConfirmText);
+  const setPendingTopicAction = useSidebarInteractionStore((state) => state.setPendingTopicAction);
+  const setTopicActionConfirmText = useSidebarInteractionStore((state) => state.setTopicActionConfirmText);
+  const {
+    isPreferencesOpen,
+    setIsPreferencesOpen,
+    activePreferencesPage,
+    setActivePreferencesPage,
+    collapsedPreferenceGroups,
+    preferencesQuery,
+    setPreferencesQuery,
+    normalizedPreferencesQuery,
+    preferenceSearchMatches,
+    togglePreferenceGroup
+  } = usePreferenceNavigation();
+
   return (
     <>
       {isServerFormOpen && (
@@ -177,8 +147,8 @@ export function WorkspaceOverlays({
           form={serverForm}
           editing={Boolean(editingServerId)}
           loading={loading}
-          onForm={onServerForm}
-          onClose={onCloseServerForm}
+          onForm={setServerForm}
+          onClose={closeServerForm}
           onSave={onSaveServer}
         />
       )}
@@ -205,15 +175,18 @@ export function WorkspaceOverlays({
           fontSize={fontSize}
           exportFormatTemplate={exportFormatTemplate}
           manualAvroSchemaRows={manualAvroSchemaRows}
-          onActivePage={onActivePreferencesPage}
-          onToggleGroup={onTogglePreferenceGroup}
-          onQuery={onPreferencesQuery}
+          onActivePage={setActivePreferencesPage}
+          onToggleGroup={togglePreferenceGroup}
+          onQuery={setPreferencesQuery}
           onFontFamily={onFontFamily}
           onFontSize={onFontSize}
           onExportFormatTemplate={onExportFormatTemplate}
-          onOpenManualAvroSchema={onOpenManualAvroFromPreferences}
+          onOpenManualAvroSchema={(serverId, topic) => {
+            setIsPreferencesOpen(false);
+            onOpenManualAvroSchema(serverId, topic);
+          }}
           onDeleteManualAvroSchema={onDeleteManualAvroSchemaFor}
-          onClose={onClosePreferences}
+          onClose={() => setIsPreferencesOpen(false)}
         />
       )}
       {isManualAvroOpen && (
@@ -222,18 +195,18 @@ export function WorkspaceOverlays({
           servers={servers}
           registered={Boolean(manualAvroSchemasByServer[manualAvroForm.serverId]?.[manualAvroForm.topic])}
           isDragOver={isSchemaDragOver}
-          onForm={onManualAvroForm}
-          onDragOver={onSchemaDragOver}
+          onForm={setManualAvroForm}
+          onDragOver={setIsSchemaDragOver}
           onReadFile={onReadSchemaFile}
           onDelete={onDeleteManualAvroSchema}
-          onClose={onCloseManualAvroSchema}
+          onClose={closeManualAvroForm}
           onSave={onSaveManualAvroSchema}
         />
       )}
       {connectionError && (
         <ConnectionErrorDialog
           error={connectionError}
-          onClose={onCloseConnectionError}
+          onClose={() => setConnectionError(null)}
         />
       )}
       {pendingTopicAction && (
@@ -241,8 +214,8 @@ export function WorkspaceOverlays({
           action={pendingTopicAction}
           confirmText={topicActionConfirmText}
           loading={loading}
-          onConfirmText={onTopicActionConfirmText}
-          onClose={onCloseTopicAction}
+          onConfirmText={setTopicActionConfirmText}
+          onClose={() => setPendingTopicAction(null)}
           onConfirm={onConfirmTopicAction}
         />
       )}

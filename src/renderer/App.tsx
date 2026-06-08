@@ -76,7 +76,6 @@ export function App() {
     setConnectedServerIds,
     failedServerIds,
     setFailedServerIds,
-    healthFailuresByServer,
     setHealthFailuresByServer,
     openClusterIds,
     setOpenClusterIds,
@@ -85,9 +84,7 @@ export function App() {
   } = useServerClusterState();
   const {
     serverForm,
-    setServerForm,
     editingServerId,
-    isServerFormOpen,
     openNewServerForm,
     openEditServerForm,
     closeServerForm
@@ -155,7 +152,6 @@ export function App() {
     retargetLiveTopic
   } = useLiveConsumeRouting({ setStreamingTopicsByServer });
   const {
-    status,
     setStatus,
     toast,
     setToast,
@@ -165,7 +161,6 @@ export function App() {
     setLoading,
     activeConsumeTaskKeys,
     setActiveConsumeTaskKeys,
-    connectionError,
     setConnectionError
   } = useFeedbackState();
   const {
@@ -243,16 +238,6 @@ export function App() {
     setToast
   });
   const {
-    isPreferencesOpen,
-    setIsPreferencesOpen,
-    activePreferencesPage,
-    setActivePreferencesPage,
-    collapsedPreferenceGroups,
-    preferencesQuery,
-    setPreferencesQuery,
-    normalizedPreferencesQuery,
-    preferenceSearchMatches,
-    togglePreferenceGroup,
     openPreferences,
     openPreferencesSection
   } = usePreferenceNavigation();
@@ -284,15 +269,12 @@ export function App() {
   const {
     manualAvroForm,
     setManualAvroForm,
-    isManualAvroOpen,
     setIsManualAvroOpen,
-    isSchemaDragOver,
     setIsSchemaDragOver,
     closeManualAvroForm
   } = useManualAvroSchemaForm();
   const {
     openManualAvroSchema,
-    closeManualAvroSchema,
     readSchemaFile,
     saveManualAvroSchema,
     deleteManualAvroSchema,
@@ -395,9 +377,7 @@ export function App() {
     setToast
   });
   const {
-    applyImportedSettings,
-    exportSettings,
-    importSettings
+    applyImportedSettings
   } = useSettingsTransferActions({
     kafkaApi,
     setLoading,
@@ -492,7 +472,6 @@ export function App() {
   });
   const {
     refreshTopicsForServer,
-    refreshTopicMessageCountsForServer,
     refreshTopics,
     loadTopicDetail,
     loadTopicDetailSilent
@@ -521,7 +500,6 @@ export function App() {
   const selectedDefaultConsumeState = getDefaultConsumeState();
   const {
     startConsume,
-    consumeOffsetPageFor,
     moveOffsetPageFor,
     startConsumeFor,
     stopConsume
@@ -1078,10 +1056,6 @@ export function App() {
     produceFor
   });
   const overlayCallbacks = useWorkspaceOverlayCallbacks({
-    setIsPreferencesOpen,
-    openManualAvroSchema,
-    setConnectionError,
-    setPendingTopicAction,
     confirmTopicAction,
     openTopicTab,
     copySelectedTopicNames,
@@ -1283,12 +1257,7 @@ export function App() {
     paneToast: splitPaneToast
   } satisfies WorkspaceAppLayoutSplitPaneProps : null;
   const overlayProps = {
-    isServerFormOpen,
-    serverForm,
-    editingServerId,
     loading,
-    onServerForm: setServerForm,
-    onCloseServerForm: closeServerForm,
     onSaveServer: saveServer,
     isQuickSearchOpen,
     quickSearchQuery,
@@ -1300,42 +1269,20 @@ export function App() {
     onQuickSearchIndex: setQuickSearchIndex,
     onCloseQuickSearch: closeQuickSearch,
     onExecuteQuickSearch: (result) => void executeQuickSearch(result),
-    isPreferencesOpen,
-    activePreferencesPage,
-    collapsedPreferenceGroups,
-    preferencesQuery,
-    normalizedPreferencesQuery,
-    preferenceSearchMatches,
     fontFamily,
     fontSize,
     exportFormatTemplate,
     manualAvroSchemaRows,
-    onActivePreferencesPage: setActivePreferencesPage,
-    onTogglePreferenceGroup: togglePreferenceGroup,
-    onPreferencesQuery: setPreferencesQuery,
     onFontFamily: setFontFamily,
     onFontSize: setFontSize,
     onExportFormatTemplate: setExportFormatTemplate,
-    onOpenManualAvroFromPreferences: overlayCallbacks.openManualAvroFromPreferences,
+    onOpenManualAvroSchema: openManualAvroSchema,
     onDeleteManualAvroSchemaFor: deleteManualAvroSchemaFor,
-    onClosePreferences: overlayCallbacks.closePreferences,
-    isManualAvroOpen,
-    manualAvroForm,
     servers,
     manualAvroSchemasByServer,
-    isSchemaDragOver,
-    onManualAvroForm: setManualAvroForm,
-    onSchemaDragOver: setIsSchemaDragOver,
     onReadSchemaFile: readSchemaFile,
     onDeleteManualAvroSchema: deleteManualAvroSchema,
-    onCloseManualAvroSchema: closeManualAvroSchema,
     onSaveManualAvroSchema: saveManualAvroSchema,
-    connectionError,
-    onCloseConnectionError: overlayCallbacks.closeConnectionError,
-    pendingTopicAction,
-    topicActionConfirmText,
-    onTopicActionConfirmText: setTopicActionConfirmText,
-    onCloseTopicAction: overlayCallbacks.closeTopicAction,
     onConfirmTopicAction: overlayCallbacks.confirmTopicAction,
     topicContextMenu,
     serverContextMenu,
