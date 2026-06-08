@@ -1,0 +1,186 @@
+import type { Dispatch, SetStateAction } from "react";
+import type { AppPreferences, KafkaApi, TopicDetail, TopicSummary } from "../../shared/types";
+import type { SplitPaneState, ToastState, TopicAction, TopicConsumeState, TopicWorkView, View } from "../uiTypes";
+import {
+  getNextTopicAfterTabClose,
+  removeTopicConsumeStates
+} from "../workspaceState";
+
+type ConsumeStatesByServer = Record<string, Record<string, TopicConsumeState>>;
+
+type TopicMutationActionsParams = {
+  kafkaApi: KafkaApi | undefined;
+  selectedServerId: string;
+  selectedTopic: string;
+  selectedTopicRows: string[];
+  selectedTopicByServer: Record<string, string>;
+  topicsByServer: Record<string, TopicSummary[]>;
+  splitPane: SplitPaneState | null;
+  pendingTopicAction: TopicAction;
+  topicActionConfirmText: string;
+  runTask: <T>(label: string, task: () => Promise<T>, options?: { toast?: boolean }) => Promise<T>;
+  stopConsume: (serverId?: string, topic?: string, pane?: "primary" | "split") => Promise<void>;
+  refreshTopicsForServer: (serverId: string) => Promise<void>;
+  loadTopicDetail: (topic: string) => Promise<void>;
+  selectPrimaryTopic: (topic: string) => Promise<void>;
+  removeSelectedTopicRowsForServer: (serverId: string, topicNames: Iterable<string>) => void;
+  setSelectedServerId: Dispatch<SetStateAction<string>>;
+  setPendingTopicAction: Dispatch<SetStateAction<TopicAction>>;
+  setTopicActionConfirmText: Dispatch<SetStateAction<string>>;
+  setOpenedTopicTabsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setFavoriteTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setConsumeStatesByServer: Dispatch<SetStateAction<ConsumeStatesByServer>>;
+  setSplitConsumeStatesByServer: Dispatch<SetStateAction<ConsumeStatesByServer>>;
+  setTopicViewByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicWorkView>>>>;
+  setTopicDetailCacheByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicDetail>>>>;
+  setManualAvroSchemasByServer: Dispatch<SetStateAction<NonNullable<AppPreferences["manualAvroSchemasByServer"]>>>;
+  setActiveWorkspacePane: Dispatch<SetStateAction<"primary" | "split">>;
+  setSplitPane: Dispatch<SetStateAction<SplitPaneState | null>>;
+  setSelectedTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
+  setTopicDetailByServer: Dispatch<SetStateAction<Record<string, TopicDetail | null>>>;
+  setToast: Dispatch<SetStateAction<ToastState>>;
+};
+
+export function useTopicMutationActions({
+  kafkaApi,
+  selectedServerId,
+  selectedTopic,
+  selectedTopicRows,
+  selectedTopicByServer,
+  topicsByServer,
+  splitPane,
+  pendingTopicAction,
+  topicActionConfirmText,
+  runTask,
+  stopConsume,
+  refreshTopicsForServer,
+  loadTopicDetail,
+  selectPrimaryTopic,
+  removeSelectedTopicRowsForServer,
+  setSelectedServerId,
+  setPendingTopicAction,
+  setTopicActionConfirmText,
+  setOpenedTopicTabsByServer,
+  setFavoriteTopicsByServer,
+  setConsumeStatesByServer,
+  setSplitConsumeStatesByServer,
+  setTopicViewByServer,
+  setTopicDetailCacheByServer,
+  setManualAvroSchemasByServer,
+  setActiveWorkspacePane,
+  setSplitPane,
+  setSelectedTopicByServer,
+  setTopicDetailByServer,
+  setToast
+}: TopicMutationActionsParams) {
+  function requestTopicAction(kind: "delete" | "purge", topicsToMutate = selectedTopicRows) {
+    if (topicsToMutate.length === 0) return;
+    requestTopicActionFor(selectedServerId, kind, topicsToMutate);
+  }
+
+  function requestTopicActionFor(serverId: string, kind: "delete" | "purge", topicsToMutate: string[]) {
+    if (!serverId || topicsToMutate.length === 0) return;
+    setSelectedServerId(serverId);
+    setTopicActionConfirmText("");
+    setPendingTopicAction({ serverId, kind, topics: [...topicsToMutate] });
+  }
+
+  function cleanupDeletedTopics(serverId: string, deletedTopics: string[]) {
+    const deleted = new Set(deletedTopics);
+    removeSelectedTopicRowsForServer(serverId, deleted);
+    setOpenedTopicTabsByServer((current) => ({
+      ...current,
+      [serverId]: (current[serverId] ?? []).filter((topic) => !deleted.has(topic))
+    }));
+    setFavoriteTopicsByServer((current) => ({
+      ...current,
+      [serverId]: (current[serverId] ?? []).filter((topic) => !deleted.has(topic))
+    }));
+    setConsumeStatesByServer((current) => removeTopicConsumeStates(current, serverId, deleted));
+    setSplitConsumeStatesByServer((current) => removeTopicConsumeStates(current, serverId, deleted));
+    setTopicViewByServer((current) => {
+      const serverViews = { ...(current[serverId] ?? {}) };
+      for (const topic of deleted) {
+        delete serverViews[topic];
+      }
+      return { ...current, [serverId]: serverViews };
+    });
+    setTopicDetailCacheByServer((current) => {
+      const serverDetails = { ...(current[serverId] ?? {}) };
+      for (const topic of deleted) {
+        delete serverDetails[topic];
+      }
+      return { ...current, [serverId]: serverDetails };
+    });
+    setManualAvroSchemasByServer((current) => {
+      const serverSchemas = { ...(current[serverId] ?? {}) };
+      for (const topic of deleted) {
+        delete serverSchemas[topic];
+      }
+      return { ...current, [serverId]: serverSchemas };
+    });
+    if (splitPane?.serverId === serverId && splitPane.topicTabs.every((topic) => deleted.has(topic))) {
+      setActiveWorkspacePane("primary");
+    }
+    setSplitPane((current) => {
+      if (!current || current.serverId !== serverId) return current;
+      const nextTabs = current.topicTabs.filter((topic) => !deleted.has(topic));
+      if (nextTabs.length === 0) return null;
+      const nextTopic = deleted.has(current.topic)
+        ? getNextTopicAfterTabClose(current.topic, current.topic, nextTabs)
+        : current.topic;
+      return {
+        ...current,
+        topic: nextTopic,
+        topicTabs: nextTabs,
+        detail: deleted.has(current.topic) ? null : current.detail
+      };
+    });
+    const selectedForServer = selectedTopicByServer[serverId] ?? "";
+    if (deleted.has(selectedForServer)) {
+      const nextTopic = (topicsByServer[serverId] ?? []).find((topic) => !deleted.has(topic.name))?.name ?? "";
+      setSelectedTopicByServer((current) => ({ ...current, [serverId]: nextTopic }));
+      if (nextTopic) {
+        if (serverId === selectedServerId) {
+          void selectPrimaryTopic(nextTopic);
+        }
+      } else {
+        setTopicDetailByServer((current) => ({ ...current, [serverId]: null }));
+      }
+    }
+  }
+
+  async function confirmTopicAction() {
+    if (!kafkaApi || !pendingTopicAction) return;
+    const action = pendingTopicAction;
+    if (topicActionConfirmText.trim().toUpperCase() !== action.kind.toUpperCase()) return;
+    setPendingTopicAction(null);
+    setTopicActionConfirmText("");
+    if (action.kind === "delete") {
+      for (const topic of action.topics) {
+        await stopConsume(action.serverId, topic);
+      }
+      await runTask(`Deleting ${action.topics.length} topic(s)`, () =>
+        kafkaApi.deleteTopics({ serverId: action.serverId, topics: action.topics })
+      );
+      cleanupDeletedTopics(action.serverId, action.topics);
+      await refreshTopicsForServer(action.serverId);
+      setToast({ message: `Deleted ${action.topics.length} topic(s).`, kind: "success" });
+      return;
+    }
+    await runTask(`Purging ${action.topics.length} topic(s)`, () =>
+      kafkaApi.purgeTopics({ serverId: action.serverId, topics: action.topics })
+    );
+    await refreshTopicsForServer(action.serverId);
+    if (action.serverId === selectedServerId && selectedTopic && action.topics.includes(selectedTopic)) {
+      await loadTopicDetail(selectedTopic);
+    }
+    setToast({ message: `Purged ${action.topics.length} topic(s).`, kind: "success" });
+  }
+
+  return {
+    requestTopicAction,
+    requestTopicActionFor,
+    confirmTopicAction
+  };
+}

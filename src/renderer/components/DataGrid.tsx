@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Filter, X } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   flexRender,
   getCoreRowModel,
@@ -48,9 +49,14 @@ function isRangeFilterValue(value: unknown): value is Extract<GridFilterValue, o
 function getFilterVariant<TData extends object>(column: Column<TData, unknown>, data: TData[]): GridFilterVariant {
   const columnId = column.id.toLowerCase();
   if (columnId.includes("timestamp") || columnId.includes("date") || columnId.includes("time")) return "dateRange";
-  const firstValue = data
-    .map((row) => column.accessorFn?.(row, 0) ?? (row as Record<string, unknown>)[column.id])
-    .find((value) => value !== null && value !== undefined && value !== "");
+  let firstValue: unknown;
+  for (const row of data) {
+    const value = column.accessorFn?.(row, 0) ?? (row as Record<string, unknown>)[column.id];
+    if (value !== null && value !== undefined && value !== "") {
+      firstValue = value;
+      break;
+    }
+  }
   if (typeof firstValue === "number" || typeof firstValue === "bigint") return "numberRange";
   if (
     typeof firstValue === "string" &&
@@ -96,6 +102,7 @@ export function DataGrid<TData extends object>(props: {
   const setSorting = props.onSortingChange ?? setInternalSorting;
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [openFilterColumnId, setOpenFilterColumnId] = useState("");
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
   const table = useReactTable({
     data: props.data,
     columns: props.columns,
@@ -110,6 +117,45 @@ export function DataGrid<TData extends object>(props: {
     getSortedRowModel: getSortedRowModel()
   });
   const rows = table.getRowModel().rows;
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => 35,
+    overscan: 12,
+    observeElementRect: (instance, callback) => {
+      const element = instance.scrollElement;
+      const targetWindow = instance.targetWindow;
+      if (!element || !targetWindow) return;
+
+      let animationFrame = 0;
+      const notify = () => {
+        const rect = element.getBoundingClientRect();
+        callback({ width: Math.round(rect.width), height: Math.round(rect.height) });
+        animationFrame = 0;
+      };
+      notify();
+
+      if (!targetWindow.ResizeObserver) return () => undefined;
+
+      const observer = new targetWindow.ResizeObserver(() => {
+        if (!animationFrame) {
+          animationFrame = targetWindow.requestAnimationFrame(notify);
+        }
+      });
+      observer.observe(element);
+
+      return () => {
+        if (animationFrame) targetWindow.cancelAnimationFrame(animationFrame);
+        observer.disconnect();
+      };
+    }
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const topPadding = virtualRows[0]?.start ?? 0;
+  const bottomPadding = Math.max(
+    0,
+    rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+  );
 
   function openColumnFilter(header: Header<TData, unknown>) {
     const variant = getFilterVariant(header.column, props.data);
@@ -165,8 +211,8 @@ export function DataGrid<TData extends object>(props: {
   }
 
   return (
-    <div className={props.className ? `message-table ${props.className}` : "message-table"}>
-      <table>
+    <div ref={scrollParentRef} className={props.className ? `message-table ${props.className}` : "message-table"}>
+      <table style={{ tableLayout: "fixed", width: "100%" }}>
         <thead>
           {table.getHeaderGroups().map((headerGroup) => {
             const activeHeader = headerGroup.headers.find((header) => header.column.id === openFilterColumnId);
@@ -183,19 +229,22 @@ export function DataGrid<TData extends object>(props: {
                       <th key={header.id}>
                         {header.isPlaceholder ? null : (
                           <div className="grid-header-cell">
-                            <button
-                              className={header.column.getCanSort() ? "grid-header-button sortable" : "grid-header-button"}
-                              onClick={header.column.getToggleSortingHandler()}
-                              disabled={!header.column.getCanSort()}
-                              title={header.column.getCanSort() ? "Sort column" : undefined}
-                            >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              {header.column.getCanSort() && (
+                            {header.column.getCanSort() ? (
+                              <button
+                                className="grid-header-button sortable"
+                                onClick={header.column.getToggleSortingHandler()}
+                                title="Sort column"
+                              >
+                                {flexRender(header.column.columnDef.header, header.getContext())}
                                 <span className={sorted ? "sort-indicator active" : "sort-indicator"}>
                                   <SortIndicator sorted={sorted} />
                                 </span>
-                              )}
-                            </button>
+                              </button>
+                            ) : (
+                              <div className="grid-header-button">
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                              </div>
+                            )}
                             {canFilter && (
                               <button
                                 className={filterActive || isFilterOpen ? "grid-filter-button active" : "grid-filter-button"}
@@ -241,21 +290,42 @@ export function DataGrid<TData extends object>(props: {
           })}
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={props.getRowKey ? props.getRowKey(row.original, row.index) : row.id}
-              className={props.getRowClassName?.(row.original)}
-              style={props.getRowStyle?.(row.original)}
-              onClick={() => props.onRowClick?.(row.original)}
-              onDoubleClick={() => props.onRowDoubleClick?.(row.original)}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
+          {topPadding > 0 && (
+            <tr className="grid-virtual-spacer" aria-hidden="true">
+              <td colSpan={table.getAllLeafColumns().length} style={{ height: topPadding }} />
             </tr>
-          ))}
+          )}
+          {virtualRows.map((virtualRow) => {
+            const row = rows[virtualRow.index];
+            return (
+              <tr
+                key={props.getRowKey ? props.getRowKey(row.original, row.index) : row.id}
+                className={props.getRowClassName?.(row.original)}
+                style={props.getRowStyle?.(row.original)}
+                onClick={() => props.onRowClick?.(row.original)}
+                onDoubleClick={() => props.onRowDoubleClick?.(row.original)}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    style={{
+                      width: cell.column.getSize(),
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+          {bottomPadding > 0 && (
+            <tr className="grid-virtual-spacer" aria-hidden="true">
+              <td colSpan={table.getAllLeafColumns().length} style={{ height: bottomPadding }} />
+            </tr>
+          )}
         </tbody>
       </table>
       {rows.length === 0 && <div className="empty-list">{props.emptyText}</div>}

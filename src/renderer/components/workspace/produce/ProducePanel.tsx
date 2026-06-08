@@ -1,12 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { Braces, Calendar, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Copy, Download, EyeOff, Filter, HelpCircle, Layers, Play, RefreshCw, Send, Sparkles, Square, Star, Trash2, X, XCircle } from "lucide-react";
-import type { BrokerSummary, ConsumedMessage, ConsumerGroupLagDetail, ConsumerGroupLagRow, ConsumerGroupSummary, ManualAvroSchema, MessageExportFormat, ServerProfile, TopicDetail, TopicSummary } from "../../../../shared/types";
-import { Button, IconButton } from "../../ui";
-import { DataGrid } from "../../DataGrid";
-import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, JsonInspectorMode, OffsetOrder, SplitPaneState, TopicConsumeState, View } from "../../../uiTypes";
-import { filterMessages } from "../../../messageFilters";
-import { formatCompactNumber, formatCount, formatHeaders, formatMessagePayload, formatPercent, formatTimestamp, getEpochTitle, getPartitionColor, parseJson, previewHeaders, previewValue, renderHighlightedText, renderRawJsonText, stringifyPrimitive } from "../../../utils";
+import { Braces, Send } from "lucide-react";
+import type { ManualAvroSchema } from "../../../../shared/types";
 export function ProducePanel(props: {
   topic: string;
   keyText: string;

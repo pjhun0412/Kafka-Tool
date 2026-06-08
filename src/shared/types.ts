@@ -191,6 +191,11 @@ export type TopicMutationRequest = {
   topics: string[];
 };
 
+export type ConsumerGroupMutationRequest = {
+  serverId: string;
+  groupIds: string[];
+};
+
 export type UpdateStatus = {
   status: "checking" | "available" | "not-available" | "download-progress" | "downloaded" | "error";
   message: string;
@@ -263,6 +268,7 @@ export type KafkaApi = {
   deleteTopics: (request: TopicMutationRequest) => Promise<void>;
   purgeTopics: (request: TopicMutationRequest) => Promise<void>;
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;
+  deleteConsumerGroups: (request: ConsumerGroupMutationRequest) => Promise<void>;
   getConsumerGroupLag: (serverId: string, groupId: string) => Promise<ConsumerGroupLagDetail>;
   exportMessages: (request: MessageExportRequest) => Promise<string | null>;
   exportOffsetMessages: (request: OffsetMessageExportRequest) => Promise<string | null>;

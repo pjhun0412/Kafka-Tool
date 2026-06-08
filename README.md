@@ -1,4 +1,4 @@
-# 내가 쓰려고 만든 Kafka Tool
+# 내가 쓰려고 만든 바이브코딩 Kafka Tool
 
 Kafka Tool is a lightweight desktop Kafka explorer built with Electron, React, TypeScript, KafkaJS, and KafkaJS-compatible admin/consumer APIs.
 

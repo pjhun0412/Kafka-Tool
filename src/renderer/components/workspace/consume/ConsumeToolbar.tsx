@@ -2,14 +2,14 @@ import React from "react";
 import { Calendar, ChevronDown, Download, Play, Square } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
 import type { ConsumeFilterMode, ConsumeMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
+import { OFFSET_PAGE_SIZE } from "../../../consumeConfig";
 import { Button } from "../../ui";
-
-const OFFSET_PAGE_SIZE = 5000;
 
 type ConsumeToolbarProps = {
   mode: ConsumeMode;
   offsetOrder: OffsetOrder;
   isConsuming: boolean;
+  isQuerying: boolean;
   partition: string;
   offset: string;
   limit: number;
@@ -168,8 +168,8 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
             {" "}· showing up to {OFFSET_PAGE_SIZE.toLocaleString()} messages
           </span>
           <div>
-            <Button variant="ghost" size="sm" onClick={props.onPagePrev} disabled={!props.pagination || props.pagination.prevOffsets.length === 0}>Prev</Button>
-            <Button variant="ghost" size="sm" onClick={props.onPageNext} disabled={!props.pagination?.hasNext}>Next</Button>
+            <Button variant="ghost" size="sm" onClick={props.onPagePrev} disabled={props.isQuerying || !props.pagination || props.pagination.prevOffsets.length === 0}>Prev</Button>
+            <Button variant="ghost" size="sm" onClick={props.onPageNext} disabled={props.isQuerying || !props.pagination?.hasNext}>Next</Button>
           </div>
         </div>
       )}

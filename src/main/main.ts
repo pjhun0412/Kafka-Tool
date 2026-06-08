@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,6 +16,7 @@ import type {
   AppSettingsBundle,
   BrokerSummary,
   ConsumerGroupLagDetail,
+  ConsumerGroupMutationRequest,
   ConsumerGroupSummary,
   ImportSettingsResult,
   MessageExportRequest,
@@ -38,6 +39,7 @@ const activeConsumers = new Map<string, Consumer>();
 let windowBoundsSaveTimer: NodeJS.Timeout | null = null;
 let autoUpdaterConfigured = false;
 const appUserModelId = "local.kafka-tool";
+let isCleaningUpConsumers = false;
 
 function appIconPath() {
   return path.join(app.getAppPath(), "build/icon.ico");
@@ -338,6 +340,27 @@ function consumeKey(serverId: string, topic: string, consumerId = "default") {
   return `${serverId}:${topic}:${consumerId}`;
 }
 
+function shortHash(value: string) {
+  return createHash("sha1").update(value).digest("hex").slice(0, 12);
+}
+
+function kafkaToolConsumerGroupId(kind: "offset" | "time" | "live", parts: Array<string | number | undefined>) {
+  return `kafka-tool-${kind}-${shortHash(parts.map((part) => String(part ?? "")).join(":"))}`;
+}
+
+async function shutdownConsumer(consumer: Consumer) {
+  try {
+    await consumer.stop();
+  } catch {
+    // Consumer may not be running yet.
+  }
+  try {
+    await consumer.disconnect();
+  } catch {
+    // Nothing else to do during shutdown.
+  }
+}
+
 function calculateLag(currentOffset: string, endOffset: string) {
   if (currentOffset === "-1" || !/^\d+$/.test(currentOffset) || !/^\d+$/.test(endOffset)) {
     return "-";
@@ -412,7 +435,9 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
   const preferences = await readPreferences();
   const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
-  const consumer = kafka.consumer({ groupId: `kafka-tool-offset-${Date.now()}` });
+  const consumer = kafka.consumer({
+    groupId: kafkaToolConsumerGroupId("offset", [request.serverId, request.topic, request.partition])
+  });
   const messages: ConsumedMessage[] = [];
   const limit = Math.max(1, Number(request.limit) || 10);
   let seekOffset = request.offset;
@@ -455,11 +480,7 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
 
   return await new Promise<ConsumeOffsetResult>((resolve, reject) => {
     const cleanup = () => {
-      void consumer.stop()
-        .catch(() => undefined)
-        .finally(() => {
-          void consumer.disconnect().catch(() => undefined);
-        });
+      void shutdownConsumer(consumer);
     };
 
     const finish = () => {
@@ -519,13 +540,13 @@ async function stopActiveConsumer(request?: StopConsumeRequest) {
         return consumer;
       })
       .filter((consumer): consumer is Consumer => Boolean(consumer));
-    await Promise.all(consumers.map((consumer) => consumer.disconnect().catch(() => undefined)));
+    await Promise.all(consumers.map(shutdownConsumer));
     return;
   }
 
   const consumers = [...activeConsumers.values()];
   activeConsumers.clear();
-  await Promise.all(consumers.map((consumer) => consumer.disconnect().catch(() => undefined)));
+  await Promise.all(consumers.map(shutdownConsumer));
 }
 
 function sendConsumeError(error: unknown) {
@@ -615,8 +636,10 @@ async function checkForUpdates() {
 }
 
 async function saveWindowBounds() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  const bounds = mainWindow.getNormalBounds();
+  const window = mainWindow;
+  if (!window || window.isDestroyed()) return;
+  const bounds = window.getNormalBounds();
+  const maximized = window.isMaximized();
   const preferences = await readPreferences();
   await writePreferences({
     ...preferences,
@@ -625,7 +648,7 @@ async function saveWindowBounds() {
       y: bounds.y,
       width: bounds.width,
       height: bounds.height,
-      maximized: mainWindow.isMaximized()
+      maximized
     }
   });
 }
@@ -1032,6 +1055,16 @@ ipcMain.handle("kafka:groups", async (_event, serverId: string): Promise<Consume
   });
 });
 
+ipcMain.handle("kafka:groups-delete", async (_event, request: ConsumerGroupMutationRequest): Promise<void> => {
+  const groupIds = request.groupIds.map((groupId) => groupId.trim()).filter(Boolean);
+  if (groupIds.length === 0) {
+    throw new Error("No consumer groups selected.");
+  }
+  await withAdmin(request.serverId, async (admin) => {
+    await admin.deleteGroups(groupIds);
+  });
+});
+
 ipcMain.handle("kafka:group-lag", async (_event, serverId: string, groupId: string): Promise<ConsumerGroupLagDetail> => {
   return withAdmin(serverId, async (admin) => {
     const [groupOffsets, describedGroups] = await Promise.all([
@@ -1223,7 +1256,9 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
   const limit = Math.max(1, Number(request.limit) || 100);
   const messages: ConsumedMessage[] = [];
   const admin = kafka.admin();
-  const consumer = kafka.consumer({ groupId: `kafka-tool-time-${Date.now()}` });
+  const consumer = kafka.consumer({
+    groupId: kafkaToolConsumerGroupId("time", [request.serverId, request.topic, request.partition ?? "all"])
+  });
   let settled = false;
 
   await admin.connect();
@@ -1251,11 +1286,7 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
 
   return await new Promise<ConsumedMessage[]>((resolve, reject) => {
     const cleanup = () => {
-      void consumer.stop()
-        .catch(() => undefined)
-        .finally(() => {
-          void consumer.disconnect().catch(() => undefined);
-        });
+      void shutdownConsumer(consumer);
     };
 
     const finish = () => {
@@ -1327,28 +1358,37 @@ ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeReques
   const preferences = await readPreferences();
   const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
-  const groupId = `kafka-tool-${consumerId}-${Date.now()}`;
+  const groupId = kafkaToolConsumerGroupId("live", [request.serverId, request.topic, consumerId]);
   const consumer = kafka.consumer({ groupId });
-  activeConsumers.set(consumeKey(request.serverId, request.topic, consumerId), consumer);
+  const key = consumeKey(request.serverId, request.topic, consumerId);
+  activeConsumers.set(key, consumer);
 
-  await consumer.connect();
-  await consumer.subscribe({ topic: request.topic, fromBeginning: request.fromBeginning });
+  try {
+    await consumer.connect();
+    await consumer.subscribe({ topic: request.topic, fromBeginning: request.fromBeginning });
 
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      if (request.partition !== undefined && partition !== request.partition) {
-        return;
+    await consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        if (request.partition !== undefined && partition !== request.partition) {
+          return;
+        }
+        const payload = {
+          ...await toConsumedMessage(profile, topic, partition, message, manualSchema),
+          consumerId
+        };
+        mainWindow?.webContents.send("kafka:consume-message", payload);
       }
-      const payload = {
-        ...await toConsumedMessage(profile, topic, partition, message, manualSchema),
-        consumerId
-      };
-      mainWindow?.webContents.send("kafka:consume-message", payload);
-    }
-  }).catch((error) => {
-    activeConsumers.delete(consumeKey(request.serverId, request.topic, consumerId));
+    }).catch((error) => {
+      activeConsumers.delete(key);
+      void shutdownConsumer(consumer);
+      sendConsumeError(error);
+    });
+  } catch (error) {
+    activeConsumers.delete(key);
+    await shutdownConsumer(consumer);
     sendConsumeError(error);
-  });
+    throw error;
+  }
 });
 
 if (process.platform === "win32") {
@@ -1357,8 +1397,17 @@ if (process.platform === "win32") {
 
 app.whenReady().then(createWindow);
 
-app.on("before-quit", () => {
-  void stopActiveConsumer();
+app.on("before-quit", (event) => {
+  if (isCleaningUpConsumers || activeConsumers.size === 0) {
+    return;
+  }
+  event.preventDefault();
+  isCleaningUpConsumers = true;
+  void stopActiveConsumer()
+    .finally(() => {
+      isCleaningUpConsumers = false;
+      app.quit();
+    });
 });
 
 app.on("window-all-closed", () => {
@@ -1371,4 +1420,19 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     void createWindow();
   }
+});
+
+async function cleanupConsumersAndExit() {
+  if (isCleaningUpConsumers) return;
+  isCleaningUpConsumers = true;
+  await stopActiveConsumer();
+  process.exit(0);
+}
+
+process.on("SIGINT", () => {
+  void cleanupConsumersAndExit();
+});
+
+process.on("SIGTERM", () => {
+  void cleanupConsumersAndExit();
 });

@@ -1469,6 +1469,14 @@
     @apply cursor-pointer border-l-4 border-l-transparent transition hover:bg-cyan-50/70;
   }
 
+  .message-table tbody tr.grid-virtual-spacer {
+    @apply pointer-events-none cursor-default border-l-0 transition-none hover:bg-transparent;
+  }
+
+  .message-table tbody tr.grid-virtual-spacer td {
+    @apply border-0 p-0;
+  }
+
   .message-table tbody tr.selected {
     @apply bg-cyan-100/80 text-ink shadow-[inset_4px_0_0_#0891b2] hover:bg-cyan-100;
   }
@@ -2316,9 +2324,6 @@
     @apply border-[#264f78] bg-[#102a3c] text-cyan-100;
   }
 
-  .cluster-tab,
-  .topic-tab,
-  .tabs button,
   .ui-button-secondary,
   .ui-button-ghost,
   .ui-button-subtle,
@@ -2331,21 +2336,9 @@
     @apply border-[#3c3c3c] bg-[#2d2d2d] text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
   }
 
-  .cluster-tab.active,
-  .tabs button.active,
   .ui-button.active,
   .sidebar-toggle.collapsed {
     @apply border-[#007acc] bg-[#094771] text-white shadow-[0_8px_18px_rgba(0,122,204,0.18)] hover:bg-[#094771];
-  }
-
-  .topic-tab.active {
-    @apply border-[#007acc]/80 bg-[#1f3a4a] text-white shadow-sm;
-  }
-
-  .primary-topic-pane:not(.active-pane) .topic-tab.active,
-  .split-pane:not(.active-pane) .topic-tab.active,
-  .inactive-pane .topic-tab.active {
-    @apply border-[#3c3c3c] bg-[#2d2d2d] text-slate-400;
   }
 
   input,
@@ -2858,223 +2851,6 @@
     @apply bg-[#2d2d2d] text-slate-300;
   }
 
-  /* Readability pass: softer VSCode dark contrast */
-  h1,
-  h2,
-  .modal-title h2,
-  .topic strong,
-  .server strong,
-  .message-table,
-  .json-view,
-  .panel {
-    @apply text-[#d4d4d4];
-  }
-
-  small,
-  .count,
-  .section-title span,
-  .topic small,
-  .server small,
-  .message-meta {
-    @apply text-[#9da5b4];
-  }
-
-  .cluster-tab.active,
-  .topic-tab.active,
-  .server.active,
-  .sidebar .topic.active,
-  .group-row.active {
-    @apply bg-[#37373d] text-[#d4d4d4];
-  }
-
-  .cluster-tab.active,
-  .topic-tab.active {
-    @apply border-[#3794ff]/70;
-  }
-
-  .primary-topic-pane.active-pane .topic-tab.active::before,
-  .split-pane.active-pane .topic-tab.active::before {
-    @apply bg-[#3794ff];
-  }
-
-  .primary,
-  .ui-button-primary,
-  .modal-actions .primary {
-    @apply border-[#0e639c] bg-[#0e639c] text-white hover:bg-[#1177bb];
-  }
-
-  .message-table tbody tr.selected {
-    @apply bg-[#264f78]/75 text-[#d4d4d4] hover:bg-[#264f78]/85;
-  }
-
-  .sidebar .topic.active small {
-    @apply text-[#b7c9d8];
-  }
-
-  /* VSCode comfort pass: keep blue as a small signal, not a filled surface. */
-  body,
-  .app-shell,
-  .content {
-    @apply bg-[#1e1e1e] text-[#cccccc];
-  }
-
-  h1,
-  h2,
-  .modal-title h2 {
-    @apply text-[#e6e6e6];
-  }
-
-  .sidebar,
-  .sidebar-panel,
-  .sidebar .topic-list {
-    @apply bg-[#181818];
-  }
-
-  .cluster-tab.active,
-  .topic-tab.active,
-  .server.active,
-  .sidebar .topic.active,
-  .group-row.active {
-    @apply bg-[#2f3033] text-[#e1e1e1] shadow-none;
-  }
-
-  .server.active,
-  .sidebar .topic.active {
-    box-shadow: inset 2px 0 0 #3794ff;
-  }
-
-  .cluster-tab.active,
-  .topic-tab.active {
-    @apply border-[#3c3c3c] bg-[#2d2d30];
-  }
-
-  .primary-topic-pane.active-pane .topic-tab.active::before,
-  .split-pane.active-pane .topic-tab.active::before {
-    @apply bg-[#3794ff]/80;
-  }
-
-  .segmented button.active,
-  .compact-segmented button.active {
-    @apply bg-[#37373d] text-[#f0f0f0] hover:bg-[#37373d];
-  }
-
-  .primary,
-  .ui-button-primary,
-  .modal-actions .primary {
-    @apply border-[#0e639c] bg-[#0e639c] text-white hover:bg-[#1177bb];
-  }
-
-  .panel,
-  .message,
-  .group-list,
-  .group-summary > div,
-  .group-topic-card {
-    @apply border-[#303030] bg-[#252526];
-  }
-
-  .message-table-wrapper {
-    @apply border-[#303030] bg-[#1e1e1e];
-  }
-
-  .message-table {
-    @apply text-[#cccccc];
-  }
-
-  .message-table thead th {
-    @apply border-[#303030] bg-[#252526] text-[#c8c8c8];
-  }
-
-  .message-table tbody tr {
-    @apply border-[#2a2a2a] bg-[#1e1e1e] text-[#cccccc] hover:bg-[#252526];
-    border-left-width: 0;
-    border-left-color: transparent;
-  }
-
-  .message-table tbody tr.selected {
-    @apply bg-[#2a2d2e] text-[#e6e6e6] hover:bg-[#2d3235];
-    box-shadow: none;
-    border-left-width: 0;
-  }
-
-  .message-table tbody tr.filter-dimmed {
-    @apply opacity-45;
-  }
-
-  .message-table tbody tr.filter-highlighted {
-    @apply bg-[#2f2a1c] text-[#dcd6c4] hover:bg-[#353020];
-    box-shadow: none;
-  }
-
-  .message-table tbody tr.filter-highlight {
-    @apply bg-[#2f2a1c] text-[#dcd6c4] hover:bg-[#353020];
-    box-shadow: inset 0 0 0 1px rgb(215 186 125 / 0.16);
-    border-left-width: 0;
-  }
-
-  .message-table tbody tr.filter-muted {
-    @apply opacity-[0.28];
-  }
-
-  .partition-badge {
-    @apply border-[#3c3c3c] bg-[#252526] text-[#c8c8c8];
-  }
-
-  .json-view,
-  .tree-view {
-    @apply border-[#303030] bg-[#111719] text-[#c8d1d6];
-  }
-
-  .json-toolbar,
-  .filter-row,
-  .consume-controls,
-  .table-toolbar {
-    @apply border-[#303030] bg-[#252526];
-  }
-
-  input,
-  select,
-  textarea {
-    @apply border-[#3c3c3c] bg-[#1e1e1e] text-[#cccccc] placeholder:text-[#777777];
-    color-scheme: dark;
-  }
-
-  select,
-  select option,
-  select optgroup {
-    background-color: #1e1e1e;
-    color: #e6e6e6;
-  }
-
-  select:disabled,
-  select:disabled option {
-    background-color: #252526;
-    color: #777777;
-  }
-
-  input:focus,
-  select:focus,
-  textarea:focus {
-    @apply border-[#3794ff]/80 ring-1 ring-[#3794ff]/20;
-  }
-
-  .ghost,
-  .ui-button-ghost,
-  .ui-button-secondary,
-  .ui-button-subtle,
-  .export-button,
-  .schema-file-button,
-  .filter-mode-toggle,
-  .grid-filter-panel > button,
-  .grid-filter-popover button,
-  .modal-actions .ghost {
-    @apply border-[#3c3c3c] bg-[#2d2d30] text-[#cccccc] hover:border-[#4a4a4a] hover:bg-[#333333] hover:text-[#f0f0f0];
-  }
-
-  .brand svg,
-  .icon-button.add-server {
-    @apply bg-[#2d2d30] text-[#9cdcfe] ring-[#3c3c3c];
-  }
-
   /* Data readability and button tone pass. */
   .primary,
   .ui-button-primary,
@@ -3303,6 +3079,27 @@
   .cluster-tab .connection-dot.failed {
     @apply border-red-400/50 bg-red-500;
     box-shadow: 0 0 0 2px rgb(239 68 68 / 0.14);
+  }
+
+  .cluster-tab .connection-dot.compact {
+    @apply h-2.5 min-h-2.5 w-2.5 min-w-2.5 max-w-2.5 rounded-full border border-[#5f6b7a] bg-[#3c3c3c] p-0 text-transparent ring-0;
+    box-shadow: none;
+  }
+
+  .cluster-tab .connection-dot.compact.connected {
+    @apply border-emerald-300/50 bg-emerald-400;
+    box-shadow: 0 0 0 2px rgb(52 211 153 / 0.14);
+  }
+
+  .cluster-tab .connection-dot.compact.failed {
+    @apply border-red-300/60 bg-red-500;
+    box-shadow: 0 0 0 2px rgb(239 68 68 / 0.14);
+  }
+
+  .cluster-tab .connection-dot.compact::before,
+  .cluster-tab .connection-dot.compact::after {
+    content: none;
+    display: none;
   }
 
   /* Modal dark pass: server, schema, errors, and topic actions. */
@@ -3551,5 +3348,21 @@
 
   .preferences-modal .modal-title h2 {
     @apply mt-0;
+  }
+
+  .inline-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .ghost.compact.danger {
+    @apply text-[#f48771];
+  }
+
+  .ghost.compact.danger:not(:disabled):hover {
+    @apply border-[#f48771]/40 bg-[#f48771]/10 text-[#ffb3a4];
+  }
+
+  .row-checked {
+    @apply bg-[#2d2d30];
   }
 }

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferenceSection, AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppPreferenceSection, AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -20,6 +20,7 @@ const api: KafkaApi = {
   deleteTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-delete", request),
   purgeTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-purge", request),
   listConsumerGroups: (serverId: string) => ipcRenderer.invoke("kafka:groups", serverId),
+  deleteConsumerGroups: (request: ConsumerGroupMutationRequest) => ipcRenderer.invoke("kafka:groups-delete", request),
   getConsumerGroupLag: (serverId: string, groupId: string) => ipcRenderer.invoke("kafka:group-lag", serverId, groupId),
   exportMessages: (request: MessageExportRequest) => ipcRenderer.invoke("messages:export", request),
   exportOffsetMessages: (request: OffsetMessageExportRequest) => ipcRenderer.invoke("messages:export-offset", request),

@@ -9,10 +9,24 @@ export type OffsetOrder = "asc" | "desc";
 export type JsonInspectorMode = "raw" | "tree";
 export type TopicListFilter = "all" | "favorites" | "nonEmpty";
 export type TopicSortMode = "nameAsc" | "messagesDesc" | "partitionsDesc" | "favoritesFirst";
+export type WorkspacePaneId = "primary" | "split";
+export type SplitDropSide = "left" | "right" | null;
 export type ToastState = { message: string; kind: "loading" | "success" | "error" } | null;
+export type PaneToastState = {
+  pane: WorkspacePaneId;
+  message: string;
+  kind: "loading" | "success" | "error";
+  serverId?: string;
+  topic?: string;
+} | null;
 export type ConsumeDefaultPatch = AppPreferences["consumeDefaultsByServer"][string];
 export type TopicAction = { serverId: string; kind: "delete" | "purge"; topics: string[] } | null;
-export type DragPayload = { type: "topic"; serverId: string; topic: string; source: "primary" | "split" } | { type: "split-pane" };
+export type DragPayload = { type: "topic"; serverId: string; topic: string; source: WorkspacePaneId } | { type: "split-pane" };
+export type WorkspaceActionTarget = {
+  pane: WorkspacePaneId;
+  serverId: string;
+  topic?: string;
+};
 
 export type SplitPaneState = {
   serverId: string;

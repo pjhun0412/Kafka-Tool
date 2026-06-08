@@ -1,16 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
 import { ChevronUp, RefreshCw } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
-import { DataGrid } from "../../DataGrid";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, JsonInspectorMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { filterMessages } from "../../../messageFilters";
-import { formatHeaders, formatMessagePayload, formatTimestamp, previewHeaders, previewValue } from "../../../utils";
+import { formatMessagePayload } from "../../../utils";
+import { OFFSET_PAGE_SIZE, OFFSET_PAGING_THRESHOLD } from "../../../consumeConfig";
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { JsonInspector } from "./JsonInspector";
 import { MessageFilterBar } from "./MessageFilterBar";
-const OFFSET_PAGING_THRESHOLD = 10000;
-const OFFSET_PAGE_SIZE = 5000;
+import { MessageGrid, useMessageGridRows } from "./MessageGrid";
+
 export function ConsumePanel(props: {
   messages: ConsumedMessage[];
   topic: string;
@@ -77,11 +76,17 @@ export function ConsumePanel(props: {
     [props.filterField, props.filterText, props.messages]
   );
   const hasActiveMessageFilter = props.filterText.trim().length > 0 || props.filterField === "headersEmpty";
-  const highlightedMessageKeys = useMemo(
-    () => new Set(filteredMessages.map((message) => `${message.partition}-${message.offset}-${message.timestamp}`)),
-    [filteredMessages]
-  );
-  const gridMessages = props.filterMode === "highlight" && hasActiveMessageFilter ? props.messages : filteredMessages;
+  const {
+    rows: gridRows,
+    highlightedMessageKeys,
+    selectedMessageKey
+  } = useMessageGridRows({
+    messages: props.messages,
+    filteredMessages,
+    filterMode: props.filterMode,
+    hasActiveMessageFilter,
+    selectedMessage: props.selectedMessage
+  });
   const isLargeOffsetRequest = props.mode === "offset" && props.limit > OFFSET_PAGING_THRESHOLD;
   const pagination = props.offsetPagination;
   const canExportFullOffsetRange = isLargeOffsetRequest && Boolean(pagination?.endOffsetExclusive);
@@ -106,7 +111,8 @@ export function ConsumePanel(props: {
 
   useEffect(() => {
     if (props.mode !== "live" || !props.autoScroll) return;
-    messageTableRef.current?.scrollTo({ top: 0 });
+    const scrollTarget = messageTableRef.current?.querySelector(".message-table");
+    scrollTarget?.scrollTo({ top: 0 });
   }, [props.autoScroll, props.messages.length, props.mode]);
 
   function clearMessageFilter() {
@@ -116,87 +122,58 @@ export function ConsumePanel(props: {
 
   function startInspectorResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
+    const gridElement = consumeGridRef.current;
+    if (!gridElement) return;
+    const resizeHandle = event.currentTarget;
+    resizeHandle.setPointerCapture(event.pointerId);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
     const startY = event.clientY;
     const startHeight = props.messagePaneHeight;
-    const gridHeight = consumeGridRef.current?.getBoundingClientRect().height ?? 620;
+    const gridHeight = gridElement.getBoundingClientRect().height;
+    let nextHeight = startHeight;
+    let animationFrame = 0;
+    const applyHeight = () => {
+      gridElement.style.gridTemplateRows = `${nextHeight}px 8px minmax(0, 1fr)`;
+      animationFrame = 0;
+    };
     const onPointerMove = (moveEvent: PointerEvent) => {
       const maxHeight = Math.max(150, gridHeight - 250);
-      const nextHeight = Math.min(maxHeight, Math.max(120, startHeight + moveEvent.clientY - startY));
-      props.onMessagePaneHeight(nextHeight);
+      nextHeight = Math.min(maxHeight, Math.max(120, startHeight + moveEvent.clientY - startY));
+      if (!animationFrame) {
+        animationFrame = window.requestAnimationFrame(applyHeight);
+      }
     };
-    const onPointerUp = () => {
+    const cleanup = (pointerId: number) => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      if (resizeHandle.hasPointerCapture(pointerId)) {
+        resizeHandle.releasePointerCapture(pointerId);
+      }
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
+    };
+    const onPointerUp = (upEvent: PointerEvent) => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+        applyHeight();
+      }
+      props.onMessagePaneHeight(nextHeight);
+      cleanup(upEvent.pointerId);
+    };
+    const onPointerCancel = (cancelEvent: PointerEvent) => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+      gridElement.style.gridTemplateRows = props.inspectorCollapsed ? "minmax(0, 1fr) 34px" : `${props.messagePaneHeight}px 8px minmax(0, 1fr)`;
+      cleanup(cancelEvent.pointerId);
     };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
   }
-
-  function getRowNo(index: number) {
-    return index + 1;
-  }
-
-  const columns = useMemo<ColumnDef<ConsumedMessage>[]>(() => [
-    {
-      id: "no",
-      header: "No",
-      enableSorting: false,
-      cell: ({ row }) => getRowNo(row.index)
-    },
-    {
-      accessorKey: "partition",
-      header: "Partition",
-      sortingFn: "basic",
-      cell: ({ row }) => {
-        const partition = row.original.partition;
-        return (
-          <span className="partition-badge">
-            {partition}
-          </span>
-        );
-      }
-    },
-    {
-      accessorKey: "offset",
-      header: "Offset",
-      sortingFn: (left, right, columnId) => Number(left.getValue(columnId)) - Number(right.getValue(columnId)),
-      cell: ({ row }) => <span title={row.original.offset}>{row.original.offset}</span>
-    },
-    {
-      accessorKey: "timestamp",
-      header: "Timestamp",
-      sortingFn: (left, right, columnId) => Date.parse(String(left.getValue(columnId))) - Date.parse(String(right.getValue(columnId))),
-      cell: ({ row }) => <span title={row.original.timestamp}>{formatTimestamp(row.original.timestamp)}</span>
-    },
-    {
-      accessorKey: "key",
-      header: "Key",
-      cell: ({ row }) => <span title={row.original.key || "-"}>{row.original.key || "-"}</span>
-    },
-    {
-      id: "headers",
-      header: "Headers",
-      accessorFn: (message) => formatHeaders(message.headers),
-      cell: ({ row }) => <span title={formatHeaders(row.original.headers)}>{previewHeaders(row.original.headers)}</span>
-    },
-    {
-      id: "value",
-      header: "Value",
-      accessorFn: (message) => message.decoded?.value !== undefined ? JSON.stringify(message.decoded.value) : message.value,
-      cell: ({ row }) => {
-        const decoded = row.original.decoded;
-        const hasDecodedValue = decoded?.value !== undefined;
-        const displayValue = hasDecodedValue ? JSON.stringify(decoded.value) : row.original.value;
-        return (
-          <span title={decoded?.error ?? displayValue}>
-            {hasDecodedValue && <span className="decode-badge">Avro</span>}
-            {decoded?.error && <span className="decode-badge error">Avro error</span>}
-            {previewValue(displayValue)}
-          </span>
-        );
-      }
-    }
-  ], []);
 
   return (
     <section className={props.isQuerying ? "panel consume-workspace querying" : "panel consume-workspace"}>
@@ -210,6 +187,7 @@ export function ConsumePanel(props: {
         mode={props.mode}
         offsetOrder={props.offsetOrder}
         isConsuming={props.isConsuming}
+        isQuerying={props.isQuerying}
         partition={props.partition}
         offset={props.offset}
         limit={props.limit}
@@ -258,22 +236,13 @@ export function ConsumePanel(props: {
       >
         <div ref={messageTableRef} className="consume-grid-table-wrap">
           {isGridReady ? (
-            <DataGrid
-              data={gridMessages}
-              columns={columns}
-              className="tanstack-message-table"
-              emptyText="No messages"
-              getRowKey={(message) => `${message.partition}-${message.offset}-${message.timestamp}`}
-              getRowClassName={(message) => {
-                const classes = [];
-                if (props.selectedMessage === message) classes.push("selected");
-                if (props.filterMode === "highlight" && hasActiveMessageFilter) {
-                  const isMatched = highlightedMessageKeys.has(`${message.partition}-${message.offset}-${message.timestamp}`);
-                  classes.push(isMatched ? "filter-highlight" : "filter-muted");
-                }
-                return classes.join(" ");
-              }}
-              onRowClick={props.onSelectMessage}
+            <MessageGrid
+              rows={gridRows}
+              selectedMessageKey={selectedMessageKey}
+              filterMode={props.filterMode}
+              hasActiveMessageFilter={hasActiveMessageFilter}
+              highlightedMessageKeys={highlightedMessageKeys}
+              onSelectMessage={props.onSelectMessage}
             />
           ) : (
             <div className="message-table tanstack-message-table table-warmup">
