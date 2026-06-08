@@ -4,6 +4,21 @@ Kafka Tool is a lightweight desktop Kafka explorer built with Electron, React, T
 
 It is designed for internal developer and operations use: register Kafka clusters, browse topics, consume and produce messages, inspect payloads, manage schemas, and export operational data from a single executable app.
 
+## 0.1.7 Release Notes
+
+Bug fixes:
+
+- Fixed large offset paging in `Newest` mode so `Next` then `Prev` returns to the same captured page without dropping the first message.
+- Prevented large offset paging from reusing stale pagination snapshots after starting a fresh consume request.
+- Disabled `Prev` and `Next` while a consume page request is already running to avoid overlapping page navigation.
+
+Performance improvements:
+
+- Added virtualized row rendering to the shared data grid to keep large consume result sets responsive.
+- Reduced JSON viewer resize jank by updating layout directly during drag and committing the final height once.
+- Cached consume message grid view models so timestamp/header/value previews are not recalculated on every cell render.
+- Split the consume message grid into a memoized component to reduce unnecessary re-renders while using the lower JSON viewer.
+
 ## Key Features
 
 - Manage multiple Kafka server profiles
