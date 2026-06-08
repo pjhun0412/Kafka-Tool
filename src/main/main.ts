@@ -454,12 +454,15 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
   const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
   const consumer = kafka.consumer({
-    groupId: kafkaToolConsumerGroupId("offset", [request.serverId, request.topic, request.partition])
+    groupId: kafkaToolConsumerGroupId("offset", [request.serverId, request.topic, request.partition]),
+    minBytes: 1,
+    maxWaitTimeInMs: 250
   });
   const messages: ConsumedMessage[] = [];
   const limit = Math.max(1, Number(request.limit) || 10);
   let seekOffset = request.offset;
   let endExclusive: bigint | null = null;
+  let expectedMessageCount = limit;
   let settled = false;
 
   const admin = kafka.admin();
@@ -488,16 +491,33 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
       } else if (/^\d+$/.test(seekOffset) && BigInt(seekOffset) < low) {
         seekOffset = low.toString();
       }
+
+      const startOffset = /^\d+$/.test(seekOffset) ? BigInt(seekOffset) : low;
+      const boundedStart = startOffset > low ? startOffset : low;
+      const remaining = endExclusive > boundedStart ? endExclusive - boundedStart : 0n;
+      expectedMessageCount = Number(remaining > BigInt(limit) ? BigInt(limit) : remaining);
     }
   } finally {
     await admin.disconnect();
+  }
+
+  if (expectedMessageCount <= 0) {
+    return { messages: [], endOffsetExclusive: endExclusive?.toString() };
   }
 
   await consumer.connect();
   await consumer.subscribe({ topic: request.topic, fromBeginning: true });
 
   return await new Promise<ConsumeOffsetResult>((resolve, reject) => {
+    let idleTimeout: NodeJS.Timeout | null = null;
+
+    const resetIdleTimeout = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(finish, messages.length > 0 ? 700 : 1200);
+    };
+
     const cleanup = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
       void shutdownConsumer(consumer);
     };
 
@@ -524,12 +544,13 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
         if (partition !== request.partition) {
           return;
         }
+        resetIdleTimeout();
         if (endExclusive !== null && /^\d+$/.test(message.offset) && BigInt(message.offset) >= endExclusive) {
           finish();
           return;
         }
         messages.push(await toConsumedMessage(profile, topic, partition, message, manualSchema));
-        if (messages.length >= limit) {
+        if (messages.length >= expectedMessageCount) {
           finish();
         }
       }
@@ -538,6 +559,7 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
     setTimeout(() => {
       try {
         consumer.seek({ topic: request.topic, partition: request.partition, offset: seekOffset });
+        resetIdleTimeout();
       } catch (error) {
         fail(error);
       }
@@ -1381,7 +1403,9 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
   const messages: ConsumedMessage[] = [];
   const admin = kafka.admin();
   const consumer = kafka.consumer({
-    groupId: kafkaToolConsumerGroupId("time", [request.serverId, request.topic, request.partition ?? "all"])
+    groupId: kafkaToolConsumerGroupId("time", [request.serverId, request.topic, request.partition ?? "all"]),
+    minBytes: 1,
+    maxWaitTimeInMs: 250
   });
   let settled = false;
 
@@ -1404,12 +1428,28 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
     return [];
   }
 
+  const seekablePartitions = partitions.filter((partition) => {
+    const offset = startOffsets.get(partition);
+    return offset !== undefined && offset !== "-1" && /^\d+$/.test(offset);
+  });
+  if (seekablePartitions.length === 0) {
+    return [];
+  }
+
   const completed = new Set<number>();
   await consumer.connect();
   await consumer.subscribe({ topic: request.topic, fromBeginning: true });
 
   return await new Promise<ConsumedMessage[]>((resolve, reject) => {
+    let idleTimeout: NodeJS.Timeout | null = null;
+
+    const resetIdleTimeout = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(finish, messages.length > 0 ? 900 : 1500);
+    };
+
     const cleanup = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
       void shutdownConsumer(consumer);
     };
 
@@ -1433,14 +1473,15 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
 
     consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
-        if (!partitions.includes(partition)) {
+        if (!seekablePartitions.includes(partition)) {
           return;
         }
+        resetIdleTimeout();
 
         const timestamp = Number(message.timestamp);
         if (timestamp > request.endTimestamp) {
           completed.add(partition);
-          if (completed.size >= partitions.length) {
+          if (completed.size >= seekablePartitions.length) {
             finish();
           }
           return;
@@ -1457,13 +1498,14 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
 
     setTimeout(() => {
       try {
-        for (const partition of partitions) {
+        for (const partition of seekablePartitions) {
           consumer.seek({
             topic: request.topic,
             partition,
             offset: startOffsets.get(partition) ?? "0"
           });
         }
+        resetIdleTimeout();
       } catch (error) {
         fail(error);
       }
