@@ -1,11 +1,9 @@
-import type React from "react";
-import { ArrowUpDown, Database, Plus, RefreshCw, X } from "lucide-react";
+﻿import type React from "react";
+import { Database, Plus } from "lucide-react";
 import type { ServerProfile, TopicSummary } from "../../../../shared/types";
 import type { DragPayload, TopicListFilter, TopicSortMode, WorkspaceActionTarget } from "../../../uiTypes";
-import { topicSortOptions } from "../../../uiTypes";
-import { getTopicSortLabel } from "../../../utils";
 import { ServerPanel } from "./ServerPanel";
-import { TopicListItem } from "../topics";
+import { TopicSidebarPanel } from "./TopicSidebarPanel";
 
 type DropTarget = { id: string; position: "before" | "after" } | null;
 type TopicDropTarget = { topic: string; position: "before" | "after" } | null;
@@ -172,153 +170,42 @@ export function WorkspaceSidebar({
 
       <div className="sidebar-stack-resizer" onPointerDown={onServerPanelResize} title="Resize server/topic panels" />
 
-      <section className="sidebar-panel topic-list">
-        <div className="section-title">
-          <h2>Topics</h2>
-          <div className="topic-title-actions">
-            <span>{filteredTopics.length}/{topics.length}</span>
-            <div className="topic-sort-wrap" onClick={(event) => event.stopPropagation()}>
-              <button
-                className="topic-refresh"
-                onClick={() => onTopicSortMenuOpen((current) => !current)}
-                title={`Sort: ${getTopicSortLabel(topicSort)}`}
-              >
-                <ArrowUpDown size={14} />
-              </button>
-              {isTopicSortMenuOpen && (
-                <div className="topic-sort-menu">
-                  {topicSortOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      className={topicSort === option.value ? "active" : ""}
-                      onClick={() => {
-                        onTopicSort(option.value);
-                        onTopicSortMenuOpen(false);
-                      }}
-                    >
-                      <span>{topicSort === option.value ? "*" : ""}</span>
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button className="topic-refresh" onClick={onRefreshTopics} disabled={!isSelectedServerConnected || loading} title="Refresh topics">
-              <RefreshCw size={14} />
-            </button>
-          </div>
-        </div>
-        <div className="search-box topic-search">
-          <input
-            value={topicQuery}
-            onChange={(event) => onTopicQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                onCommitTopicSearch();
-              }
-            }}
-            placeholder="Search topic"
-            title="Space: AND, -word: exclude, /pattern/: regex"
-          />
-          {topicQuery && (
-            <button onClick={() => onTopicQuery("")} title="Clear topic search">
-              <X size={13} />
-            </button>
-          )}
-        </div>
-        {topicSearchError && <div className="topic-search-error">Invalid regex: {topicSearchError}</div>}
-        {!topicSearchError && topicQuery.trim() && (
-          <div className="topic-search-help">AND search, exclude with -word, regex with /pattern/</div>
-        )}
-        {topicSearchHistory.length > 0 && (
-          <div className="topic-search-history">
-            {topicSearchHistory.map((query) => (
-              <button key={query} onClick={() => onTopicQuery(query)} title={`Search ${query}`}>
-                <span>{query}</span>
-                <X
-                  size={12}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onRemoveTopicSearchHistory(query);
-                  }}
-                />
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="topic-filter-row">
-          <select value={topicFilter} onChange={(event) => onTopicFilter(event.target.value as TopicListFilter)} title="Filter topics">
-            <option value="all">All topics</option>
-            <option value="favorites">Favorites</option>
-            <option value="nonEmpty">Has messages</option>
-          </select>
-        </div>
-        {favoriteTopics.length > 0 && (
-          <div className={topicFilter === "favorites" ? "favorite-topic-section fill-available" : "favorite-topic-section"}>
-            <div className="favorite-topic-title">Favorites</div>
-            {favoriteTopics.map((topic) => (
-              <TopicListItem
-                key={topic.name}
-                topic={topic}
-                active={topic.name === selectedTopic}
-                favorite
-                hasAvroSchema={manualAvroTopicNames.has(topic.name)}
-                onSelect={() => onTopicSelect(getWorkspaceTargetForTopic(selectedServerId, topic.name), topic.name)}
-                onOpen={() => onTopicOpen(topic.name)}
-                onToggleFavorite={() => onTopicFavorite(topic.name)}
-                onContextMenu={(event) => onTopicContextMenu(event, topic.name)}
-                draggable
-                dragging={draggingFavoriteTopic === topic.name}
-                dropPosition={favoriteDropTarget?.topic === topic.name ? favoriteDropTarget.position : null}
-                onDragStart={(event) => {
-                  onFavoriteDragStart(topic.name);
-                  event.dataTransfer.effectAllowed = "move";
-                  event.dataTransfer.setData("text/plain", topic.name);
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = "move";
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  onFavoriteDropTarget({
-                    topic: topic.name,
-                    position: event.clientY < rect.top + rect.height / 2 ? "before" : "after"
-                  });
-                }}
-                onDragLeave={() => {
-                  if (favoriteDropTarget?.topic === topic.name) {
-                    onFavoriteDropTarget(null);
-                  }
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  const draggedTopic = event.dataTransfer.getData("text/plain") || draggingFavoriteTopic;
-                  const position = favoriteDropTarget?.topic === topic.name ? favoriteDropTarget.position : "before";
-                  onFavoriteDrop(draggedTopic, topic.name, position);
-                }}
-                onDragEnd={onFavoriteDragEnd}
-              />
-            ))}
-          </div>
-        )}
-        {(topicFilter !== "favorites" || filteredTopics.length === 0) && (
-          <div className="topic-scroll">
-            {nonFavoriteFilteredTopics.map((topic) => (
-              <TopicListItem
-                key={topic.name}
-                topic={topic}
-                active={topic.name === selectedTopic}
-                favorite={favoriteTopicNames.includes(topic.name)}
-                hasAvroSchema={manualAvroTopicNames.has(topic.name)}
-                onSelect={() => onTopicSelect(getWorkspaceTargetForTopic(selectedServerId, topic.name), topic.name)}
-                onOpen={() => onTopicOpen(topic.name)}
-                onToggleFavorite={() => onTopicFavorite(topic.name)}
-                onContextMenu={(event) => onTopicContextMenu(event, topic.name)}
-              />
-            ))}
-            {filteredTopics.length === 0 && <div className="empty-list">No topics found</div>}
-          </div>
-        )}
-      </section>
+      <TopicSidebarPanel
+        topics={topics}
+        filteredTopics={filteredTopics}
+        favoriteTopics={favoriteTopics}
+        nonFavoriteFilteredTopics={nonFavoriteFilteredTopics}
+        favoriteTopicNames={favoriteTopicNames}
+        manualAvroTopicNames={manualAvroTopicNames}
+        selectedServerId={selectedServerId}
+        selectedTopic={selectedTopic}
+        topicQuery={topicQuery}
+        topicSearchHistory={topicSearchHistory}
+        topicSearchError={topicSearchError}
+        topicFilter={topicFilter}
+        topicSort={topicSort}
+        isTopicSortMenuOpen={isTopicSortMenuOpen}
+        isSelectedServerConnected={isSelectedServerConnected}
+        loading={loading}
+        draggingFavoriteTopic={draggingFavoriteTopic}
+        favoriteDropTarget={favoriteDropTarget}
+        onTopicSortMenuOpen={onTopicSortMenuOpen}
+        onTopicSort={onTopicSort}
+        onRefreshTopics={onRefreshTopics}
+        onTopicQuery={onTopicQuery}
+        onCommitTopicSearch={onCommitTopicSearch}
+        onRemoveTopicSearchHistory={onRemoveTopicSearchHistory}
+        onTopicFilter={onTopicFilter}
+        onTopicSelect={onTopicSelect}
+        onTopicOpen={onTopicOpen}
+        onTopicFavorite={onTopicFavorite}
+        onTopicContextMenu={onTopicContextMenu}
+        getWorkspaceTargetForTopic={getWorkspaceTargetForTopic}
+        onFavoriteDragStart={onFavoriteDragStart}
+        onFavoriteDropTarget={onFavoriteDropTarget}
+        onFavoriteDrop={onFavoriteDrop}
+        onFavoriteDragEnd={onFavoriteDragEnd}
+      />
     </aside>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+﻿import React, { useEffect, useRef } from "react";
 import { HelpCircle, Search, X } from "lucide-react";
 import type { QuickSearchResult, QuickSearchScopedQuery } from "../quickSearch";
 

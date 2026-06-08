@@ -49,6 +49,20 @@ export type TopicDetail = {
   }>;
 };
 
+export type TopicConfigEntry = {
+  name: string;
+  value: string;
+  source: string;
+  isDefault: boolean;
+  isSensitive: boolean;
+  readOnly: boolean;
+  synonyms: Array<{
+    name: string;
+    value: string;
+    source: string;
+  }>;
+};
+
 export type BrokerSummary = {
   nodeId: number;
   host: string;
@@ -62,6 +76,57 @@ export type BrokerSummary = {
   underReplicatedPartitionCount: number;
   leaderSkewPercent: number;
   partitionSkewPercent: number;
+};
+
+export type BrokerConfigEntry = {
+  name: string;
+  value: string;
+  source: string;
+  isDefault: boolean;
+  isSensitive: boolean;
+  readOnly: boolean;
+  synonyms: Array<{
+    name: string;
+    value: string;
+    source: string;
+  }>;
+};
+
+export type BrokerLogDirectory = {
+  path: string;
+  error?: string;
+  topics: Array<{
+    topic: string;
+    partition: number;
+    sizeBytes?: string;
+    offsetLag?: string;
+    isFuture?: boolean;
+  }>;
+};
+
+export type BrokerDetail = {
+  broker: BrokerSummary;
+  configs: BrokerConfigEntry[];
+  logDirectories: BrokerLogDirectory[];
+  logDirectoriesSupported: boolean;
+};
+
+export type BrokerConfigUpdateRequest = {
+  serverId: string;
+  brokerId: number;
+  name: string;
+  value: string;
+  validateOnly?: boolean;
+};
+
+export type TopicConfigUpdateRequest = {
+  serverId: string;
+  topic: string;
+  entries: Array<{
+    name: string;
+    value: string;
+  }>;
+  validateOnly?: boolean;
 };
 
 export type ConsumerGroupSummary = {
@@ -264,7 +329,11 @@ export type KafkaApi = {
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
   listTopicMessageCounts: (serverId: string, topics: string[]) => Promise<TopicMessageCounts>;
   listBrokers: (serverId: string) => Promise<BrokerSummary[]>;
+  getBrokerDetail: (serverId: string, brokerId: number) => Promise<BrokerDetail>;
+  updateBrokerConfig: (request: BrokerConfigUpdateRequest) => Promise<BrokerDetail>;
   getTopicDetail: (serverId: string, topic: string) => Promise<TopicDetail>;
+  getTopicConfigs: (serverId: string, topic: string) => Promise<TopicConfigEntry[]>;
+  updateTopicConfigs: (request: TopicConfigUpdateRequest) => Promise<TopicConfigEntry[]>;
   deleteTopics: (request: TopicMutationRequest) => Promise<void>;
   purgeTopics: (request: TopicMutationRequest) => Promise<void>;
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;

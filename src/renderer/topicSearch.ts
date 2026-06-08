@@ -1,4 +1,4 @@
-export const TOPIC_SEARCH_HISTORY_LIMIT = 6;
+﻿export const TOPIC_SEARCH_HISTORY_LIMIT = 6;
 
 export type ParsedTopicSearchQuery = {
   include: string[];

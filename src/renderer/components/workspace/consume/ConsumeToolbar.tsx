@@ -1,9 +1,10 @@
-import React from "react";
-import { Calendar, ChevronDown, Download, Play, Square } from "lucide-react";
+﻿import React from "react";
+import { Calendar, Play, Square } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
 import type { ConsumeFilterMode, ConsumeMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
-import { OFFSET_PAGE_SIZE } from "../../../consumeConfig";
 import { Button } from "../../ui";
+import { ConsumeExportMenu } from "./ConsumeExportMenu";
+import { ConsumePagingBar } from "./ConsumePagingBar";
 
 type ConsumeToolbarProps = {
   mode: ConsumeMode;
@@ -109,69 +110,26 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
             Streaming
           </span>
         )}
-        <div className="export-menu">
-          <Button
-            variant="subtle"
-            className="export-button"
-            onClick={() => props.onExportMenuOpen((current) => !current)}
-            disabled={props.filteredMessages.length === 0}
-            title="Export filtered messages"
-          >
-            <Download size={14} />
-            <ChevronDown size={13} />
-          </Button>
-          {props.isExportMenuOpen && (
-            <div className="export-menu-popover">
-              <span className="export-menu-label">Current page</span>
-              {(["json", "csv", "log"] as MessageExportFormat[]).map((format) => (
-                <button
-                  key={format}
-                  onClick={() => {
-                    props.onExportMenuOpen(false);
-                    props.onExport(format, props.filteredMessages);
-                  }}
-                >
-                  <Download size={13} />
-                  {format.toUpperCase()}
-                </button>
-              ))}
-              {props.canExportFullOffsetRange && (
-                <>
-                  <span className="export-menu-divider" />
-                  <span className="export-menu-label">Full offset range</span>
-                  {(["json", "csv", "log"] as MessageExportFormat[]).map((format) => (
-                    <button
-                      key={`all-${format}`}
-                      onClick={() => {
-                        props.onExportMenuOpen(false);
-                        props.onExportAll(format);
-                      }}
-                    >
-                      <Download size={13} />
-                      All {format.toUpperCase()}
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        <ConsumeExportMenu
+          filteredMessages={props.filteredMessages}
+          canExportFullOffsetRange={props.canExportFullOffsetRange}
+          isExportMenuOpen={props.isExportMenuOpen}
+          onExportMenuOpen={props.onExportMenuOpen}
+          onExport={props.onExport}
+          onExportAll={props.onExportAll}
+        />
         <span className={props.isConsuming ? "count live-count" : "count"}>
           {props.isConsuming ? "Live" : ""} {props.filterMode === "highlight" && props.hasActiveMessageFilter ? `${props.filteredMessages.length} highlighted` : props.filteredMessages.length}/{props.totalMessageCount} messages
         </span>
       </div>
       {props.isLargeOffsetRequest && (
-        <div className="paging-bar">
-          <span>
-            Page {props.pagination ? props.pagination.pageIndex + 1 : 1}
-            {" "}of {Math.max(1, Math.ceil(props.limit / OFFSET_PAGE_SIZE))}
-            {" "}· showing up to {OFFSET_PAGE_SIZE.toLocaleString()} messages
-          </span>
-          <div>
-            <Button variant="ghost" size="sm" onClick={props.onPagePrev} disabled={props.isQuerying || !props.pagination || props.pagination.prevOffsets.length === 0}>Prev</Button>
-            <Button variant="ghost" size="sm" onClick={props.onPageNext} disabled={props.isQuerying || !props.pagination?.hasNext}>Next</Button>
-          </div>
-        </div>
+        <ConsumePagingBar
+          isQuerying={props.isQuerying}
+          limit={props.limit}
+          pagination={props.pagination}
+          onPagePrev={props.onPagePrev}
+          onPageNext={props.onPageNext}
+        />
       )}
     </>
   );

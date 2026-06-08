@@ -77,7 +77,15 @@ export function SplitWorkspacePane(props: {
   onProduce: () => void;
   paneToast: PaneToastState;
 }) {
-  const isTopicView = props.pane.view === "info" || props.pane.view === "consume" || props.pane.view === "produce";
+  const isTopicView = props.pane.view === "info" || props.pane.view === "consume" || props.pane.view === "produce" || props.pane.view === "settings";
+  function editTopicSettings() {
+    props.onView("settings");
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("topic-settings-edit", {
+        detail: { serverId: props.pane.serverId, topic: props.pane.topic }
+      }));
+    }, 0);
+  }
 
   return (
     <section
@@ -106,12 +114,14 @@ export function SplitWorkspacePane(props: {
             onView={props.onView}
             onOpenSchema={props.onOpenSchema}
             onRefresh={props.onRefresh}
+            onEditSettings={editTopicSettings}
           />
         </>
       )}
 
       <WorkspacePaneContent
         className="split-content-grid"
+        serverId={props.pane.serverId}
         view={props.pane.view}
         topic={props.pane.topic}
         detail={props.pane.detail}

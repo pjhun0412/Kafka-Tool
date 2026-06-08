@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { X } from "lucide-react";
 import type { ServerProfile } from "../../../../shared/types";
 import { ServerConnectionIndicator } from "../../ServerConnectionIndicator";

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import type { ConsumedMessage, TopicSummary } from "../shared/types";
 import { topicSortOptions, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
 
@@ -45,7 +45,7 @@ export function formatPercent(value: number) {
 }
 
 export function isTopicWorkView(view: View): view is TopicWorkView {
-  return view === "info" || view === "consume" || view === "produce";
+  return view === "info" || view === "consume" || view === "produce" || view === "settings";
 }
 
 export function getTopicSortLabel(value: TopicSortMode) {

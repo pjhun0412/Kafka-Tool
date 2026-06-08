@@ -1,0 +1,222 @@
+﻿import type { Dispatch, SetStateAction } from "react";
+import type { KafkaApi, TopicDetail } from "../../../shared/types";
+import type { SplitPaneState, TopicConsumeState, TopicWorkView, View, WorkspacePaneId } from "../../uiTypes";
+import {
+  clearServerConsumeStates,
+  closeTopicInSplitPane,
+  createSplitPaneForTopic,
+  getNextTopicAfterTabClose,
+  mergeTopicConsumeStates,
+  removeTopicTab
+} from "../../workspaceState";
+import {
+  addUniqueTopicTab,
+  getSplitPanePromoteTarget,
+  mergeSplitTopicTabsByServer,
+  mergeSplitTopicViewsByServer,
+  moveTopicBetweenPanes,
+  retargetSplitStreamingTopics,
+  resolvePromotedTopicDetail,
+  stopSplitPaneStreamingTopics,
+  type ConsumeStatesByServer
+} from "./splitPaneActionUtils";
+
+type SplitPaneActionsParams = {
+  kafkaApi: KafkaApi | undefined;
+  selectedServerId: string;
+  selectedTopic: string;
+  openedTopicTabs: string[];
+  splitPane: SplitPaneState | null;
+  splitConsumeStatesByServer: ConsumeStatesByServer;
+  topicDetailByServer: Record<string, TopicDetail | null>;
+  getTopicViewFor: (serverId: string, topic: string) => TopicWorkView;
+  getCachedTopicDetail: (serverId: string, topic: string) => TopicDetail | null;
+  setTopicDetailForServer: (serverId: string, detail: TopicDetail | null) => void;
+  isTopicStreaming: (serverId: string, topic: string, pane: WorkspacePaneId) => boolean;
+  stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
+  moveConsumeStateBetweenPanes: (serverId: string, topic: string, from: WorkspacePaneId, to: WorkspacePaneId) => void;
+  retargetLiveTopic: (serverId: string, topic: string, from: WorkspacePaneId, to: WorkspacePaneId) => void;
+  clearConsumeStatesForPane: (serverId: string, topicsToClear: Iterable<string>, pane: WorkspacePaneId) => void;
+  clearConsumeStateForPane: (serverId: string, topic: string, pane: WorkspacePaneId) => void;
+  loadSplitTopicDetailSilent: (serverId: string, topic: string, options?: { force?: boolean }) => Promise<void>;
+  selectPrimaryTopic: (topic: string) => Promise<void>;
+  setOpenedTopicTabs: (action: string[] | ((current: string[]) => string[])) => void;
+  setSelectedTopic: (topic: string) => void;
+  setTopicDetail: (detail: TopicDetail | null) => void;
+  setSplitPane: Dispatch<SetStateAction<SplitPaneState | null>>;
+  setActiveWorkspacePane: Dispatch<SetStateAction<WorkspacePaneId>>;
+  setSelectedServerId: Dispatch<SetStateAction<string>>;
+  setOpenedTopicTabsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setSelectedTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
+  setViewByServer: Dispatch<SetStateAction<Record<string, View>>>;
+  setTopicViewByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicWorkView>>>>;
+  setConsumeStatesByServer: Dispatch<SetStateAction<ConsumeStatesByServer>>;
+  setSplitConsumeStatesByServer: Dispatch<SetStateAction<ConsumeStatesByServer>>;
+};
+
+export function useSplitPaneActions({
+  kafkaApi,
+  selectedServerId,
+  selectedTopic,
+  openedTopicTabs,
+  splitPane,
+  splitConsumeStatesByServer,
+  topicDetailByServer,
+  getTopicViewFor,
+  getCachedTopicDetail,
+  setTopicDetailForServer,
+  isTopicStreaming,
+  stopConsume,
+  moveConsumeStateBetweenPanes,
+  retargetLiveTopic,
+  clearConsumeStatesForPane,
+  clearConsumeStateForPane,
+  loadSplitTopicDetailSilent,
+  selectPrimaryTopic,
+  setOpenedTopicTabs,
+  setSelectedTopic,
+  setTopicDetail,
+  setSplitPane,
+  setActiveWorkspacePane,
+  setSelectedServerId,
+  setOpenedTopicTabsByServer,
+  setSelectedTopicByServer,
+  setViewByServer,
+  setTopicViewByServer,
+  setConsumeStatesByServer,
+  setSplitConsumeStatesByServer
+}: SplitPaneActionsParams) {
+  async function openSplitForTopic(serverId: string, topic: string) {
+    if (!topic || serverId !== selectedServerId) return;
+    const nextView = getTopicViewFor(serverId, topic);
+    const existingDetail = getCachedTopicDetail(serverId, topic) ?? (topicDetailByServer[serverId]?.name === topic ? topicDetailByServer[serverId] : null);
+    const isAlreadyOpenInSplit = splitPane?.serverId === serverId && splitPane.topicTabs.includes(topic);
+    await moveTopicBetweenPanes({
+      serverId,
+      topic,
+      from: "primary",
+      to: "split",
+      targetAlreadyOpen: isAlreadyOpenInSplit,
+      isTopicStreaming,
+      stopConsume,
+      moveConsumeStateBetweenPanes,
+      retargetLiveTopic
+    });
+    setSplitPane((current) => createSplitPaneForTopic(current, serverId, topic, nextView, existingDetail));
+    setActiveWorkspacePane("split");
+    if (nextView === "info" && !existingDetail) {
+      await loadSplitTopicDetailSilent(serverId, topic);
+    }
+  }
+
+  async function openPrimaryTopicTab(topic: string) {
+    setOpenedTopicTabs((current) => addUniqueTopicTab(current, topic));
+    await selectPrimaryTopic(topic);
+  }
+
+  async function moveSplitTopicToPrimary(topic: string) {
+    const pane = splitPane;
+    if (!pane || pane.serverId !== selectedServerId || !pane.topicTabs.includes(topic)) return;
+    const isAlreadyOpenInPrimary = openedTopicTabs.includes(topic);
+    await moveTopicBetweenPanes({
+      serverId: pane.serverId,
+      topic,
+      from: "split",
+      to: "primary",
+      targetAlreadyOpen: isAlreadyOpenInPrimary,
+      isTopicStreaming,
+      stopConsume,
+      moveConsumeStateBetweenPanes,
+      retargetLiveTopic
+    });
+    await openPrimaryTopicTab(topic);
+    await removeSplitTopicTabAfterMove(topic);
+  }
+
+  async function removePrimaryTopicTabAfterSplit(topic: string) {
+    if (!openedTopicTabs.includes(topic)) return;
+    const nextTabs = removeTopicTab(openedTopicTabs, topic);
+    setOpenedTopicTabs(nextTabs);
+    if (selectedTopic !== topic) return;
+    const nextTopic = getNextTopicAfterTabClose(selectedTopic, topic, nextTabs);
+    if (nextTopic) {
+      await selectPrimaryTopic(nextTopic);
+      return;
+    }
+    setSelectedTopic("");
+    setTopicDetail(null);
+    setViewByServer((current) => ({ ...current, [selectedServerId]: "topics" }));
+  }
+
+  async function closeSplitPane() {
+    const pane = splitPane;
+    if (!pane) return;
+    await stopSplitPaneStreamingTopics(pane, isTopicStreaming, stopConsume);
+    clearConsumeStatesForPane(pane.serverId, pane.topicTabs, "split");
+    setSplitPane(null);
+    setActiveWorkspacePane("primary");
+  }
+
+  async function closeSplitTopicTab(topic: string) {
+    const pane = splitPane;
+    if (!pane) return;
+    if (isTopicStreaming(pane.serverId, topic, "split")) {
+      await stopConsume(pane.serverId, topic, "split");
+    }
+    clearConsumeStateForPane(pane.serverId, topic, "split");
+    await applySplitTopicClose(pane, topic);
+  }
+
+  async function removeSplitTopicTabAfterMove(topic: string) {
+    const pane = splitPane;
+    if (!pane) return;
+    await applySplitTopicClose(pane, topic);
+  }
+
+  async function applySplitTopicClose(pane: SplitPaneState, topic: string) {
+    const result = closeTopicInSplitPane(pane, topic, (nextTopic) => getTopicViewFor(pane.serverId, nextTopic));
+    if (!result.pane) {
+      setSplitPane(null);
+      setActiveWorkspacePane("primary");
+      return;
+    }
+    setSplitPane(result.pane);
+    if (result.nextTopic && result.nextView === "info" && result.closedActiveTopic) {
+      await loadSplitTopicDetailSilent(pane.serverId, result.nextTopic);
+    }
+  }
+
+  async function promoteSplitPaneToPrimary() {
+    const pane = splitPane;
+    if (!pane || pane.serverId !== selectedServerId) return false;
+    const nextTopic = pane.topic || (pane.topicTabs[pane.topicTabs.length - 1] ?? "");
+    if (!nextTopic) {
+      setSplitPane(null);
+      setActiveWorkspacePane("primary");
+      return true;
+    }
+    const { nextView } = getSplitPanePromoteTarget(pane, getTopicViewFor);
+    setSelectedServerId(pane.serverId);
+    setOpenedTopicTabsByServer((current) => mergeSplitTopicTabsByServer(current, pane));
+    setSelectedTopicByServer((current) => ({ ...current, [pane.serverId]: nextTopic }));
+    setViewByServer((current) => ({ ...current, [pane.serverId]: nextView }));
+    setTopicViewByServer((current) => mergeSplitTopicViewsByServer(current, pane, nextTopic, nextView, getTopicViewFor));
+    setConsumeStatesByServer((current) => mergeTopicConsumeStates(current, pane.serverId, splitConsumeStatesByServer[pane.serverId] ?? {}));
+    setSplitConsumeStatesByServer((current) => clearServerConsumeStates(current, pane.serverId));
+    retargetSplitStreamingTopics(pane, isTopicStreaming, retargetLiveTopic);
+    const nextDetail = await resolvePromotedTopicDetail({ kafkaApi, pane, nextTopic, nextView, getCachedTopicDetail });
+    setTopicDetailForServer(pane.serverId, nextDetail);
+    setSplitPane(null);
+    setActiveWorkspacePane("primary");
+    return true;
+  }
+
+  return {
+    openSplitForTopic,
+    moveSplitTopicToPrimary,
+    removePrimaryTopicTabAfterSplit,
+    closeSplitPane,
+    closeSplitTopicTab,
+    promoteSplitPaneToPrimary
+  };
+}

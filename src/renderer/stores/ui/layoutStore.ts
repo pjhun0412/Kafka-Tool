@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 
 export const DEFAULT_FONT_FAMILY = "D2Coding, Consolas, 'Courier New', monospace";
 export const DEFAULT_EXPORT_FORMAT_TEMPLATE = "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}";

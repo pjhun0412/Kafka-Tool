@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import type { PaneToastState, ToastState } from "../../uiTypes";
 
 type ConnectionErrorState = { serverName: string; brokers: string; message: string } | null;

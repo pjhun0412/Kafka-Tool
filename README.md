@@ -1,4 +1,4 @@
-# 내가 쓰려고 만든 바이브코딩 Kafka Tool
+﻿# Kafka Tool
 
 Kafka Tool is a lightweight desktop Kafka explorer built with Electron, React, TypeScript, KafkaJS, and KafkaJS-compatible admin/consumer APIs.
 
@@ -18,6 +18,14 @@ Performance improvements:
 - Reduced JSON viewer resize jank by updating layout directly during drag and committing the final height once.
 - Cached consume message grid view models so timestamp/header/value previews are not recalculated on every cell render.
 - Split the consume message grid into a memoized component to reduce unnecessary re-renders while using the lower JSON viewer.
+
+QA focus:
+
+- Verify `Newest` offset paging with `Consume` -> `Next` -> `Prev` on a range larger than 10,000 messages.
+- Verify 5,000 and 11,000 message consume requests remain responsive while resizing the JSON viewer.
+- Verify split-pane consume, consumer group detail refresh, Preferences, and manual Avro schema dialogs still open and close normally.
+- Verify topic context menus open without switching the selected topic back to `Info`.
+- Verify split panes are preserved independently when switching between connected servers.
 
 ## Key Features
 

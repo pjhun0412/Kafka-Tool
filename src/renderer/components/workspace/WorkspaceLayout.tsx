@@ -1,5 +1,5 @@
-import type React from "react";
-import type { SplitDropSide } from "../../hooks/useWorkspacePaneState";
+﻿import type React from "react";
+import type { SplitDropSide } from "../../hooks/state/useWorkspacePaneState";
 
 type WorkspaceLayoutProps = {
   sidebarCollapsed: boolean;

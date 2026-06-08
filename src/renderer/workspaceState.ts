@@ -1,4 +1,4 @@
-import type { DragPayload, SplitPaneState, TopicConsumeState, WorkspaceActionTarget, WorkspacePaneId } from "./uiTypes";
+﻿import type { DragPayload, SplitPaneState, TopicConsumeState, WorkspaceActionTarget, WorkspacePaneId } from "./uiTypes";
 
 export type ConsumeStatesByServer = Record<string, Record<string, TopicConsumeState>>;
 export const workspaceDragPayloadType = "application/x-kafka-tool";

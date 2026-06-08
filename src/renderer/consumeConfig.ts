@@ -1,4 +1,4 @@
-import type { ConsumedMessage } from "../shared/types";
+﻿import type { ConsumedMessage } from "../shared/types";
 import type { ConsumeDefaultPatch, OffsetOrder, TopicConsumeState } from "./uiTypes";
 
 export const OFFSET_PAGING_THRESHOLD = 10000;
@@ -28,6 +28,28 @@ export function getNextPageOffset(order: OffsetOrder, messages: Pick<ConsumedMes
   if (messages.length === 0) return "";
   const anchor = messages[messages.length - 1].offset;
   return order === "desc" ? anchor : String(/^\d+$/.test(anchor) ? BigInt(anchor) + 1n : anchor);
+}
+
+export function buildOffsetPagination(params: {
+  state: Pick<TopicConsumeState, "limit" | "offsetOrder">;
+  pageIndex: number;
+  pageLimit: number;
+  pageOffset: string;
+  prevOffsets: string[];
+  messages: Pick<ConsumedMessage, "offset">[];
+  endOffsetExclusive?: string;
+}) {
+  if (params.state.limit <= OFFSET_PAGING_THRESHOLD) return null;
+  return {
+    totalLimit: params.state.limit,
+    pageSize: OFFSET_PAGE_SIZE,
+    pageIndex: params.pageIndex,
+    currentOffset: params.pageOffset,
+    prevOffsets: params.prevOffsets,
+    nextOffset: getNextPageOffset(params.state.offsetOrder, params.messages),
+    hasNext: params.messages.length === params.pageLimit && (params.pageIndex + 1) * OFFSET_PAGE_SIZE < params.state.limit,
+    endOffsetExclusive: params.endOffsetExclusive
+  };
 }
 
 export function toConsumeDefaultPatch(patch: Partial<TopicConsumeState>): ConsumeDefaultPatch {

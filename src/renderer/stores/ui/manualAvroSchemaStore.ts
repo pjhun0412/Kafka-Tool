@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import type { ManualAvroSchema } from "../../../shared/types";
 
 type SetValue<T> = T | ((current: T) => T);

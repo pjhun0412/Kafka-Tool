@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 
 export type PreferencePage = "editor-font" | "export-log" | "avro-schemas";
 export type PreferenceGroup = "editor" | "export" | "avro";

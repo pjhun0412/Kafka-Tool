@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import type { TopicDetail } from "../../../../shared/types";
 
 export function TopicPanel({ detail }: { detail: TopicDetail | null }) {

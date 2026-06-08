@@ -1,7 +1,8 @@
-import { Braces, HardDrive, Layers, ListTree, Play, RefreshCw, Send, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Braces, HardDrive, Layers, ListTree, MoreVertical, Play, RefreshCw, Send, Settings, Users } from "lucide-react";
 import type { View } from "../../../uiTypes";
 
-const topicWorkViews: View[] = ["info", "consume", "produce"];
+const topicWorkViews: View[] = ["info", "consume", "produce", "settings"];
 const serverWorkViews: View[] = ["brokers", "topics", "consumers"];
 
 export function ServerWorkTabs(props: {
@@ -40,7 +41,21 @@ export function TopicWorkTabs(props: {
   onView: (view: View) => void;
   onOpenSchema: () => void;
   onRefresh: () => void;
+  onEditSettings: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function closeMenu(event: MouseEvent) {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setMenuOpen(false);
+    }
+    window.addEventListener("mousedown", closeMenu);
+    return () => window.removeEventListener("mousedown", closeMenu);
+  }, [menuOpen]);
+
   return (
     <nav className="tabs topic-work-tabs">
       {topicWorkViews.map((view) => (
@@ -48,7 +63,8 @@ export function TopicWorkTabs(props: {
           {view === "info" && <Layers size={16} />}
           {view === "consume" && <Play size={16} />}
           {view === "produce" && <Send size={16} />}
-          {view === "info" ? "Info" : view === "consume" ? "Consume" : "Produce"}
+          {view === "settings" && <Settings size={16} />}
+          {view === "info" ? "Info" : view === "consume" ? "Consume" : view === "produce" ? "Produce" : "Settings"}
         </button>
       ))}
       <button className="ghost schema-button refresh-side" onClick={props.onOpenSchema} disabled={props.disabled}>
@@ -57,6 +73,31 @@ export function TopicWorkTabs(props: {
       <button className="ghost" onClick={props.onRefresh} disabled={props.refreshDisabled}>
         <RefreshCw size={16} /> 새로고침
       </button>
+      <div className="topic-action-menu-wrap" ref={menuRef}>
+        <button
+          className={menuOpen ? "ghost icon-only topic-menu-button active" : "ghost icon-only topic-menu-button"}
+          type="button"
+          title="Topic actions"
+          disabled={props.disabled}
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          <MoreVertical size={16} />
+        </button>
+        {menuOpen && (
+          <div className="topic-action-menu">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                props.onEditSettings();
+              }}
+            >
+              Edit settings
+              <span>토픽 설정값을 수정합니다.</span>
+            </button>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

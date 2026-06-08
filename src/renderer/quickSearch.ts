@@ -1,4 +1,4 @@
-import type { ConsumerGroupSummary, ManualAvroSchema, ServerProfile, TopicSummary } from "../shared/types";
+﻿import type { ConsumerGroupSummary, ManualAvroSchema, ServerProfile, TopicSummary } from "../shared/types";
 
 export type QuickSearchKind = "server" | "topic" | "tab" | "avro" | "consumer" | "command";
 

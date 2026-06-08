@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Star } from "lucide-react";
 import type { TopicSummary } from "../../../../shared/types";
 import { formatCount } from "../../../utils";

@@ -1,4 +1,4 @@
-import { Plug, X } from "lucide-react";
+﻿import { Plug, X } from "lucide-react";
 import type { ServerForm } from "../../serverProfileForm";
 
 type ServerProfileDialogProps = {

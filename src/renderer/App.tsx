@@ -1,71 +1,83 @@
-import {
-  WorkspaceAppLayout,
-  type WorkspaceAppLayoutOverlayProps,
-  type WorkspaceAppLayoutPrimaryPaneProps,
-  type WorkspaceAppLayoutSidebarProps,
-  type WorkspaceAppLayoutSplitPaneProps
-} from "./components/workspace/WorkspaceAppLayout";
+﻿import { useShallow } from "zustand/react/shallow";
+import { WorkspaceAppLayout } from "./components/workspace/WorkspaceAppLayout";
 import { emptyConsumeState } from "./uiTypes";
-import { useTopicSearchState } from "./hooks/useTopicSearchState";
-import { usePreferenceNavigation } from "./hooks/usePreferenceNavigation";
-import { useServerSearchState } from "./hooks/useServerSearchState";
-import { useConsumeStateStore } from "./hooks/useConsumeStateStore";
-import { useQuickSearchState } from "./hooks/useQuickSearchState";
-import { useQuickSearchActions } from "./hooks/useQuickSearchActions";
-import { emptyProduceDraft, useProduceDraftStore } from "./hooks/useProduceDraftStore";
-import { useLayoutPreferences } from "./hooks/useLayoutPreferences";
-import { useWorkspacePaneState } from "./hooks/useWorkspacePaneState";
-import { useSidebarInteractionState } from "./hooks/useSidebarInteractionState";
-import { useManualAvroSchemaActions } from "./hooks/useManualAvroSchemaActions";
-import { useFeedbackState } from "./hooks/useFeedbackState";
-import { useServerClusterState } from "./hooks/useServerClusterState";
-import { useKafkaResourceState } from "./hooks/useKafkaResourceState";
-import { useDismissOnWindowInteraction } from "./hooks/useDismissOnWindowInteraction";
-import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts";
-import { useServerBootstrap } from "./hooks/useServerBootstrap";
-import { usePersistedPreferences } from "./hooks/usePersistedPreferences";
-import { useWorkspaceTasks } from "./hooks/useWorkspaceTasks";
-import { useTopicFavorites } from "./hooks/useTopicFavorites";
-import { useServerHealthMonitor } from "./hooks/useServerHealthMonitor";
-import { useElectronMenuEvents } from "./hooks/useElectronMenuEvents";
-import { useTopicRowSelectionActions } from "./hooks/useTopicRowSelectionActions";
-import { useSettingsTransferActions } from "./hooks/useSettingsTransferActions";
-import { useMessageExportActions } from "./hooks/useMessageExportActions";
-import { useProduceActions } from "./hooks/useProduceActions";
-import { useConsumerGroupActions } from "./hooks/useConsumerGroupActions";
-import { useBrokerActions } from "./hooks/useBrokerActions";
-import { useTopicDetailCache } from "./hooks/useTopicDetailCache";
-import { useTopicViewActions } from "./hooks/useTopicViewActions";
-import { useTopicResourceActions } from "./hooks/useTopicResourceActions";
-import { usePaneToastRouting } from "./hooks/usePaneToastRouting";
-import { useWorkspacePaneModels } from "./hooks/useWorkspacePaneModels";
-import { useLiveConsumeRouting } from "./hooks/useLiveConsumeRouting";
-import { useWorkspaceDragDrop } from "./hooks/useWorkspaceDragDrop";
-import { useWorkspaceDragPayloads } from "./hooks/useWorkspaceDragPayloads";
-import { useSelectedServerResourceSetters } from "./hooks/useSelectedServerResourceSetters";
-import { useManualAvroSchemaSummary } from "./hooks/useManualAvroSchemaSummary";
-import { useServerLifecycleActions } from "./hooks/useServerLifecycleActions";
-import { useKafkaConsumeEvents } from "./hooks/useKafkaConsumeEvents";
-import { useSelectedServerResources } from "./hooks/useSelectedServerResources";
-import { useTopicMutationActions } from "./hooks/useTopicMutationActions";
-import { useSidebarContextMenus } from "./hooks/useSidebarContextMenus";
-import { useSelectedConsumeActions } from "./hooks/useSelectedConsumeActions";
-import { useWorkspaceSelectors } from "./hooks/useWorkspaceSelectors";
-import { useServerViewNavigation } from "./hooks/useServerViewNavigation";
-import { useWorkspaceRefreshActions } from "./hooks/useWorkspaceRefreshActions";
-import { usePrimaryTopicNavigationActions } from "./hooks/usePrimaryTopicNavigationActions";
-import { useSplitTopicDetailActions } from "./hooks/useSplitTopicDetailActions";
-import { useSplitPaneActions } from "./hooks/useSplitPaneActions";
-import { useSplitPaneViewActions } from "./hooks/useSplitPaneViewActions";
-import { usePrimaryTopicTabActions } from "./hooks/usePrimaryTopicTabActions";
-import { useConsumeActions } from "./hooks/useConsumeActions";
-import { useSplitTopicActivation } from "./hooks/useSplitTopicActivation";
-import { useSidebarDragActions } from "./hooks/useSidebarDragActions";
-import { usePrimaryPaneCallbacks } from "./hooks/usePrimaryPaneCallbacks";
-import { useSplitPaneCallbacks } from "./hooks/useSplitPaneCallbacks";
-import { useWorkspaceOverlayCallbacks } from "./hooks/useWorkspaceOverlayCallbacks";
+import {
+  useBrokerActions,
+  useConsumeActions,
+  useConsumerGroupActions,
+  useManualAvroSchemaActions,
+  useMessageExportActions,
+  useProduceActions,
+  useSelectedConsumeActions,
+  useServerLifecycleActions,
+  useSettingsTransferActions,
+  useTopicFavorites,
+  useTopicMutationActions,
+  useTopicResourceActions,
+  useTopicRowSelectionActions
+} from "./hooks/actions";
+import {
+  createPrimaryWorkspacePaneProps,
+  createSplitWorkspacePaneProps,
+  usePrimaryPaneCallbacks,
+  useSplitPaneCallbacks,
+  useWorkspaceOverlayProps,
+  useWorkspaceSidebarProps
+} from "./hooks/callbacks";
+import {
+  useElectronMenuEvents,
+  useManualAvroSchemaSummary,
+  usePersistedPreferences,
+  usePreferenceNavigation
+} from "./hooks/preferences";
+import {
+  useQuickSearchActions,
+  useQuickSearchState,
+  useServerSearchState,
+  useSidebarContextMenus,
+  useTopicSearchState
+} from "./hooks/search";
+import {
+  emptyProduceDraft,
+  useConsumeStateStore,
+  useFeedbackState,
+  useKafkaResourceState,
+  useLayoutPreferences,
+  useProduceDraftStore,
+  useServerClusterState,
+  useSidebarInteractionState,
+  useWorkspacePaneState
+} from "./hooks/state";
+import {
+  useAppKeyboardShortcuts,
+  useDismissOnWindowInteraction,
+  useServerBootstrap,
+  useServerHealthMonitor,
+  useSidebarDragActions
+} from "./hooks/ui";
+import {
+  useKafkaConsumeEvents,
+  useLiveConsumeRouting,
+  usePaneToastRouting,
+  usePrimaryTopicNavigationActions,
+  usePrimaryTopicTabActions,
+  useSelectedServerResources,
+  useSelectedServerResourceSetters,
+  useServerViewNavigation,
+  useSplitPaneActions,
+  useSplitPaneViewActions,
+  useSplitTopicActivation,
+  useSplitTopicDetailActions,
+  useTopicDetailCache,
+  useTopicViewActions,
+  useWorkspaceDragDrop,
+  useWorkspaceDragPayloads,
+  useWorkspacePaneModels,
+  useWorkspaceRefreshActions,
+  useWorkspaceSelectors,
+  useWorkspaceTasks
+} from "./hooks/workspace";
 import { useServerFormStore } from "./stores/ui/serverFormStore";
-
 export function App() {
   const kafkaApi = window.kafkaApi;
   const {
@@ -81,8 +93,10 @@ export function App() {
     selectedServerId,
     setSelectedServerId
   } = useServerClusterState();
-  const openNewServerForm = useServerFormStore((state) => state.openNewServerForm);
-  const openEditServerForm = useServerFormStore((state) => state.openEditServerForm);
+  const { openNewServerForm, openEditServerForm } = useServerFormStore(useShallow((state) => ({
+    openNewServerForm: state.openNewServerForm,
+    openEditServerForm: state.openEditServerForm
+  })));
   const {
     viewByServer,
     setViewByServer,
@@ -282,7 +296,7 @@ export function App() {
     activeDragPayload,
     setActiveDragPayload,
     startWorkspaceSplitResize
-  } = useWorkspacePaneState();
+  } = useWorkspacePaneState(selectedServerId);
   const { startTopicDrag, startSplitPaneDrag, clearDragPayload } = useWorkspaceDragPayloads({
     setActiveDragPayload,
     setSplitDropSide
@@ -573,9 +587,7 @@ export function App() {
     openServerContextMenu,
     openTopicContextMenu
   } = useSidebarContextMenus({
-    activateTopicView,
     setSelectedServerId,
-    setSelectedTopic,
     setServerContextMenu,
     setTopicContextMenu
   });
@@ -1034,17 +1046,8 @@ export function App() {
     updateProduceDraftFor,
     produceFor
   });
-  const overlayCallbacks = useWorkspaceOverlayCallbacks({
-    confirmTopicAction,
-    openTopicTab,
-    copySelectedTopicNames,
-    connectServer,
-    disconnectServer,
-    deleteServer
-  });
-
   const activeWorkspaceView = getActiveWorkspaceView();
-  const sidebarProps = {
+  const sidebarProps = useWorkspaceSidebarProps({
     serverPanelHeight,
     serverQuery,
     servers,
@@ -1075,7 +1078,7 @@ export function App() {
     onServerQuery: setServerQuery,
     onServerSelect: setSelectedServerId,
     onServerContextMenu: openServerContextMenu,
-    onOpenServer: (server) => void openCluster(server),
+    openCluster,
     onServerDragStart: setDraggingServerId,
     onServerDropTarget: setServerDropTarget,
     onServerDrop: handleServerDrop,
@@ -1083,13 +1086,13 @@ export function App() {
     onServerPanelResize: startServerPanelResize,
     onTopicSortMenuOpen: setIsTopicSortMenuOpen,
     onTopicSort: setTopicSort,
-    onRefreshTopics: () => void refreshTopics(),
+    refreshTopics,
     onTopicQuery: setTopicQuery,
     onCommitTopicSearch: commitTopicSearch,
     onRemoveTopicSearchHistory: removeTopicSearchHistory,
     onTopicFilter: setTopicFilter,
-    onTopicSelect: (target, topic) => void selectTopicInWorkspace(target, topic),
-    onTopicOpen: (topic) => void openTopicTab(topic),
+    selectTopicInWorkspace,
+    openTopicTab,
     onTopicFavorite: toggleFavoriteTopic,
     onTopicContextMenu: openTopicContextMenu,
     getWorkspaceTargetForTopic: getWorkspaceTargetForServer,
@@ -1097,8 +1100,8 @@ export function App() {
     onFavoriteDropTarget: setFavoriteDropTarget,
     onFavoriteDrop: handleFavoriteDrop,
     onFavoriteDragEnd: handleFavoriteDragEnd
-  } satisfies WorkspaceAppLayoutSidebarProps;
-  const primaryPaneProps = {
+  });
+  const primaryPaneProps = createPrimaryWorkspacePaneProps({
     server: selectedServer,
     sidebarCollapsed,
     openClusterIds,
@@ -1134,47 +1137,10 @@ export function App() {
     produceValue: selectedProduceDraft.value,
     paneToast: primaryPaneToast,
     hasAvroSchema: (topic) => manualAvroTopicNames.has(topic),
-    onActivate: primaryPaneCallbacks.activate,
-    onToggleSidebar: primaryPaneCallbacks.toggleSidebar,
     onSelectCluster: setSelectedServerId,
-    onCloseCluster: primaryPaneCallbacks.closeCluster,
-    onServerView: primaryPaneCallbacks.serverView,
-    onRefreshServerView: primaryPaneCallbacks.refreshServerView,
-    onTopic: primaryPaneCallbacks.selectTopic,
-    onCloseTopic: primaryPaneCallbacks.closeTopic,
-    onTopicDragStart: primaryPaneCallbacks.topicDragStart,
-    onTopicDragEnd: primaryPaneCallbacks.topicDragEnd,
-    onTopicView: primaryPaneCallbacks.topicView,
-    onOpenSchema: primaryPaneCallbacks.openSchema,
-    onRefreshTopicView: primaryPaneCallbacks.refreshTopicView,
-    onOpenTopic: primaryPaneCallbacks.openTopic,
-    onSelectTopic: primaryPaneCallbacks.selectTopicFromTable,
-    onToggleTopicSelected: primaryPaneCallbacks.toggleTopicSelected,
-    onToggleAllTopicsSelected: primaryPaneCallbacks.toggleAllTopicsSelected,
-    onCopySelectedTopics: primaryPaneCallbacks.copySelectedTopics,
-    onPurgeSelectedTopics: primaryPaneCallbacks.purgeSelectedTopics,
-    onDeleteSelectedTopics: primaryPaneCallbacks.deleteSelectedTopics,
-    onToggleTopicFavorite: primaryPaneCallbacks.toggleTopicFavorite,
-    onSelectGroup: primaryPaneCallbacks.selectGroup,
-    onDeleteConsumerGroups: primaryPaneCallbacks.deleteConsumerGroups,
-    onBackGroup: primaryPaneCallbacks.backGroup,
-    onRefreshGroups: primaryPaneCallbacks.refreshGroups,
-    onRefreshGroupDetail: primaryPaneCallbacks.refreshGroupDetail,
-    onUpdateConsume: primaryPaneCallbacks.updateConsume,
-    onOffsetOrder: primaryPaneCallbacks.offsetOrder,
-    onOffsetPage: primaryPaneCallbacks.offsetPage,
-    onStartConsume: primaryPaneCallbacks.startConsume,
-    onStopConsume: primaryPaneCallbacks.stopConsume,
-    onSendToProduce: primaryPaneCallbacks.sendToProduce,
-    onExport: primaryPaneCallbacks.exportMessages,
-    onExportAll: primaryPaneCallbacks.exportAll,
-    onMessagePaneHeight: primaryPaneCallbacks.messagePaneHeight,
-    onProduceKey: primaryPaneCallbacks.produceKey,
-    onProduceHeaders: primaryPaneCallbacks.produceHeaders,
-    onProduceValue: primaryPaneCallbacks.produceValue,
-    onProduce: primaryPaneCallbacks.produce
-  } satisfies WorkspaceAppLayoutPrimaryPaneProps;
-  const splitPaneProps = visibleSplitPane && splitServer ? {
+    callbacks: primaryPaneCallbacks
+  });
+  const splitPaneProps = visibleSplitPane && splitServer ? createSplitWorkspacePaneProps({
     pane: visibleSplitPane,
     server: splitServer,
     topics: sortedTopics,
@@ -1192,50 +1158,15 @@ export function App() {
     isConsuming: isTopicStreaming(visibleSplitPane.serverId, visibleSplitPane.topic, "split"),
     isQuerying: isConsumeTaskActive("split", visibleSplitPane.serverId, visibleSplitPane.topic),
     messagePaneHeight: splitConsumeState.messagePaneHeight ?? messagePaneHeight,
-    onClose: splitPaneCallbacks.close,
     active: activeWorkspacePane === "split",
-    onActivate: splitPaneCallbacks.activate,
-    onDragStart: splitPaneCallbacks.dragStart,
-    onDragEnd: splitPaneCallbacks.dragEnd,
-    onView: splitPaneCallbacks.view,
-    onTopic: splitPaneCallbacks.selectTopic,
-    onOpenTopic: splitPaneCallbacks.openTopic,
-    onCloseTopic: splitPaneCallbacks.closeTopic,
-    onTopicDragStart: splitPaneCallbacks.topicDragStart,
-    onTopicDragEnd: splitPaneCallbacks.topicDragEnd,
-    onRefresh: splitPaneCallbacks.refresh,
-    onOpenSchema: splitPaneCallbacks.openSchema,
     manualAvroSchemas: manualAvroSchemasByServer[visibleSplitPane.serverId] ?? {},
-    onToggleTopicSelected: splitPaneCallbacks.toggleTopicSelected,
-    onToggleAllTopicsSelected: splitPaneCallbacks.toggleAllTopicsSelected,
-    onCopySelectedTopics: splitPaneCallbacks.copySelectedTopics,
-    onPurgeSelectedTopics: splitPaneCallbacks.purgeSelectedTopics,
-    onDeleteSelectedTopics: splitPaneCallbacks.deleteSelectedTopics,
-    onToggleTopicFavorite: splitPaneCallbacks.toggleTopicFavorite,
-    onSelectGroup: splitPaneCallbacks.selectGroup,
-    onDeleteConsumerGroups: splitPaneCallbacks.deleteConsumerGroups,
-    onBackGroup: splitPaneCallbacks.backGroup,
-    onRefreshGroups: splitPaneCallbacks.refreshGroups,
-    onRefreshGroupDetail: splitPaneCallbacks.refreshGroupDetail,
-    onUpdateConsume: splitPaneCallbacks.updateConsume,
-    onOffsetOrder: splitPaneCallbacks.offsetOrder,
-    onOffsetPage: splitPaneCallbacks.offsetPage,
-    onStartConsume: splitPaneCallbacks.startConsume,
-    onStopConsume: splitPaneCallbacks.stopConsume,
-    onSendToProduce: splitPaneCallbacks.sendToProduce,
-    onExport: splitPaneCallbacks.exportMessages,
-    onExportAll: splitPaneCallbacks.exportAll,
-    onMessagePaneHeight: splitPaneCallbacks.messagePaneHeight,
     produceKey: splitProduceDraft.key,
     produceHeaders: splitProduceDraft.headers,
     produceValue: splitProduceDraft.value,
-    onProduceKey: splitPaneCallbacks.produceKey,
-    onProduceHeaders: splitPaneCallbacks.produceHeaders,
-    onProduceValue: splitPaneCallbacks.produceValue,
-    onProduce: splitPaneCallbacks.produce,
-    paneToast: splitPaneToast
-  } satisfies WorkspaceAppLayoutSplitPaneProps : null;
-  const overlayProps = {
+    paneToast: splitPaneToast,
+    callbacks: splitPaneCallbacks
+  }) : null;
+  const overlayProps = useWorkspaceOverlayProps({
     loading,
     onSaveServer: saveServer,
     isQuickSearchOpen,
@@ -1262,23 +1193,23 @@ export function App() {
     onReadSchemaFile: readSchemaFile,
     onDeleteManualAvroSchema: deleteManualAvroSchema,
     onSaveManualAvroSchema: saveManualAvroSchema,
-    onConfirmTopicAction: overlayCallbacks.confirmTopicAction,
+    confirmTopicAction,
     topicContextMenu,
     serverContextMenu,
     contextTopic,
     contextServer,
     selectedServerId,
     onCloseTopicMenu: closeTopicContextMenu,
-    onOpenTopic: overlayCallbacks.openTopic,
-    onCopyTopic: overlayCallbacks.copyTopic,
+    openTopicTab,
+    copySelectedTopicNames,
     onRegisterAvroSchema: openManualAvroSchema,
     onTopicAction: requestTopicAction,
     onCloseServerMenu: closeServerContextMenu,
-    onConnectServer: overlayCallbacks.connectServer,
-    onDisconnectServer: overlayCallbacks.disconnectServer,
+    connectServer,
+    disconnectServer,
     onEditServer: openEditServerForm,
-    onDeleteServer: overlayCallbacks.deleteServer
-  } satisfies WorkspaceAppLayoutOverlayProps;
+    deleteServer
+  });
 
   return (
     <WorkspaceAppLayout

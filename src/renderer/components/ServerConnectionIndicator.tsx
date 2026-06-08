@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, XCircle } from "lucide-react";
+﻿import { CheckCircle2, Circle, XCircle } from "lucide-react";
 
 type ServerConnectionIndicatorProps = {
   serverId: string;

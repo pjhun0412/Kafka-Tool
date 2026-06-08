@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+﻿import { X } from "lucide-react";
 import type { ServerProfile } from "../../../../shared/types";
 import { ServerConnectionIndicator } from "../../ServerConnectionIndicator";
 
@@ -14,7 +14,7 @@ export function ClusterTabs(props: {
   return (
     <div className="cluster-tabs" aria-label="Opened clusters">
       {props.openClusterIds.length === 0 ? (
-        <div className="cluster-tabs-empty">좌측 서버를 connect 하거나 더블 클릭하면 클러스터 탭으로 열립니다.</div>
+        <div className="cluster-tabs-empty">왼쪽 서버를 연결하거나 더블 클릭하면 클러스터 탭으로 열립니다.</div>
       ) : (
         props.openClusterIds.map((serverId) => {
           const server = props.servers.find((item) => item.id === serverId);

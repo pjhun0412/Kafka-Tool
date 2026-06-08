@@ -95,7 +95,15 @@ export function PrimaryWorkspacePane(props: {
   onProduceValue: (value: string) => void;
   onProduce: () => void;
 }) {
-  const isTopicView = props.view === "info" || props.view === "consume" || props.view === "produce";
+  const isTopicView = props.view === "info" || props.view === "consume" || props.view === "produce" || props.view === "settings";
+  function editTopicSettings() {
+    props.onTopicView("settings");
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("topic-settings-edit", {
+        detail: { serverId: props.selectedServerId, topic: props.selectedTopic }
+      }));
+    }, 0);
+  }
 
   return (
     <section
@@ -151,11 +159,13 @@ export function PrimaryWorkspacePane(props: {
               onView={props.onTopicView}
               onOpenSchema={props.onOpenSchema}
               onRefresh={props.onRefreshTopicView}
+              onEditSettings={editTopicSettings}
             />
           </>
         )}
 
         <WorkspacePaneContent
+          serverId={props.selectedServerId}
           view={props.view}
           topic={props.selectedTopic}
           detail={props.detail}

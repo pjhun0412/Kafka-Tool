@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+﻿import type { ComponentProps } from "react";
 import { PrimaryWorkspacePane } from "./primary/PrimaryWorkspacePane";
 import { WorkspaceSidebar } from "./sidebar/WorkspaceSidebar";
 import { SplitWorkspacePane } from "./split/SplitWorkspacePane";

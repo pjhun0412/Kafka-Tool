@@ -24,14 +24,14 @@ export function ConnectionErrorDialog({ error, onClose }: ConnectionErrorDialogP
         <div className="modal-title">
           <div>
             <span className="eyebrow">Kafka connection failed</span>
-            <h2 id="connection-error-title">Connect to '{error.serverName}'</h2>
+            <h2 id="connection-error-title">'{error.serverName}' 연결</h2>
           </div>
           <button className="modal-close" onClick={onClose} title="Close">
             <X size={18} />
           </button>
         </div>
         <div className="error-summary">
-          <span className="error-mark">×</span>
+          <span className="error-mark">!</span>
           <div>
             <strong>{error.brokers}</strong>
             <pre>{error.message}</pre>

@@ -1,4 +1,4 @@
-import type { ConsumedMessage } from "../shared/types";
+﻿import type { ConsumedMessage } from "../shared/types";
 import type { ConsumeFilterField } from "./uiTypes";
 import { formatHeaders, formatTimestamp, parseJson } from "./utils";
 

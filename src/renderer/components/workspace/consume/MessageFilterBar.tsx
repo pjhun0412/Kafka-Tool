@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { EyeOff, HelpCircle, Sparkles } from "lucide-react";
 import type { ConsumeFilterField, ConsumeFilterMode } from "../../../uiTypes";
 import { Button, IconButton } from "../../ui";

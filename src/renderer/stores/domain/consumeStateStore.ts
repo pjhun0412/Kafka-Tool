@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import type { ConsumeStatesByServer } from "../../workspaceState";
 
 type SetValue<T> = T | ((current: T) => T);

@@ -1,15 +1,17 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import type { DragPayload, SplitDropSide, SplitPaneState, WorkspacePaneId } from "../../uiTypes";
 
 type SetValue<T> = T | ((current: T) => T);
 
 type WorkspacePaneStore = {
   splitPane: SplitPaneState | null;
+  splitPaneByServer: Record<string, SplitPaneState | null>;
   splitDropSide: SplitDropSide;
   splitPrimaryPercent: number;
   activeWorkspacePane: WorkspacePaneId;
   activeDragPayload: DragPayload | null;
   setSplitPane: (value: SetValue<SplitPaneState | null>) => void;
+  setSplitPaneForServer: (serverId: string, value: SetValue<SplitPaneState | null>) => void;
   setSplitDropSide: (value: SetValue<SplitDropSide>) => void;
   setSplitPrimaryPercent: (value: SetValue<number>) => void;
   setActiveWorkspacePane: (value: SetValue<WorkspacePaneId>) => void;
@@ -22,11 +24,22 @@ function resolveValue<T>(value: SetValue<T>, current: T) {
 
 export const useWorkspacePaneStore = create<WorkspacePaneStore>((set) => ({
   splitPane: null,
+  splitPaneByServer: {},
   splitDropSide: null,
   splitPrimaryPercent: 50,
   activeWorkspacePane: "primary",
   activeDragPayload: null,
   setSplitPane: (splitPane) => set((current) => ({ splitPane: resolveValue(splitPane, current.splitPane) })),
+  setSplitPaneForServer: (serverId, splitPane) => set((current) => {
+    const nextPane = resolveValue(splitPane, current.splitPaneByServer[serverId] ?? null);
+    return {
+      splitPane: nextPane,
+      splitPaneByServer: {
+        ...current.splitPaneByServer,
+        [serverId]: nextPane
+      }
+    };
+  }),
   setSplitDropSide: (splitDropSide) => set((current) => ({ splitDropSide: resolveValue(splitDropSide, current.splitDropSide) })),
   setSplitPrimaryPercent: (splitPrimaryPercent) => set((current) => ({
     splitPrimaryPercent: resolveValue(splitPrimaryPercent, current.splitPrimaryPercent)

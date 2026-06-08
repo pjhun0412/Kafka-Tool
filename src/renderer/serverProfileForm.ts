@@ -1,4 +1,4 @@
-import type { ServerProfile } from "../shared/types";
+﻿import type { ServerProfile } from "../shared/types";
 import { emptyServer } from "./uiTypes";
 
 export type ServerForm = typeof emptyServer;

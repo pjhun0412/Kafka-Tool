@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Kafka, logLevel, type Admin, type Consumer } from "kafkajs";
+import { ConfigResourceTypes, Kafka, logLevel, type Admin, type Consumer } from "kafkajs";
 import { autoUpdater } from "electron-updater";
 import { encodeManualAvro } from "./avroDecoder.js";
 import { toConsumedMessage } from "./messageMapper.js";
@@ -14,6 +14,9 @@ import type {
   ConsumeTimeRangeRequest,
   AppPreferences,
   AppSettingsBundle,
+  BrokerConfigEntry,
+  BrokerConfigUpdateRequest,
+  BrokerDetail,
   BrokerSummary,
   ConsumerGroupLagDetail,
   ConsumerGroupMutationRequest,
@@ -26,6 +29,8 @@ import type {
   ServerProfile,
   StartConsumeRequest,
   StopConsumeRequest,
+  TopicConfigEntry,
+  TopicConfigUpdateRequest,
   TopicDetail,
   TopicMessageCounts,
   TopicMutationRequest,
@@ -77,6 +82,19 @@ async function readProfiles(): Promise<ServerProfile[]> {
 async function writeProfiles(profiles: ServerProfile[]) {
   await mkdir(app.getPath("userData"), { recursive: true });
   await writeFile(profilesPath(), JSON.stringify(profiles, null, 2), "utf8");
+}
+
+function configSourceLabel(source: number | string) {
+  const labels: Record<number, string> = {
+    0: "unknown",
+    1: "topic",
+    2: "dynamic broker",
+    3: "dynamic default broker",
+    4: "static broker",
+    5: "default",
+    6: "dynamic broker logger"
+  };
+  return typeof source === "number" ? labels[source] ?? String(source) : source;
 }
 
 async function readPreferences(): Promise<AppPreferences> {
@@ -864,67 +882,122 @@ ipcMain.handle("kafka:topic-message-counts", async (_event, serverId: string, to
   });
 });
 
-ipcMain.handle("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
-  return withAdmin(serverId, async (admin) => {
-    const [cluster, metadata] = await Promise.all([
-      admin.describeCluster(),
-      admin.fetchTopicMetadata()
-    ]);
-    const brokerStats = new Map<number, BrokerSummary>();
-    for (const broker of cluster.brokers) {
-      brokerStats.set(broker.nodeId, {
-        nodeId: broker.nodeId,
-        host: broker.host,
-        port: broker.port,
-        controller: broker.nodeId === cluster.controller,
-        leaderCount: 0,
-        replicaCount: 0,
-        inSyncReplicaCount: 0,
-        outOfSyncReplicaCount: 0,
-        onlinePartitionCount: 0,
-        underReplicatedPartitionCount: 0,
-        leaderSkewPercent: 0,
-        partitionSkewPercent: 0
-      });
-    }
+async function loadBrokerSummaries(admin: Admin): Promise<BrokerSummary[]> {
+  const [cluster, metadata] = await Promise.all([
+    admin.describeCluster(),
+    admin.fetchTopicMetadata()
+  ]);
+  const brokerStats = new Map<number, BrokerSummary>();
+  for (const broker of cluster.brokers) {
+    brokerStats.set(broker.nodeId, {
+      nodeId: broker.nodeId,
+      host: broker.host,
+      port: broker.port,
+      controller: broker.nodeId === cluster.controller,
+      leaderCount: 0,
+      replicaCount: 0,
+      inSyncReplicaCount: 0,
+      outOfSyncReplicaCount: 0,
+      onlinePartitionCount: 0,
+      underReplicatedPartitionCount: 0,
+      leaderSkewPercent: 0,
+      partitionSkewPercent: 0
+    });
+  }
 
-    let totalLeaders = 0;
-    let totalReplicas = 0;
-    for (const topic of metadata.topics.filter((item) => !item.name.startsWith("__"))) {
-      for (const partition of topic.partitions) {
-        const leader = brokerStats.get(partition.leader);
-        if (leader) {
-          leader.leaderCount += 1;
-          leader.onlinePartitionCount += 1;
-          totalLeaders += 1;
-          if (partition.isr.length < partition.replicas.length) {
-            leader.underReplicatedPartitionCount += 1;
-          }
+  let totalLeaders = 0;
+  let totalReplicas = 0;
+  for (const topic of metadata.topics.filter((item) => !item.name.startsWith("__"))) {
+    for (const partition of topic.partitions) {
+      const leader = brokerStats.get(partition.leader);
+      if (leader) {
+        leader.leaderCount += 1;
+        leader.onlinePartitionCount += 1;
+        totalLeaders += 1;
+        if (partition.isr.length < partition.replicas.length) {
+          leader.underReplicatedPartitionCount += 1;
         }
+      }
 
-        for (const replicaId of partition.replicas) {
-          const replica = brokerStats.get(replicaId);
-          if (!replica) continue;
-          replica.replicaCount += 1;
-          totalReplicas += 1;
-          if (partition.isr.includes(replicaId)) {
-            replica.inSyncReplicaCount += 1;
-          } else {
-            replica.outOfSyncReplicaCount += 1;
-          }
+      for (const replicaId of partition.replicas) {
+        const replica = brokerStats.get(replicaId);
+        if (!replica) continue;
+        replica.replicaCount += 1;
+        totalReplicas += 1;
+        if (partition.isr.includes(replicaId)) {
+          replica.inSyncReplicaCount += 1;
+        } else {
+          replica.outOfSyncReplicaCount += 1;
         }
       }
     }
+  }
 
-    const averageLeaders = brokerStats.size > 0 ? totalLeaders / brokerStats.size : 0;
-    const averageReplicas = brokerStats.size > 0 ? totalReplicas / brokerStats.size : 0;
-    return [...brokerStats.values()]
-      .map((broker) => ({
-        ...broker,
-        leaderSkewPercent: averageLeaders > 0 ? ((broker.leaderCount - averageLeaders) / averageLeaders) * 100 : 0,
-        partitionSkewPercent: averageReplicas > 0 ? ((broker.replicaCount - averageReplicas) / averageReplicas) * 100 : 0
+  const averageLeaders = brokerStats.size > 0 ? totalLeaders / brokerStats.size : 0;
+  const averageReplicas = brokerStats.size > 0 ? totalReplicas / brokerStats.size : 0;
+  return [...brokerStats.values()]
+    .map((broker) => ({
+      ...broker,
+      leaderSkewPercent: averageLeaders > 0 ? ((broker.leaderCount - averageLeaders) / averageLeaders) * 100 : 0,
+      partitionSkewPercent: averageReplicas > 0 ? ((broker.replicaCount - averageReplicas) / averageReplicas) * 100 : 0
+    }))
+    .sort((left, right) => left.nodeId - right.nodeId);
+}
+
+async function loadBrokerDetail(admin: Admin, brokerId: number): Promise<BrokerDetail> {
+  const brokers = await loadBrokerSummaries(admin);
+  const broker = brokers.find((item) => item.nodeId === brokerId);
+  if (!broker) {
+    throw new Error("브로커를 찾을 수 없습니다.");
+  }
+  const configsResponse = await admin.describeConfigs({
+    resources: [{ type: ConfigResourceTypes.BROKER, name: String(brokerId) }],
+    includeSynonyms: true
+  });
+  const configResource = configsResponse.resources[0];
+  const configs: BrokerConfigEntry[] = (configResource?.configEntries ?? [])
+    .map((entry) => ({
+      name: entry.configName,
+      value: entry.isSensitive ? "" : entry.configValue ?? "",
+      source: configSourceLabel(entry.configSource),
+      isDefault: entry.isDefault,
+      isSensitive: entry.isSensitive,
+      readOnly: entry.readOnly,
+      synonyms: (entry.configSynonyms ?? []).map((synonym) => ({
+        name: synonym.configName,
+        value: entry.isSensitive ? "" : synonym.configValue ?? "",
+        source: configSourceLabel(synonym.configSource)
       }))
-      .sort((left, right) => left.nodeId - right.nodeId);
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    broker,
+    configs,
+    logDirectories: [],
+    logDirectoriesSupported: false
+  };
+}
+
+ipcMain.handle("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
+  return withAdmin(serverId, loadBrokerSummaries);
+});
+
+ipcMain.handle("kafka:broker-detail", async (_event, serverId: string, brokerId: number): Promise<BrokerDetail> => {
+  return withAdmin(serverId, (admin) => loadBrokerDetail(admin, brokerId));
+});
+
+ipcMain.handle("kafka:broker-config-update", async (_event, request: BrokerConfigUpdateRequest): Promise<BrokerDetail> => {
+  return withAdmin(request.serverId, async (admin) => {
+    await admin.alterConfigs({
+      validateOnly: Boolean(request.validateOnly),
+      resources: [{
+        type: ConfigResourceTypes.BROKER,
+        name: String(request.brokerId),
+        configEntries: [{ name: request.name, value: request.value }]
+      }]
+    });
+    return loadBrokerDetail(admin, request.brokerId);
   });
 });
 
@@ -950,6 +1023,57 @@ ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName:
         high: offset.high
       }))
     };
+  });
+});
+
+async function loadTopicConfigs(admin: Admin, topicName: string): Promise<TopicConfigEntry[]> {
+  const configsResponse = await admin.describeConfigs({
+    resources: [{ type: ConfigResourceTypes.TOPIC, name: topicName }],
+    includeSynonyms: true
+  });
+  const configResource = configsResponse.resources[0];
+  if (!configResource) return [];
+  if (configResource.errorMessage) {
+    throw new Error(configResource.errorMessage);
+  }
+  return (configResource.configEntries ?? [])
+    .map((entry) => ({
+      name: entry.configName,
+      value: entry.isSensitive ? "" : entry.configValue ?? "",
+      source: configSourceLabel(entry.configSource),
+      isDefault: entry.isDefault,
+      isSensitive: entry.isSensitive,
+      readOnly: entry.readOnly,
+      synonyms: (entry.configSynonyms ?? []).map((synonym) => ({
+        name: synonym.configName,
+        value: entry.isSensitive ? "" : synonym.configValue ?? "",
+        source: configSourceLabel(synonym.configSource)
+      }))
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+ipcMain.handle("kafka:topic-configs", async (_event, serverId: string, topicName: string): Promise<TopicConfigEntry[]> => {
+  return withAdmin(serverId, (admin) => loadTopicConfigs(admin, topicName));
+});
+
+ipcMain.handle("kafka:topic-config-update", async (_event, request: TopicConfigUpdateRequest): Promise<TopicConfigEntry[]> => {
+  const entries = request.entries
+    .map((entry) => ({ name: entry.name.trim(), value: entry.value }))
+    .filter((entry) => entry.name);
+  if (entries.length === 0) {
+    throw new Error("변경할 토픽 설정이 없습니다.");
+  }
+  return withAdmin(request.serverId, async (admin) => {
+    await admin.alterConfigs({
+      validateOnly: Boolean(request.validateOnly),
+      resources: [{
+        type: ConfigResourceTypes.TOPIC,
+        name: request.topic,
+        configEntries: entries
+      }]
+    });
+    return loadTopicConfigs(admin, request.topic);
   });
 });
 

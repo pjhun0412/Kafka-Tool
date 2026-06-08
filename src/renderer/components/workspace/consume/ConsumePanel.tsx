@@ -1,14 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { ChevronUp, RefreshCw } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, JsonInspectorMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
-import { filterMessages } from "../../../messageFilters";
-import { formatMessagePayload } from "../../../utils";
-import { OFFSET_PAGE_SIZE, OFFSET_PAGING_THRESHOLD } from "../../../consumeConfig";
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { JsonInspector } from "./JsonInspector";
 import { MessageFilterBar } from "./MessageFilterBar";
-import { MessageGrid, useMessageGridRows } from "./MessageGrid";
+import { MessageGrid } from "./MessageGrid";
+import { useConsumePanelMessages } from "./useConsumePanelMessages";
+import { useInspectorResize } from "./useInspectorResize";
 
 export function ConsumePanel(props: {
   messages: ConsumedMessage[];
@@ -63,33 +62,33 @@ export function ConsumePanel(props: {
   const [isGridReady, setIsGridReady] = useState(false);
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
-  const selectedPayload = useMemo(
-    () => (props.selectedMessage ? formatMessagePayload(props.selectedMessage) : null),
-    [props.selectedMessage]
-  );
-  const selectedJson = useMemo(
-    () => (selectedPayload ? JSON.stringify(selectedPayload, null, 2) : ""),
-    [selectedPayload]
-  );
-  const filteredMessages = useMemo(
-    () => filterMessages(props.messages, props.filterText, props.filterField),
-    [props.filterField, props.filterText, props.messages]
-  );
-  const hasActiveMessageFilter = props.filterText.trim().length > 0 || props.filterField === "headersEmpty";
-  const {
-    rows: gridRows,
-    highlightedMessageKeys,
-    selectedMessageKey
-  } = useMessageGridRows({
-    messages: props.messages,
-    filteredMessages,
-    filterMode: props.filterMode,
-    hasActiveMessageFilter,
-    selectedMessage: props.selectedMessage
+  const startInspectorResize = useInspectorResize({
+    consumeGridRef,
+    inspectorCollapsed: props.inspectorCollapsed,
+    messagePaneHeight: props.messagePaneHeight,
+    onMessagePaneHeight: props.onMessagePaneHeight
   });
-  const isLargeOffsetRequest = props.mode === "offset" && props.limit > OFFSET_PAGING_THRESHOLD;
-  const pagination = props.offsetPagination;
-  const canExportFullOffsetRange = isLargeOffsetRequest && Boolean(pagination?.endOffsetExclusive);
+  const {
+    selectedPayload,
+    selectedJson,
+    filteredMessages,
+    hasActiveMessageFilter,
+    gridRows,
+    highlightedMessageKeys,
+    selectedMessageKey,
+    isLargeOffsetRequest,
+    pagination,
+    canExportFullOffsetRange
+  } = useConsumePanelMessages({
+    messages: props.messages,
+    selectedMessage: props.selectedMessage,
+    mode: props.mode,
+    limit: props.limit,
+    filterText: props.filterText,
+    filterField: props.filterField,
+    filterMode: props.filterMode,
+    offsetPagination: props.offsetPagination
+  });
 
   useEffect(() => {
     setFilterDraft(props.filterText);
@@ -120,67 +119,12 @@ export function ConsumePanel(props: {
     props.onClearFilter();
   }
 
-  function startInspectorResize(event: React.PointerEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const gridElement = consumeGridRef.current;
-    if (!gridElement) return;
-    const resizeHandle = event.currentTarget;
-    resizeHandle.setPointerCapture(event.pointerId);
-    document.body.style.cursor = "row-resize";
-    document.body.style.userSelect = "none";
-    const startY = event.clientY;
-    const startHeight = props.messagePaneHeight;
-    const gridHeight = gridElement.getBoundingClientRect().height;
-    let nextHeight = startHeight;
-    let animationFrame = 0;
-    const applyHeight = () => {
-      gridElement.style.gridTemplateRows = `${nextHeight}px 8px minmax(0, 1fr)`;
-      animationFrame = 0;
-    };
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const maxHeight = Math.max(150, gridHeight - 250);
-      nextHeight = Math.min(maxHeight, Math.max(120, startHeight + moveEvent.clientY - startY));
-      if (!animationFrame) {
-        animationFrame = window.requestAnimationFrame(applyHeight);
-      }
-    };
-    const cleanup = (pointerId: number) => {
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      if (resizeHandle.hasPointerCapture(pointerId)) {
-        resizeHandle.releasePointerCapture(pointerId);
-      }
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerCancel);
-    };
-    const onPointerUp = (upEvent: PointerEvent) => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-        applyHeight();
-      }
-      props.onMessagePaneHeight(nextHeight);
-      cleanup(upEvent.pointerId);
-    };
-    const onPointerCancel = (cancelEvent: PointerEvent) => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-        animationFrame = 0;
-      }
-      gridElement.style.gridTemplateRows = props.inspectorCollapsed ? "minmax(0, 1fr) 34px" : `${props.messagePaneHeight}px 8px minmax(0, 1fr)`;
-      cleanup(cancelEvent.pointerId);
-    };
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerCancel);
-  }
-
   return (
     <section className={props.isQuerying ? "panel consume-workspace querying" : "panel consume-workspace"}>
       {props.isQuerying && (
         <div className="pane-local-toast">
           <RefreshCw size={14} className="spin" />
-          <span>{props.topic || "Topic"} 조회 중</span>
+          <span>{props.topic || "Topic"} loading</span>
         </div>
       )}
       <ConsumeToolbar

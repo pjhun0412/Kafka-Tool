@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Braces, Send } from "lucide-react";
+﻿import { Braces, Send } from "lucide-react";
 import type { ManualAvroSchema } from "../../../../shared/types";
+
 export function ProducePanel(props: {
   topic: string;
   keyText: string;

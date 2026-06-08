@@ -1,6 +1,6 @@
-import { Braces, Copy, Layers, Pencil, Power, Trash2, Unplug } from "lucide-react";
+﻿import { Braces, Copy, Layers, Pencil, Power, Trash2, Unplug } from "lucide-react";
 import type { ServerProfile } from "../../../shared/types";
-import type { ServerContextMenuState, TopicContextMenuState } from "../../hooks/useSidebarInteractionState";
+import type { ServerContextMenuState, TopicContextMenuState } from "../../hooks/state/useSidebarInteractionState";
 
 type WorkspaceContextMenusProps = {
   topicContextMenu: TopicContextMenuState;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { ChevronDown, ChevronRight, Copy, Filter, Send } from "lucide-react";
 import type { ConsumedMessage } from "../../../../shared/types";
 import type { JsonInspectorMode } from "../../../uiTypes";

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import type { TopicListFilter, TopicSortMode } from "../../uiTypes";
 import { parseTopicSearchQuery, TOPIC_SEARCH_HISTORY_LIMIT } from "../../topicSearch";
 import type { QuickSearchResult } from "../../quickSearch";

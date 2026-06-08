@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+﻿import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { ServerProfile } from "../../../shared/types";
 
 export function WorkspaceTopbar(props: {

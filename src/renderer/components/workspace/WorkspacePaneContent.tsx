@@ -14,10 +14,11 @@ import type { OffsetOrder, TopicConsumeState, View } from "../../uiTypes";
 import { ConsumePanel } from "./consume/ConsumePanel";
 import { ConsumerGroupsPanel } from "./groups/ConsumerGroupsPanel";
 import { ProducePanel } from "./produce/ProducePanel";
-import { BrokersPanel, ServerTopicsPanel, TopicPanel } from "./topics";
+import { BrokersPanel, ServerTopicsPanel, TopicPanel, TopicSettingsPanel } from "./topics";
 
 type WorkspacePaneContentProps = {
   className?: string;
+  serverId: string;
   view: View;
   topic: string;
   detail: TopicDetail | null;
@@ -70,7 +71,7 @@ type WorkspacePaneContentProps = {
 export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
   return (
     <div className={["content-grid", props.className].filter(Boolean).join(" ")}>
-      {props.view === "brokers" && <BrokersPanel brokers={props.brokers} />}
+      {props.view === "brokers" && <BrokersPanel serverId={props.serverId} brokers={props.brokers} />}
       {props.view === "topics" && (
         <ServerTopicsPanel
           topics={props.topics}
@@ -102,6 +103,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
         />
       )}
       {props.view === "info" && <TopicPanel detail={props.detail} />}
+      {props.view === "settings" && <TopicSettingsPanel serverId={props.serverId} topic={props.topic} />}
       {props.view === "consume" && (
         <ConsumePanel
           messages={props.consumeState.messages}

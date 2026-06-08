@@ -1,4 +1,4 @@
-import type { ManualAvroSchema } from "../shared/types";
+﻿import type { ManualAvroSchema } from "../shared/types";
 import type { ManualAvroForm } from "./stores/ui/manualAvroSchemaStore";
 
 export function validateManualAvroSchemaForm(form: ManualAvroForm) {
