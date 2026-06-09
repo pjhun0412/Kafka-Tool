@@ -2,6 +2,15 @@ export type ServerProfile = {
   id: string;
   name: string;
   brokers: string[];
+  schemaRegistry?: {
+    url: string;
+    auth?: {
+      type: "basic" | "bearer";
+      username?: string;
+      password?: string;
+      token?: string;
+    };
+  };
   security?: {
     ssl?: boolean;
     sasl?: {
@@ -23,6 +32,8 @@ export type TopicSummary = {
   sizeBytes?: string;
 };
 
+export type TopicMessageCounts = Record<string, string>;
+
 export type TopicDetail = {
   name: string;
   partitions: Array<{
@@ -35,6 +46,21 @@ export type TopicDetail = {
     partition: number;
     low: string;
     high: string;
+  }>;
+  configs?: TopicConfigEntry[];
+};
+
+export type TopicConfigEntry = {
+  name: string;
+  value: string;
+  source: string;
+  isDefault: boolean;
+  isSensitive: boolean;
+  readOnly: boolean;
+  synonyms: Array<{
+    name: string;
+    value: string;
+    source: string;
   }>;
 };
 
@@ -51,6 +77,57 @@ export type BrokerSummary = {
   underReplicatedPartitionCount: number;
   leaderSkewPercent: number;
   partitionSkewPercent: number;
+};
+
+export type BrokerConfigEntry = {
+  name: string;
+  value: string;
+  source: string;
+  isDefault: boolean;
+  isSensitive: boolean;
+  readOnly: boolean;
+  synonyms: Array<{
+    name: string;
+    value: string;
+    source: string;
+  }>;
+};
+
+export type BrokerLogDirectory = {
+  path: string;
+  error?: string;
+  topics: Array<{
+    topic: string;
+    partition: number;
+    sizeBytes?: string;
+    offsetLag?: string;
+    isFuture?: boolean;
+  }>;
+};
+
+export type BrokerDetail = {
+  broker: BrokerSummary;
+  configs: BrokerConfigEntry[];
+  logDirectories: BrokerLogDirectory[];
+  logDirectoriesSupported: boolean;
+};
+
+export type BrokerConfigUpdateRequest = {
+  serverId: string;
+  brokerId: number;
+  name: string;
+  value: string;
+  validateOnly?: boolean;
+};
+
+export type TopicConfigUpdateRequest = {
+  serverId: string;
+  topic: string;
+  entries: Array<{
+    name: string;
+    value: string;
+  }>;
+  validateOnly?: boolean;
 };
 
 export type ConsumerGroupSummary = {
@@ -82,6 +159,13 @@ export type ConsumerGroupLagDetail = {
   rows: ConsumerGroupLagRow[];
 };
 
+export type ManualAvroSchema = {
+  encoding: "raw" | "confluent";
+  schemaId?: number;
+  schema: string;
+  updatedAt: string;
+};
+
 export type AppPreferences = {
   favoriteTopicsByServer: Record<string, string[]>;
   consumeDefaultsByServer: Record<string, Partial<{
@@ -93,14 +177,17 @@ export type AppPreferences = {
     maxMessages: number;
     filterField: "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
   }>>;
+  manualAvroSchemasByServer?: Record<string, Record<string, ManualAvroSchema>>;
   layout?: Partial<{
     sidebarWidth: number;
     serverPanelHeight: number;
     messagePaneHeight: number;
+    sidebarCollapsed: boolean;
   }>;
   appearance?: Partial<{
     fontFamily: string;
     fontSize: number;
+    language: "auto" | "ko" | "en";
   }>;
   exportFormatTemplate?: string;
   windowBounds?: Partial<{
@@ -132,6 +219,7 @@ export type ProducedMessage = {
 
 export type ConsumedMessage = {
   serverId?: string;
+  consumerId?: string;
   topic: string;
   partition: number;
   offset: string;
@@ -139,9 +227,20 @@ export type ConsumedMessage = {
   key: string;
   value: string;
   headers: Record<string, string>;
+  decoded?: {
+    format: "avro";
+    schemaId?: number;
+    source?: "registry" | "manual";
+    encoding?: "raw" | "confluent";
+    value?: unknown;
+    error?: string;
+  };
 };
 
 export type MessageExportFormat = "json" | "csv" | "log";
+
+export type AppPreferenceSection = "general" | "avro";
+export type AppMenuLanguage = "ko" | "en";
 
 export type MessageExportRequest = {
   topic: string;
@@ -160,6 +259,22 @@ export type TopicMutationRequest = {
   topics: string[];
 };
 
+export type TopicCreateRequest = {
+  serverId: string;
+  topic: string;
+  partitions: number;
+  replicationFactor: number;
+  configs?: Array<{
+    name: string;
+    value: string;
+  }>;
+};
+
+export type ConsumerGroupMutationRequest = {
+  serverId: string;
+  groupIds: string[];
+};
+
 export type UpdateStatus = {
   status: "checking" | "available" | "not-available" | "download-progress" | "downloaded" | "error";
   message: string;
@@ -167,16 +282,23 @@ export type UpdateStatus = {
   percent?: number;
 };
 
+export type StartConsumeResult = {
+  liveRecordPath?: string;
+};
+
 export type StartConsumeRequest = {
   serverId: string;
   topic: string;
+  consumerId?: string;
   fromBeginning: boolean;
   partition?: number;
+  record?: boolean;
 };
 
 export type StopConsumeRequest = {
   serverId?: string;
   topic?: string;
+  consumerId?: string;
 };
 
 export type ProduceRequest = {
@@ -222,25 +344,34 @@ export type KafkaApi = {
   installUpdate: () => Promise<void>;
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
+  setMenuLanguage: (language: AppMenuLanguage) => Promise<void>;
+  checkHealth: (serverId: string) => Promise<void>;
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
+  listTopicMessageCounts: (serverId: string, topics: string[]) => Promise<TopicMessageCounts>;
   listBrokers: (serverId: string) => Promise<BrokerSummary[]>;
+  getBrokerDetail: (serverId: string, brokerId: number) => Promise<BrokerDetail>;
+  updateBrokerConfig: (request: BrokerConfigUpdateRequest) => Promise<BrokerDetail>;
   getTopicDetail: (serverId: string, topic: string) => Promise<TopicDetail>;
+  getTopicConfigs: (serverId: string, topic: string) => Promise<TopicConfigEntry[]>;
+  updateTopicConfigs: (request: TopicConfigUpdateRequest) => Promise<TopicConfigEntry[]>;
+  createTopic: (request: TopicCreateRequest) => Promise<void>;
   deleteTopics: (request: TopicMutationRequest) => Promise<void>;
   purgeTopics: (request: TopicMutationRequest) => Promise<void>;
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;
+  deleteConsumerGroups: (request: ConsumerGroupMutationRequest) => Promise<void>;
   getConsumerGroupLag: (serverId: string, groupId: string) => Promise<ConsumerGroupLagDetail>;
   exportMessages: (request: MessageExportRequest) => Promise<string | null>;
   exportOffsetMessages: (request: OffsetMessageExportRequest) => Promise<string | null>;
   produce: (message: ProduceRequest) => Promise<ProducedMessage[]>;
   consumeFromOffset: (request: ConsumeOffsetRequest) => Promise<ConsumeOffsetResult>;
   consumeTimeRange: (request: ConsumeTimeRangeRequest) => Promise<ConsumedMessage[]>;
-  startConsume: (request: StartConsumeRequest) => Promise<void>;
+  startConsume: (request: StartConsumeRequest) => Promise<StartConsumeResult>;
   stopConsume: (request?: StopConsumeRequest) => Promise<void>;
   onConsumeMessage: (callback: (message: ConsumedMessage) => void) => () => void;
   onConsumeError: (callback: (error: string) => void) => () => void;
   onSettingsImported: (callback: (result: ImportSettingsResult) => void) => () => void;
   onSettingsExported: (callback: (filePath: string) => void) => () => void;
   onSettingsError: (callback: (error: string) => void) => () => void;
-  onPreferencesOpen: (callback: () => void) => () => void;
+  onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => () => void;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 };

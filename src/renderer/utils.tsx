@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 import type { ConsumedMessage, TopicSummary } from "../shared/types";
-import { topicSortOptions, type ConsumeFilterField, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
+import { topicSortOptions, type TopicSortMode, type TopicWorkView, type View } from "./uiTypes";
 
 export function previewValue(value: string) {
   if (!value) return "(empty)";
@@ -45,7 +45,7 @@ export function formatPercent(value: number) {
 }
 
 export function isTopicWorkView(view: View): view is TopicWorkView {
-  return view === "info" || view === "consume" || view === "produce";
+  return view === "info" || view === "consume" || view === "produce" || view === "settings";
 }
 
 export function getTopicSortLabel(value: TopicSortMode) {
@@ -76,31 +76,6 @@ export function compareBigInt(left: bigint, right: bigint) {
   return left > right ? 1 : left < right ? -1 : 0;
 }
 
-export function filterMessages(messages: ConsumedMessage[], filterText: string, filterField: ConsumeFilterField) {
-  const query = filterText.trim().toLowerCase();
-  if (filterField === "headersEmpty") {
-    return messages.filter((message) => Object.keys(message.headers ?? {}).length === 0);
-  }
-  if (!query) return messages;
-  return messages.filter((message) => {
-    if (filterField === "key") return message.key.toLowerCase().includes(query);
-    if (filterField === "value") return message.value.toLowerCase().includes(query);
-    if (filterField === "headers") return formatHeaders(message.headers).toLowerCase().includes(query);
-    if (filterField === "offset") return message.offset.toLowerCase().includes(query);
-    if (filterField === "partition") return String(message.partition).includes(query);
-    if (filterField === "timestamp") return message.timestamp.toLowerCase().includes(query) || formatTimestamp(message.timestamp).toLowerCase().includes(query);
-    return [
-      message.key,
-      message.value,
-      message.offset,
-      String(message.partition),
-      message.timestamp,
-      formatTimestamp(message.timestamp),
-      formatHeaders(message.headers)
-    ].some((value) => value.toLowerCase().includes(query));
-  });
-}
-
 export function getPartitionColor(partition: number) {
   const colors = ["#0891b2", "#0f766e", "#7c3aed", "#ca8a04", "#dc2626", "#2563eb", "#16a34a", "#c026d3"];
   return colors[Math.abs(partition) % colors.length];
@@ -114,7 +89,7 @@ export function formatTimestamp(timestamp: string) {
 
 export function formatMessagePayload(message: ConsumedMessage) {
   const parsedValue = parseJson(message.value);
-  return {
+  const payload: Record<string, unknown> = {
     topic: message.topic,
     partition: message.partition,
     offset: message.offset,
@@ -123,6 +98,10 @@ export function formatMessagePayload(message: ConsumedMessage) {
     value: parsedValue,
     headers: message.headers
   };
+  if (message.decoded) {
+    payload.decoded = message.decoded;
+  }
+  return payload;
 }
 
 export function parseJson(value: string) {
@@ -149,7 +128,7 @@ export function validateJsonLikeValue(value: string) {
     return null;
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `Value JSON 형식이 올바르지 않습니다. ${detail}`;
+    return `Value JSON format is invalid. ${detail}`;
   }
 }
 
@@ -168,7 +147,7 @@ export function parseProduceHeaders(value: string): Record<string, string> | str
     );
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `Headers JSON 형식이 올바르지 않습니다. ${detail}`;
+    return `Headers JSON format is invalid. ${detail}`;
   }
 }
 

@@ -1,0 +1,88 @@
+import type { Dispatch, SetStateAction } from "react";
+import type { SortingState } from "@tanstack/react-table";
+import type {
+  AppPreferences,
+  BrokerSummary,
+  ConsumerGroupLagDetail,
+  ConsumerGroupSummary,
+  ImportSettingsResult,
+  ManualAvroSchema,
+  ServerProfile,
+  TopicDetail,
+  TopicSummary
+} from "../../../shared/types";
+import type { TopicConsumeState, TopicWorkView, View } from "../../uiTypes";
+
+export type ImportedPreferenceSetters = {
+  setFavoriteTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setConsumeDefaultsByServer: Dispatch<SetStateAction<AppPreferences["consumeDefaultsByServer"]>>;
+  setManualAvroSchemasByServer: Dispatch<SetStateAction<Record<string, Record<string, ManualAvroSchema>>>>;
+  setSidebarWidth: Dispatch<SetStateAction<number>>;
+  setServerPanelHeight: Dispatch<SetStateAction<number>>;
+  setMessagePaneHeight: Dispatch<SetStateAction<number>>;
+  setFontFamily: Dispatch<SetStateAction<string>>;
+  setFontSize: Dispatch<SetStateAction<number>>;
+  setExportFormatTemplate: Dispatch<SetStateAction<string>>;
+};
+
+export type WorkspaceResetSetters = {
+  setServers: Dispatch<SetStateAction<ServerProfile[]>>;
+  setConnectedServerIds: Dispatch<SetStateAction<string[]>>;
+  setFailedServerIds: Dispatch<SetStateAction<string[]>>;
+  setOpenClusterIds: Dispatch<SetStateAction<string[]>>;
+  setSelectedServerId: Dispatch<SetStateAction<string>>;
+  setTopicsByServer: Dispatch<SetStateAction<Record<string, TopicSummary[]>>>;
+  resetTopicSearchState: () => void;
+  setSelectedTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
+  setOpenedTopicTabsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setTopicGridSortingByServer: Dispatch<SetStateAction<Record<string, SortingState>>>;
+  setTopicDetailByServer: Dispatch<SetStateAction<Record<string, TopicDetail | null>>>;
+  setTopicDetailCacheByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicDetail>>>>;
+  setBrokersByServer: Dispatch<SetStateAction<Record<string, BrokerSummary[]>>>;
+  setGroupsByServer: Dispatch<SetStateAction<Record<string, ConsumerGroupSummary[]>>>;
+  setViewByServer: Dispatch<SetStateAction<Record<string, View>>>;
+  setTopicViewByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicWorkView>>>>;
+  setSelectedGroupByServer: Dispatch<SetStateAction<Record<string, string>>>;
+  setGroupLagByServer: Dispatch<SetStateAction<Record<string, Record<string, ConsumerGroupLagDetail>>>>;
+  setConsumeStatesByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicConsumeState>>>>;
+  setSplitConsumeStatesByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicConsumeState>>>>;
+  resetProduceDrafts: () => void;
+  setStreamingTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+};
+
+export function applyImportedPreferences(preferences: AppPreferences, setters: ImportedPreferenceSetters) {
+  setters.setFavoriteTopicsByServer(preferences.favoriteTopicsByServer ?? {});
+  setters.setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
+  setters.setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
+  if (typeof preferences.layout?.sidebarWidth === "number") setters.setSidebarWidth(preferences.layout.sidebarWidth);
+  if (typeof preferences.layout?.serverPanelHeight === "number") setters.setServerPanelHeight(preferences.layout.serverPanelHeight);
+  if (typeof preferences.layout?.messagePaneHeight === "number") setters.setMessagePaneHeight(preferences.layout.messagePaneHeight);
+  if (typeof preferences.appearance?.fontFamily === "string") setters.setFontFamily(preferences.appearance.fontFamily);
+  if (typeof preferences.appearance?.fontSize === "number") setters.setFontSize(preferences.appearance.fontSize);
+  if (typeof preferences.exportFormatTemplate === "string") setters.setExportFormatTemplate(preferences.exportFormatTemplate);
+}
+
+export function resetWorkspaceAfterSettingsImport(result: ImportSettingsResult, setters: WorkspaceResetSetters) {
+  setters.setServers(result.servers);
+  setters.setConnectedServerIds([]);
+  setters.setFailedServerIds([]);
+  setters.setOpenClusterIds([]);
+  setters.setSelectedServerId(result.servers[0]?.id ?? "");
+  setters.setTopicsByServer({});
+  setters.resetTopicSearchState();
+  setters.setSelectedTopicByServer({});
+  setters.setOpenedTopicTabsByServer({});
+  setters.setTopicGridSortingByServer({});
+  setters.setTopicDetailByServer({});
+  setters.setTopicDetailCacheByServer({});
+  setters.setBrokersByServer({});
+  setters.setGroupsByServer({});
+  setters.setViewByServer({});
+  setters.setTopicViewByServer({});
+  setters.setSelectedGroupByServer({});
+  setters.setGroupLagByServer({});
+  setters.setConsumeStatesByServer({});
+  setters.setSplitConsumeStatesByServer({});
+  setters.resetProduceDrafts();
+  setters.setStreamingTopicsByServer({});
+}

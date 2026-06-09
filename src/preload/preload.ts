@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferences, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -12,12 +12,21 @@ const api: KafkaApi = {
   installUpdate: () => ipcRenderer.invoke("updates:install"),
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
+  setMenuLanguage: (language: AppMenuLanguage) => ipcRenderer.invoke("menu:set-language", language),
+  checkHealth: (serverId: string) => ipcRenderer.invoke("kafka:health", serverId),
   listTopics: (serverId: string) => ipcRenderer.invoke("kafka:topics", serverId),
+  listTopicMessageCounts: (serverId: string, topics: string[]) => ipcRenderer.invoke("kafka:topic-message-counts", serverId, topics),
   listBrokers: (serverId: string) => ipcRenderer.invoke("kafka:brokers", serverId),
+  getBrokerDetail: (serverId: string, brokerId: number) => ipcRenderer.invoke("kafka:broker-detail", serverId, brokerId),
+  updateBrokerConfig: (request: BrokerConfigUpdateRequest) => ipcRenderer.invoke("kafka:broker-config-update", request),
   getTopicDetail: (serverId: string, topic: string) => ipcRenderer.invoke("kafka:topic-detail", serverId, topic),
+  getTopicConfigs: (serverId: string, topic: string) => ipcRenderer.invoke("kafka:topic-configs", serverId, topic),
+  updateTopicConfigs: (request: TopicConfigUpdateRequest) => ipcRenderer.invoke("kafka:topic-config-update", request),
+  createTopic: (request: TopicCreateRequest) => ipcRenderer.invoke("kafka:topic-create", request),
   deleteTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-delete", request),
   purgeTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-purge", request),
   listConsumerGroups: (serverId: string) => ipcRenderer.invoke("kafka:groups", serverId),
+  deleteConsumerGroups: (request: ConsumerGroupMutationRequest) => ipcRenderer.invoke("kafka:groups-delete", request),
   getConsumerGroupLag: (serverId: string, groupId: string) => ipcRenderer.invoke("kafka:group-lag", serverId, groupId),
   exportMessages: (request: MessageExportRequest) => ipcRenderer.invoke("messages:export", request),
   exportOffsetMessages: (request: OffsetMessageExportRequest) => ipcRenderer.invoke("messages:export-offset", request),
@@ -51,8 +60,8 @@ const api: KafkaApi = {
     ipcRenderer.on("settings:error", listener);
     return () => ipcRenderer.removeListener("settings:error", listener);
   },
-  onPreferencesOpen: (callback: () => void) => {
-    const listener = () => callback();
+  onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, section?: AppPreferenceSection) => callback(section);
     ipcRenderer.on("preferences:open", listener);
     return () => ipcRenderer.removeListener("preferences:open", listener);
   },

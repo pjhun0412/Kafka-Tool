@@ -1,0 +1,185 @@
+import type { OnChangeFn, SortingState } from "@tanstack/react-table";
+import type {
+  BrokerSummary,
+  ConsumedMessage,
+  ConsumerGroupLagDetail,
+  ConsumerGroupSummary,
+  ManualAvroSchema,
+  MessageExportFormat,
+  TopicDetail,
+  TopicSummary
+} from "../../../shared/types";
+import type { AppLanguage } from "../../i18n";
+import { getDefaultTimeRangeValues } from "../../consumeConfig";
+import type { OffsetOrder, TopicConsumeState, View } from "../../uiTypes";
+import { ConsumePanel } from "./consume/ConsumePanel";
+import { ConsumerGroupsPanel } from "./groups/ConsumerGroupsPanel";
+import { ProducePanel } from "./produce/ProducePanel";
+import { BrokersPanel, ServerTopicsPanel, TopicPanel, TopicSettingsPanel } from "./topics";
+
+type WorkspacePaneContentProps = {
+  className?: string;
+  serverId: string;
+  view: View;
+  topic: string;
+  language: AppLanguage;
+  detail: TopicDetail | null;
+  topics: TopicSummary[];
+  brokers: BrokerSummary[];
+  groups: ConsumerGroupSummary[];
+  favoriteTopicNames: string[];
+  selectedTopics: string[];
+  topicSorting?: SortingState;
+  onTopicSortingChange?: OnChangeFn<SortingState>;
+  selectedGroupId: string;
+  selectedGroupLag: ConsumerGroupLagDetail | null;
+  groupDetailsById: Record<string, ConsumerGroupLagDetail>;
+  consumeState: TopicConsumeState;
+  isConsuming: boolean;
+  isQuerying: boolean;
+  messagePaneHeight: number;
+  manualAvroSchemas: Record<string, ManualAvroSchema>;
+  produceKey: string;
+  produceHeaders: string;
+  produceValue: string;
+  onOpenTopic: (topic: string) => void;
+  onSelectTopic: (topic: string) => void;
+  onToggleTopicSelected: (topic: string) => void;
+  onToggleAllTopicsSelected: (topics: string[]) => void;
+  onCopySelectedTopics: () => void;
+  onCreateTopic: () => void;
+  onClearTopicMessages: () => void;
+  onPurgeSelectedTopics: () => void;
+  onDeleteSelectedTopics: () => void;
+  onToggleTopicFavorite: (topic: string) => void;
+  onSelectGroup: (groupId: string) => void;
+  onDeleteConsumerGroups: (groupIds: string[]) => void;
+  onBackGroup: () => void;
+  onRefreshGroups: () => void;
+  onRefreshGroupDetail: () => void;
+  onUpdateConsume: (patch: Partial<TopicConsumeState>) => void;
+  onOffsetOrder: (value: OffsetOrder) => void;
+  onOffsetPage: (direction: "prev" | "next") => void;
+  onStartConsume: () => void;
+  onStopConsume: () => void;
+  onSendToProduce: (message: ConsumedMessage) => void;
+  onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
+  onExportAll: (format: MessageExportFormat) => void;
+  onMessagePaneHeight: (value: number) => void;
+  onProduceKey: (value: string) => void;
+  onProduceHeaders: (value: string) => void;
+  onProduceValue: (value: string) => void;
+  onProduce: () => void;
+};
+
+export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
+  return (
+    <div className={["content-grid", props.className].filter(Boolean).join(" ")}>
+      {props.view === "brokers" && <BrokersPanel serverId={props.serverId} brokers={props.brokers} />}
+      {props.view === "topics" && (
+        <ServerTopicsPanel
+          topics={props.topics}
+          favoriteTopicNames={props.favoriteTopicNames}
+          selectedTopics={props.selectedTopics}
+          sorting={props.topicSorting}
+          onSortingChange={props.onTopicSortingChange}
+          onOpen={props.onOpenTopic}
+          onSelect={props.onSelectTopic}
+          onToggleSelected={props.onToggleTopicSelected}
+          onToggleAllSelected={props.onToggleAllTopicsSelected}
+          onCopySelected={props.onCopySelectedTopics}
+          onCreateTopic={props.onCreateTopic}
+          onPurgeSelected={props.onPurgeSelectedTopics}
+          onDeleteSelected={props.onDeleteSelectedTopics}
+          onToggleFavorite={props.onToggleTopicFavorite}
+        />
+      )}
+      {props.view === "consumers" && (
+        <ConsumerGroupsPanel
+          groups={props.groups}
+          selectedGroupId={props.selectedGroupId}
+          detail={props.selectedGroupLag}
+          detailsByGroup={props.groupDetailsById}
+          onSelectGroup={props.onSelectGroup}
+          onDeleteGroups={props.onDeleteConsumerGroups}
+          onBack={props.onBackGroup}
+          onRefresh={props.onRefreshGroups}
+          onRefreshDetail={props.onRefreshGroupDetail}
+        />
+      )}
+      {props.view === "info" && <TopicPanel detail={props.detail} onClearMessages={props.onClearTopicMessages} />}
+      {props.view === "settings" && <TopicSettingsPanel serverId={props.serverId} topic={props.topic} />}
+      {props.view === "consume" && (
+        <ConsumePanel
+          messages={props.consumeState.messages}
+          topic={props.topic}
+          language={props.language}
+          selectedMessage={props.consumeState.selectedMessage}
+          mode={props.consumeState.mode}
+          offsetOrder={props.consumeState.offsetOrder}
+          isConsuming={props.isConsuming}
+          offset={props.consumeState.offset}
+          limit={props.consumeState.limit}
+          partition={props.consumeState.partition}
+          timeStart={props.consumeState.timeStart}
+          timeEnd={props.consumeState.timeEnd}
+          filterText={props.consumeState.filterText}
+          filterField={props.consumeState.filterField}
+          filterMode={props.consumeState.filterMode}
+          inspectorCollapsed={props.consumeState.inspectorCollapsed}
+          isQuerying={props.isQuerying}
+          autoScroll={props.consumeState.autoScroll}
+          maxMessages={props.consumeState.maxMessages}
+          liveRecordEnabled={props.consumeState.liveRecordEnabled}
+          liveRecordPath={props.consumeState.liveRecordPath}
+          liveRecordCount={props.consumeState.liveRecordCount}
+          offsetPagination={props.consumeState.offsetPagination}
+          messagePaneHeight={props.messagePaneHeight}
+          onMode={(mode) => props.onUpdateConsume({
+            mode,
+            offsetPagination: null,
+            ...(mode === "timeRange" ? getDefaultTimeRangeValues(props.consumeState) : {})
+          })}
+          onOffset={(offset) => props.onUpdateConsume({ offset, offsetPagination: null })}
+          onOffsetOrder={props.onOffsetOrder}
+          onLimit={(limit) => props.onUpdateConsume({ limit, offsetPagination: null })}
+          onPartition={(partition) => props.onUpdateConsume({ partition, offsetPagination: null })}
+          onTimeStart={(timeStart) => props.onUpdateConsume({ timeStart })}
+          onTimeEnd={(timeEnd) => props.onUpdateConsume({ timeEnd })}
+          onFilterText={(filterText) => props.onUpdateConsume({ filterText })}
+          onFilterField={(filterField) => props.onUpdateConsume({ filterField })}
+          onFilterMode={(filterMode) => props.onUpdateConsume({ filterMode })}
+          onInspectorCollapsed={(inspectorCollapsed) => props.onUpdateConsume({ inspectorCollapsed })}
+          onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all", filterMode: "hide" })}
+          onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
+          onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
+          onMaxMessages={(maxMessages) => props.onUpdateConsume({ maxMessages })}
+          onLiveRecordEnabled={(liveRecordEnabled) => props.onUpdateConsume({ liveRecordEnabled })}
+          onPagePrev={() => props.onOffsetPage("prev")}
+          onPageNext={() => props.onOffsetPage("next")}
+          onSelectMessage={(selectedMessage) => props.onUpdateConsume({ selectedMessage })}
+          onMessagePaneHeight={props.onMessagePaneHeight}
+          onSendToProduce={props.onSendToProduce}
+          onExport={props.onExport}
+          onExportAll={props.onExportAll}
+          onStart={props.onStartConsume}
+          onStop={props.onStopConsume}
+        />
+      )}
+      {props.view === "produce" && (
+        <ProducePanel
+          topic={props.topic}
+          keyText={props.produceKey}
+          headers={props.produceHeaders}
+          value={props.produceValue}
+          hasAvroSchema={Boolean(props.manualAvroSchemas[props.topic])}
+          avroEncoding={props.manualAvroSchemas[props.topic]?.encoding}
+          onKey={props.onProduceKey}
+          onHeaders={props.onProduceHeaders}
+          onValue={props.onProduceValue}
+          onProduce={props.onProduce}
+        />
+      )}
+    </div>
+  );
+}

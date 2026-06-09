@@ -1,0 +1,53 @@
+import { create } from "zustand";
+import { INTER_FONT_FAMILY } from "../../fontConfig";
+import type { LanguagePreference } from "../../i18n";
+
+export const DEFAULT_FONT_FAMILY = INTER_FONT_FAMILY;
+export const DEFAULT_EXPORT_FORMAT_TEMPLATE = "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}";
+export const DEFAULT_LANGUAGE: LanguagePreference = "auto";
+
+type SetValue<T> = T | ((current: T) => T);
+
+type LayoutStore = {
+  sidebarWidth: number;
+  sidebarCollapsed: boolean;
+  serverPanelHeight: number;
+  messagePaneHeight: number;
+  fontFamily: string;
+  fontSize: number;
+  language: LanguagePreference;
+  exportFormatTemplate: string;
+  setSidebarWidth: (value: SetValue<number>) => void;
+  setSidebarCollapsed: (value: SetValue<boolean>) => void;
+  setServerPanelHeight: (value: SetValue<number>) => void;
+  setMessagePaneHeight: (value: SetValue<number>) => void;
+  setFontFamily: (value: SetValue<string>) => void;
+  setFontSize: (value: SetValue<number>) => void;
+  setLanguage: (value: SetValue<LanguagePreference>) => void;
+  setExportFormatTemplate: (value: SetValue<string>) => void;
+};
+
+function resolveValue<T>(value: SetValue<T>, current: T) {
+  return typeof value === "function" ? (value as (current: T) => T)(current) : value;
+}
+
+export const useLayoutStore = create<LayoutStore>((set) => ({
+  sidebarWidth: 288,
+  sidebarCollapsed: false,
+  serverPanelHeight: 230,
+  messagePaneHeight: 230,
+  fontFamily: DEFAULT_FONT_FAMILY,
+  fontSize: 13,
+  language: DEFAULT_LANGUAGE,
+  exportFormatTemplate: DEFAULT_EXPORT_FORMAT_TEMPLATE,
+  setSidebarWidth: (sidebarWidth) => set((current) => ({ sidebarWidth: resolveValue(sidebarWidth, current.sidebarWidth) })),
+  setSidebarCollapsed: (sidebarCollapsed) => set((current) => ({ sidebarCollapsed: resolveValue(sidebarCollapsed, current.sidebarCollapsed) })),
+  setServerPanelHeight: (serverPanelHeight) => set((current) => ({ serverPanelHeight: resolveValue(serverPanelHeight, current.serverPanelHeight) })),
+  setMessagePaneHeight: (messagePaneHeight) => set((current) => ({ messagePaneHeight: resolveValue(messagePaneHeight, current.messagePaneHeight) })),
+  setFontFamily: (fontFamily) => set((current) => ({ fontFamily: resolveValue(fontFamily, current.fontFamily) })),
+  setFontSize: (fontSize) => set((current) => ({ fontSize: resolveValue(fontSize, current.fontSize) })),
+  setLanguage: (language) => set((current) => ({ language: resolveValue(language, current.language) })),
+  setExportFormatTemplate: (exportFormatTemplate) => set((current) => ({
+    exportFormatTemplate: resolveValue(exportFormatTemplate, current.exportFormatTemplate)
+  }))
+}));

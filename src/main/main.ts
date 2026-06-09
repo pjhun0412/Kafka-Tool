@@ -1,19 +1,26 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
-import { randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { createWriteStream, type WriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Kafka, logLevel, type Admin, type Consumer, type KafkaMessage } from "kafkajs";
+import { ConfigResourceTypes, Kafka, logLevel, type Admin, type Consumer } from "kafkajs";
 import { autoUpdater } from "electron-updater";
+import { encodeManualAvro } from "./avroDecoder.js";
+import { toConsumedMessage } from "./messageMapper.js";
 import type {
   ConsumedMessage,
   ConsumeOffsetRequest,
   ConsumeOffsetResult,
   ConsumeTimeRangeRequest,
   AppPreferences,
+  AppMenuLanguage,
   AppSettingsBundle,
+  BrokerConfigEntry,
+  BrokerConfigUpdateRequest,
+  BrokerDetail,
   BrokerSummary,
   ConsumerGroupLagDetail,
+  ConsumerGroupMutationRequest,
   ConsumerGroupSummary,
   ImportSettingsResult,
   MessageExportRequest,
@@ -23,7 +30,11 @@ import type {
   ServerProfile,
   StartConsumeRequest,
   StopConsumeRequest,
+  TopicConfigEntry,
+  TopicConfigUpdateRequest,
+  TopicCreateRequest,
   TopicDetail,
+  TopicMessageCounts,
   TopicMutationRequest,
   TopicSummary,
   UpdateStatus
@@ -32,8 +43,16 @@ import type {
 const devServerUrl = process.env.KAFKA_TOOL_DEV_SERVER_URL;
 let mainWindow: BrowserWindow | null = null;
 const activeConsumers = new Map<string, Consumer>();
+const activeLiveRecorders = new Map<string, { stream: WriteStream; path: string; count: number }>();
 let windowBoundsSaveTimer: NodeJS.Timeout | null = null;
 let autoUpdaterConfigured = false;
+const appUserModelId = "local.kafka-tool";
+let isCleaningUpConsumers = false;
+let menuLanguage: AppMenuLanguage = app.getLocale().toLowerCase().startsWith("ko") ? "ko" : "en";
+
+function appIconPath() {
+  return path.join(app.getAppPath(), "build/icon.ico");
+}
 
 function profilesPath() {
   return path.join(app.getPath("userData"), "servers.json");
@@ -43,13 +62,20 @@ function preferencesPath() {
   return path.join(app.getPath("userData"), "preferences.json");
 }
 
+function resolveMenuLanguage(preference: "auto" | "ko" | "en" | undefined): AppMenuLanguage {
+  if (preference === "ko" || preference === "en") return preference;
+  return app.getLocale().toLowerCase().startsWith("ko") ? "ko" : "en";
+}
+
 const defaultPreferences: AppPreferences = {
   favoriteTopicsByServer: {},
   consumeDefaultsByServer: {},
+  manualAvroSchemasByServer: {},
   layout: {},
   appearance: {
-    fontFamily: "D2Coding, Consolas, 'Courier New', monospace",
-    fontSize: 13
+    fontFamily: "Inter, 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 13,
+    language: "auto"
   },
   exportFormatTemplate: "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"
 };
@@ -66,6 +92,19 @@ async function readProfiles(): Promise<ServerProfile[]> {
 async function writeProfiles(profiles: ServerProfile[]) {
   await mkdir(app.getPath("userData"), { recursive: true });
   await writeFile(profilesPath(), JSON.stringify(profiles, null, 2), "utf8");
+}
+
+function configSourceLabel(source: number | string) {
+  const labels: Record<number, string> = {
+    0: "unknown",
+    1: "topic",
+    2: "dynamic broker",
+    3: "dynamic default broker",
+    4: "static broker",
+    5: "default",
+    6: "dynamic broker logger"
+  };
+  return typeof source === "number" ? labels[source] ?? String(source) : source;
 }
 
 async function readPreferences(): Promise<AppPreferences> {
@@ -86,6 +125,7 @@ function normalizePreferences(preferences?: Partial<AppPreferences>): AppPrefere
   return {
     favoriteTopicsByServer: preferences?.favoriteTopicsByServer ?? {},
     consumeDefaultsByServer: preferences?.consumeDefaultsByServer ?? {},
+    manualAvroSchemasByServer: preferences?.manualAvroSchemasByServer ?? {},
     layout: preferences?.layout ?? {},
     appearance: preferences?.appearance ?? defaultPreferences.appearance,
     exportFormatTemplate: preferences?.exportFormatTemplate ?? defaultPreferences.exportFormatTemplate,
@@ -99,6 +139,7 @@ function mergePreferences(current: AppPreferences, next: AppPreferences): AppPre
     ...next,
     favoriteTopicsByServer: next.favoriteTopicsByServer ?? current.favoriteTopicsByServer,
     consumeDefaultsByServer: next.consumeDefaultsByServer ?? current.consumeDefaultsByServer,
+    manualAvroSchemasByServer: next.manualAvroSchemasByServer ?? current.manualAvroSchemasByServer,
     layout: {
       ...(current.layout ?? {}),
       ...(next.layout ?? {})
@@ -113,7 +154,7 @@ function mergePreferences(current: AppPreferences, next: AppPreferences): AppPre
 
 function normalizeImportedServers(servers: unknown): ServerProfile[] {
   if (!Array.isArray(servers)) {
-    throw new Error("설정 파일에 servers 배열이 없습니다.");
+    throw new Error("Settings file does not contain a servers array.");
   }
   return servers.map((server) => {
     const item = server as Partial<ServerProfile>;
@@ -122,13 +163,14 @@ function normalizeImportedServers(servers: unknown): ServerProfile[] {
       ? item.brokers.map((broker) => String(broker).trim()).filter(Boolean)
       : [];
     if (!name || brokers.length === 0) {
-      throw new Error("서버 설정 파일에 잘못된 서버 항목이 있습니다.");
+      throw new Error("Server settings file contains an invalid server entry.");
     }
     return {
       id: typeof item.id === "string" && item.id.trim() ? item.id : randomUUID(),
       name,
       brokers,
-      security: item.security
+      security: item.security,
+      schemaRegistry: item.schemaRegistry
     };
   });
 }
@@ -173,23 +215,145 @@ async function importSettingsFromFile(): Promise<ImportSettingsResult | null> {
   return { servers, preferences };
 }
 
+const menuText = {
+  ko: {
+    file: "파일",
+    importSettings: "설정 가져오기...",
+    exportSettings: "설정 내보내기...",
+    preferences: "환경설정...",
+    avroSchemas: "Avro Schemas...",
+    checkUpdates: "업데이트 확인...",
+    close: "닫기",
+    quit: "종료",
+    importTitle: "설정 가져오기",
+    importMessage: "현재 서버 목록과 환경설정을 가져온 파일로 교체할까요?",
+    importButton: "가져오기",
+    cancelButton: "취소",
+    help: "도움말",
+    shortcuts: "단축키",
+    splitTabs: "탭 분할",
+    searchTips: "검색과 필터",
+    kafkaTips: "Kafka 작업 팁",
+    about: "Kafka Tool 정보",
+    helpOk: "확인",
+    helpShortcutsTitle: "단축키",
+    helpShortcutsMessage: [
+      "Ctrl+P 또는 Ctrl+K: 빠른 검색을 엽니다.",
+      "Ctrl+O: 설정 파일을 가져옵니다.",
+      "Ctrl+S: 설정 파일을 내보냅니다.",
+      "Ctrl+,: 환경설정을 엽니다.",
+      "Topic/Consumer/Broker 목록에서는 행을 클릭해 상세 화면으로 이동합니다."
+    ].join("\n"),
+    helpSplitTitle: "탭 분할",
+    helpSplitMessage: [
+      "클러스터 탭이나 Topic 탭을 드래그해 화면을 분할할 수 있습니다.",
+      "분할 영역의 닫기 드롭존으로 탭을 끌면 분할 패널을 닫습니다.",
+      "각 서버의 분할 상태는 서버별로 유지됩니다.",
+      "Consume 화면의 메시지 목록과 JSON Viewer 사이 경계선을 드래그해 높이를 조절할 수 있습니다."
+    ].join("\n"),
+    helpSearchTitle: "검색과 필터",
+    helpSearchMessage: [
+      "Topics 검색은 공백으로 AND 검색, -단어로 제외, /패턴/으로 정규식을 지원합니다.",
+      "빠른 검색에서 @\"Server Name\" topic 형식으로 특정 서버 안에서 찾을 수 있습니다.",
+      "Consume 필터는 key:, value:, headers:, empty:, 정규식, JSON path 비교식을 지원합니다.",
+      "그리드 컬럼의 필터 아이콘으로 컬럼별 텍스트/범위 필터를 적용할 수 있습니다."
+    ].join("\n"),
+    helpKafkaTitle: "Kafka 작업 팁",
+    helpKafkaMessage: [
+      "Topic 우클릭 메뉴에서 열기, 이름 복사, Avro Schema 등록, 비우기, 삭제를 실행할 수 있습니다.",
+      "Topic Settings에서는 Kafka가 수정 가능하다고 내려준 config만 편집합니다.",
+      "Consumer 상세는 Topic별로 접고 펼쳐 Lag와 offset을 확인할 수 있습니다.",
+      "대량 Consume 조회는 가상화 그리드로 렌더링되며, Offset 조회는 Prev/Next로 페이지 이동할 수 있습니다."
+    ].join("\n"),
+    aboutTitle: "Kafka Tool 정보",
+    aboutMessage: "Kafka Tool 데스크톱 클라이언트\nTopic, Consumer, Broker, Produce/Consume 작업을 한 곳에서 관리합니다.",
+    saveLiveRecord: "Live Record 저장"
+  },
+  en: {
+    file: "File",
+    importSettings: "Import Settings...",
+    exportSettings: "Export Settings...",
+    preferences: "Preferences...",
+    avroSchemas: "Avro Schemas...",
+    checkUpdates: "Check for Updates...",
+    close: "Close",
+    quit: "Quit",
+    importTitle: "Import Settings",
+    importMessage: "Replace the current server list and preferences with the imported file?",
+    importButton: "Import",
+    cancelButton: "Cancel",
+    help: "Help",
+    shortcuts: "Shortcuts",
+    splitTabs: "Split tabs",
+    searchTips: "Search and filters",
+    kafkaTips: "Kafka work tips",
+    about: "About Kafka Tool",
+    helpOk: "OK",
+    helpShortcutsTitle: "Shortcuts",
+    helpShortcutsMessage: [
+      "Ctrl+P or Ctrl+K: open Quick Search.",
+      "Ctrl+O: import settings.",
+      "Ctrl+S: export settings.",
+      "Ctrl+,: open Preferences.",
+      "Click rows in Topic, Consumer, or Broker lists to open details."
+    ].join("\n"),
+    helpSplitTitle: "Split tabs",
+    helpSplitMessage: [
+      "Drag cluster tabs or Topic tabs to split the workspace.",
+      "Drop a tab onto the close split drop zone to close the split pane.",
+      "Split pane state is kept per server.",
+      "Drag the divider between the Consume message grid and JSON Viewer to resize them."
+    ].join("\n"),
+    helpSearchTitle: "Search and filters",
+    helpSearchMessage: [
+      "Topics search supports AND with spaces, exclusion with -word, and regex with /pattern/.",
+      "Use @\"Server Name\" topic in Quick Search to search inside one server.",
+      "Consume filters support key:, value:, headers:, empty:, regex, and JSON path comparisons.",
+      "Use each grid column's filter icon for column text/range filters."
+    ].join("\n"),
+    helpKafkaTitle: "Kafka work tips",
+    helpKafkaMessage: [
+      "Topic context menus can open, copy names, register Avro Schema, clear messages, or delete Topics.",
+      "Topic Settings only edits configs Kafka reports as editable.",
+      "Consumer details can expand/collapse by Topic to inspect Lag and offsets.",
+      "Large Consume results use a virtualized grid, and Offset queries support Prev/Next paging."
+    ].join("\n"),
+    aboutTitle: "About Kafka Tool",
+    aboutMessage: "Kafka Tool desktop client\nManage Topics, Consumers, Brokers, Produce, and Consume workflows in one place.",
+    saveLiveRecord: "Save Live Record"
+  }
+} satisfies Record<AppMenuLanguage, Record<string, string>>;
+
+function showHelpDialog(title: string, message: string) {
+  if (!mainWindow) return;
+  const labels = menuText[menuLanguage];
+  void dialog.showMessageBox(mainWindow, {
+    type: "info",
+    buttons: [labels.helpOk],
+    defaultId: 0,
+    title,
+    message
+  });
+}
+
 function createApplicationMenu() {
+  const labels = menuText[menuLanguage];
   const template: Electron.MenuItemConstructorOptions[] = [
     {
-      label: "File",
+      label: labels.file,
       submenu: [
         {
-          label: "Import Settings...",
+          label: labels.importSettings,
           accelerator: "CmdOrCtrl+O",
           click: async () => {
             if (!mainWindow) return;
             const confirm = await dialog.showMessageBox(mainWindow, {
               type: "question",
-              buttons: ["Import", "Cancel"],
+              buttons: [labels.importButton, labels.cancelButton],
               defaultId: 0,
               cancelId: 1,
-              title: "Import Settings",
-              message: "현재 서버 목록과 개인 설정을 가져온 파일로 교체할까요?"
+              title: labels.importTitle,
+              message: labels.importMessage
             });
             if (confirm.response !== 0) return;
             try {
@@ -204,7 +368,7 @@ function createApplicationMenu() {
           }
         },
         {
-          label: "Export Settings...",
+          label: labels.exportSettings,
           accelerator: "CmdOrCtrl+S",
           click: async () => {
             if (!mainWindow) return;
@@ -221,15 +385,21 @@ function createApplicationMenu() {
         },
         { type: "separator" },
         {
-          label: "Preferences...",
+          label: labels.preferences,
           accelerator: "CmdOrCtrl+,",
           click: () => {
-            mainWindow?.webContents.send("preferences:open");
+            mainWindow?.webContents.send("preferences:open", "general");
+          }
+        },
+        {
+          label: labels.avroSchemas,
+          click: () => {
+            mainWindow?.webContents.send("preferences:open", "avro");
           }
         },
         { type: "separator" },
         {
-          label: "Check for Updates...",
+          label: labels.checkUpdates,
           click: async () => {
             try {
               await checkForUpdates();
@@ -243,7 +413,35 @@ function createApplicationMenu() {
           }
         },
         { type: "separator" },
-        process.platform === "darwin" ? { role: "close" } : { role: "quit" }
+        process.platform === "darwin"
+          ? { label: labels.close, role: "close" }
+          : { label: labels.quit, click: () => app.quit() }
+      ]
+    },
+    {
+      label: labels.help,
+      submenu: [
+        {
+          label: labels.shortcuts,
+          click: () => showHelpDialog(labels.helpShortcutsTitle, labels.helpShortcutsMessage)
+        },
+        {
+          label: labels.splitTabs,
+          click: () => showHelpDialog(labels.helpSplitTitle, labels.helpSplitMessage)
+        },
+        {
+          label: labels.searchTips,
+          click: () => showHelpDialog(labels.helpSearchTitle, labels.helpSearchMessage)
+        },
+        {
+          label: labels.kafkaTips,
+          click: () => showHelpDialog(labels.helpKafkaTitle, labels.helpKafkaMessage)
+        },
+        { type: "separator" },
+        {
+          label: labels.about,
+          click: () => showHelpDialog(labels.aboutTitle, labels.aboutMessage)
+        }
       ]
     }
   ];
@@ -254,7 +452,7 @@ async function getProfile(serverId: string) {
   const profiles = await readProfiles();
   const profile = profiles.find((item) => item.id === serverId);
   if (!profile) {
-    throw new Error("등록된 서버를 찾을 수 없습니다.");
+    throw new Error("Registered server not found.");
   }
   return profile;
 }
@@ -316,8 +514,80 @@ async function withAdmin<T>(serverId: string, action: (admin: Admin) => Promise<
   }
 }
 
-function consumeKey(serverId: string, topic: string) {
-  return `${serverId}:${topic}`;
+function consumeKey(serverId: string, topic: string, consumerId = "default") {
+  return `${serverId}:${topic}:${consumerId}`;
+}
+
+function shortHash(value: string) {
+  return createHash("sha1").update(value).digest("hex").slice(0, 12);
+}
+
+function kafkaToolConsumerGroupId(kind: "offset" | "time" | "live", parts: Array<string | number | undefined>) {
+  return `kafka-tool-${kind}-${shortHash(parts.map((part) => String(part ?? "")).join(":"))}`;
+}
+
+async function shutdownConsumer(consumer: Consumer) {
+  try {
+    await consumer.stop();
+  } catch {
+    // Consumer may not be running yet.
+  }
+  try {
+    await consumer.disconnect();
+  } catch {
+    // Nothing else to do during shutdown.
+  }
+}
+
+function closeLiveRecorder(key: string) {
+  const recorder = activeLiveRecorders.get(key);
+  if (!recorder) return;
+  activeLiveRecorders.delete(key);
+  recorder.stream.end();
+}
+
+async function createLiveRecorder(request: StartConsumeRequest) {
+  if (!request.record || !mainWindow) return undefined;
+  const now = new Date();
+  const timestamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0")
+  ].join("");
+  const defaultPath = path.join(
+    app.getPath("documents"),
+    `${sanitizeFileName(request.topic)}-${timestamp}.jsonl`
+  );
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: menuText[menuLanguage].saveLiveRecord,
+    defaultPath,
+    filters: [
+      { name: "JSON Lines", extensions: ["jsonl"] },
+      { name: "JSON", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] }
+    ]
+  });
+  if (result.canceled || !result.filePath) {
+    throw new Error("Live recording canceled.");
+  }
+  await mkdir(path.dirname(result.filePath), { recursive: true });
+  const stream = createWriteStream(result.filePath, { encoding: "utf8", flags: "a" });
+  stream.on("error", sendConsumeError);
+  return {
+    path: result.filePath,
+    stream,
+    count: 0
+  };
+}
+
+function writeLiveRecord(key: string, payload: ConsumedMessage) {
+  const recorder = activeLiveRecorders.get(key);
+  if (!recorder) return;
+  recorder.count += 1;
+  recorder.stream.write(`${JSON.stringify(payload)}\n`);
 }
 
 function calculateLag(currentOffset: string, endOffset: string) {
@@ -326,6 +596,13 @@ function calculateLag(currentOffset: string, endOffset: string) {
   }
   const lag = BigInt(endOffset) - BigInt(currentOffset);
   return lag < 0n ? "0" : lag.toString();
+}
+
+function isBeforeOffset(offset: string, startOffset: string | undefined) {
+  if (!startOffset || !/^\d+$/.test(offset) || !/^\d+$/.test(startOffset)) {
+    return false;
+  }
+  return BigInt(offset) < BigInt(startOffset);
 }
 
 function sanitizeFileName(value: string) {
@@ -391,12 +668,19 @@ function nextOffset(offset: string) {
 
 async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> {
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
-  const consumer = kafka.consumer({ groupId: `kafka-tool-offset-${Date.now()}` });
+  const consumer = kafka.consumer({
+    groupId: kafkaToolConsumerGroupId("offset", [request.serverId, request.topic, request.partition]),
+    minBytes: 1,
+    maxWaitTimeInMs: 250
+  });
   const messages: ConsumedMessage[] = [];
   const limit = Math.max(1, Number(request.limit) || 10);
   let seekOffset = request.offset;
   let endExclusive: bigint | null = null;
+  let expectedMessageCount = limit;
   let settled = false;
 
   const admin = kafka.admin();
@@ -425,21 +709,34 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
       } else if (/^\d+$/.test(seekOffset) && BigInt(seekOffset) < low) {
         seekOffset = low.toString();
       }
+
+      const startOffset = /^\d+$/.test(seekOffset) ? BigInt(seekOffset) : low;
+      const boundedStart = startOffset > low ? startOffset : low;
+      const remaining = endExclusive > boundedStart ? endExclusive - boundedStart : 0n;
+      expectedMessageCount = Number(remaining > BigInt(limit) ? BigInt(limit) : remaining);
     }
   } finally {
     await admin.disconnect();
+  }
+
+  if (expectedMessageCount <= 0) {
+    return { messages: [], endOffsetExclusive: endExclusive?.toString() };
   }
 
   await consumer.connect();
   await consumer.subscribe({ topic: request.topic, fromBeginning: true });
 
   return await new Promise<ConsumeOffsetResult>((resolve, reject) => {
+    let idleTimeout: NodeJS.Timeout | null = null;
+
+    const resetIdleTimeout = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(finish, messages.length > 0 ? 700 : 1200);
+    };
+
     const cleanup = () => {
-      void consumer.stop()
-        .catch(() => undefined)
-        .finally(() => {
-          void consumer.disconnect().catch(() => undefined);
-        });
+      if (idleTimeout) clearTimeout(idleTimeout);
+      void shutdownConsumer(consumer);
     };
 
     const finish = () => {
@@ -465,12 +762,13 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
         if (partition !== request.partition) {
           return;
         }
+        resetIdleTimeout();
         if (endExclusive !== null && /^\d+$/.test(message.offset) && BigInt(message.offset) >= endExclusive) {
           finish();
           return;
         }
-        messages.push(toConsumedMessage(request.serverId, topic, partition, message));
-        if (messages.length >= limit) {
+        messages.push(await toConsumedMessage(profile, topic, partition, message, manualSchema));
+        if (messages.length >= expectedMessageCount) {
           finish();
         }
       }
@@ -479,6 +777,7 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
     setTimeout(() => {
       try {
         consumer.seek({ topic: request.topic, partition: request.partition, offset: seekOffset });
+        resetIdleTimeout();
       } catch (error) {
         fail(error);
       }
@@ -488,16 +787,28 @@ async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise<Consum
 
 async function stopActiveConsumer(request?: StopConsumeRequest) {
   if (request?.serverId && request.topic) {
-    const key = consumeKey(request.serverId, request.topic);
-    const consumer = activeConsumers.get(key);
-    activeConsumers.delete(key);
-    await consumer?.disconnect().catch(() => undefined);
+    const consumerId = request.consumerId;
+    const targets = consumerId
+      ? [consumeKey(request.serverId, request.topic, consumerId)]
+      : [...activeConsumers.keys()].filter((key) => key.startsWith(`${request.serverId}:${request.topic}:`));
+    const consumers = targets
+      .map((key) => {
+        const consumer = activeConsumers.get(key);
+        activeConsumers.delete(key);
+        closeLiveRecorder(key);
+        return consumer;
+      })
+      .filter((consumer): consumer is Consumer => Boolean(consumer));
+    await Promise.all(consumers.map(shutdownConsumer));
     return;
   }
 
   const consumers = [...activeConsumers.values()];
+  for (const key of activeLiveRecorders.keys()) {
+    closeLiveRecorder(key);
+  }
   activeConsumers.clear();
-  await Promise.all(consumers.map((consumer) => consumer.disconnect().catch(() => undefined)));
+  await Promise.all(consumers.map(shutdownConsumer));
 }
 
 function sendConsumeError(error: unknown) {
@@ -516,13 +827,13 @@ function configureAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("checking-for-update", () => {
-    sendUpdateStatus({ status: "checking", message: "업데이트 확인 중" });
+    sendUpdateStatus({ status: "checking", message: "Checking for updates..." });
   });
 
   autoUpdater.on("update-available", (info) => {
     sendUpdateStatus({
       status: "available",
-      message: `새 버전 ${info.version} 다운로드 중`,
+      message: `Downloading new version ${info.version}...`,
       version: info.version
     });
   });
@@ -530,7 +841,7 @@ function configureAutoUpdater() {
   autoUpdater.on("update-not-available", (info) => {
     sendUpdateStatus({
       status: "not-available",
-      message: `현재 최신 버전입니다. (${info.version})`,
+      message: `You are on the latest version. (${info.version})`,
       version: info.version
     });
   });
@@ -539,7 +850,7 @@ function configureAutoUpdater() {
     const percent = Math.round(progress.percent);
     sendUpdateStatus({
       status: "download-progress",
-      message: `업데이트 다운로드 중 ${percent}%`,
+      message: `Downloading update ${percent}%`,
       percent
     });
   });
@@ -547,18 +858,18 @@ function configureAutoUpdater() {
   autoUpdater.on("update-downloaded", (info) => {
     sendUpdateStatus({
       status: "downloaded",
-      message: `업데이트 ${info.version} 다운로드 완료`,
+      message: `Update ${info.version} downloaded`,
       version: info.version
     });
     if (!mainWindow) return;
     void dialog.showMessageBox(mainWindow, {
       type: "info",
-      buttons: ["재시작 후 업데이트", "나중에"],
+      buttons: ["Restart and update", "Later"],
       defaultId: 0,
       cancelId: 1,
-      title: "업데이트 준비 완료",
-      message: `Kafka Tool ${info.version} 업데이트를 설치할 준비가 됐습니다.`,
-      detail: "지금 재시작하면 업데이트가 적용됩니다."
+      title: "Update ready",
+      message: `Kafka Tool ${info.version} is ready to install.`,
+      detail: "Restart now to apply the update."
     }).then((result) => {
       if (result.response === 0) {
         autoUpdater.quitAndInstall(false, true);
@@ -579,7 +890,7 @@ async function checkForUpdates() {
   if (!app.isPackaged) {
     sendUpdateStatus({
       status: "error",
-      message: "업데이트 확인은 패키징된 앱에서만 동작합니다."
+      message: "Update checks only work in the packaged app."
     });
     return;
   }
@@ -587,8 +898,10 @@ async function checkForUpdates() {
 }
 
 async function saveWindowBounds() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  const bounds = mainWindow.getNormalBounds();
+  const window = mainWindow;
+  if (!window || window.isDestroyed()) return;
+  const bounds = window.getNormalBounds();
+  const maximized = window.isMaximized();
   const preferences = await readPreferences();
   await writePreferences({
     ...preferences,
@@ -597,7 +910,7 @@ async function saveWindowBounds() {
       y: bounds.y,
       width: bounds.width,
       height: bounds.height,
-      maximized: mainWindow.isMaximized()
+      maximized
     }
   });
 }
@@ -615,6 +928,7 @@ function scheduleWindowBoundsSave() {
 async function createWindow() {
   const preloadPath = path.join(app.getAppPath(), "dist/preload/preload.js");
   const preferences = await readPreferences();
+  menuLanguage = resolveMenuLanguage(preferences.appearance?.language);
   const windowBounds = preferences.windowBounds;
   mainWindow = new BrowserWindow({
     width: windowBounds?.width ?? 1320,
@@ -624,6 +938,7 @@ async function createWindow() {
     minWidth: 1100,
     minHeight: 720,
     title: "Kafka Tool",
+    icon: appIconPath(),
     autoHideMenuBar: false,
     webPreferences: {
       preload: preloadPath,
@@ -683,10 +998,10 @@ ipcMain.handle("servers:list", async () => readProfiles());
 ipcMain.handle("servers:save", async (_event, server: Omit<ServerProfile, "id"> & { id?: string }) => {
   const brokers = server.brokers.map((broker) => broker.trim()).filter(Boolean);
   if (!server.name.trim()) {
-    throw new Error("서버 이름을 입력하세요.");
+    throw new Error("Enter a server name.");
   }
   if (brokers.length === 0) {
-    throw new Error("브로커 주소를 하나 이상 입력하세요.");
+    throw new Error("Enter at least one broker address.");
   }
 
   if (server.security?.sasl) {
@@ -695,13 +1010,33 @@ ipcMain.handle("servers:save", async (_event, server: Omit<ServerProfile, "id"> 
       throw new Error("SASL/OAUTHBEARER requires token endpoint, client ID, and client secret.");
     }
   }
+  if (server.schemaRegistry?.url && !/^https?:\/\//i.test(server.schemaRegistry.url.trim())) {
+    throw new Error("Schema Registry URL must start with http:// or https://.");
+  }
 
   const profiles = await readProfiles();
   const nextProfile: ServerProfile = {
     id: server.id ?? randomUUID(),
     name: server.name.trim(),
     brokers,
-    security: server.security
+    security: server.security,
+    schemaRegistry: server.schemaRegistry?.url?.trim()
+      ? {
+        url: server.schemaRegistry.url.trim(),
+        auth: server.schemaRegistry.auth?.type === "basic"
+          ? {
+            type: "basic",
+            username: server.schemaRegistry.auth.username ?? "",
+            password: server.schemaRegistry.auth.password ?? ""
+          }
+          : server.schemaRegistry.auth?.type === "bearer"
+            ? {
+              type: "bearer",
+              token: server.schemaRegistry.auth.token ?? ""
+            }
+            : undefined
+      }
+      : undefined
   };
   const nextProfiles = profiles.some((item) => item.id === nextProfile.id)
     ? profiles.map((item) => (item.id === nextProfile.id ? nextProfile : item))
@@ -751,98 +1086,169 @@ ipcMain.handle("preferences:save", async (_event, preferences: AppPreferences) =
   return mergedPreferences;
 });
 
+ipcMain.handle("menu:set-language", async (_event, language: AppMenuLanguage) => {
+  if (language !== "ko" && language !== "en") return;
+  menuLanguage = language;
+  createApplicationMenu();
+});
+
+ipcMain.handle("kafka:health", async (_event, serverId: string): Promise<void> => {
+  await withAdmin(serverId, async (admin) => {
+    await admin.describeCluster();
+  });
+});
+
 ipcMain.handle("kafka:topics", async (_event, serverId: string): Promise<TopicSummary[]> => {
   return withAdmin(serverId, async (admin) => {
     const metadata = await admin.fetchTopicMetadata();
-    const topics = metadata.topics
+    return metadata.topics
       .filter((topic) => !topic.name.startsWith("__"))
       .map((topic) => ({
         name: topic.name,
         partitions: topic.partitions.length,
         replicationFactor: topic.partitions[0]?.replicas.length ?? 0
-      }));
-    const topicsWithOffsets = await mapWithConcurrency(topics, 8, async (topic) => {
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+});
+
+ipcMain.handle("kafka:topic-message-counts", async (_event, serverId: string, topicNames: string[]): Promise<TopicMessageCounts> => {
+  const uniqueTopicNames = [...new Set(topicNames.map((topic) => topic.trim()).filter(Boolean))];
+  if (uniqueTopicNames.length === 0) return {};
+  return withAdmin(serverId, async (admin) => {
+    const entries = await mapWithConcurrency(uniqueTopicNames, 6, async (topicName) => {
       try {
-        const offsets = await admin.fetchTopicOffsets(topic.name);
+        const offsets = await admin.fetchTopicOffsets(topicName);
         const messageCount = offsets.reduce((total, offset) => {
           const high = /^\d+$/.test(offset.high) ? BigInt(offset.high) : 0n;
           const low = /^\d+$/.test(offset.low) ? BigInt(offset.low) : 0n;
           return total + (high > low ? high - low : 0n);
         }, 0n);
-        return {
-          ...topic,
-          messageCount: messageCount.toString()
-        };
+        return [topicName, messageCount.toString()] as const;
       } catch {
-        return topic;
+        return [topicName, "0"] as const;
       }
     });
-    return topicsWithOffsets
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return Object.fromEntries(entries);
   });
 });
 
-ipcMain.handle("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
-  return withAdmin(serverId, async (admin) => {
-    const [cluster, metadata] = await Promise.all([
-      admin.describeCluster(),
-      admin.fetchTopicMetadata()
-    ]);
-    const brokerStats = new Map<number, BrokerSummary>();
-    for (const broker of cluster.brokers) {
-      brokerStats.set(broker.nodeId, {
-        nodeId: broker.nodeId,
-        host: broker.host,
-        port: broker.port,
-        controller: broker.nodeId === cluster.controller,
-        leaderCount: 0,
-        replicaCount: 0,
-        inSyncReplicaCount: 0,
-        outOfSyncReplicaCount: 0,
-        onlinePartitionCount: 0,
-        underReplicatedPartitionCount: 0,
-        leaderSkewPercent: 0,
-        partitionSkewPercent: 0
-      });
-    }
+async function loadBrokerSummaries(admin: Admin): Promise<BrokerSummary[]> {
+  const [cluster, metadata] = await Promise.all([
+    admin.describeCluster(),
+    admin.fetchTopicMetadata()
+  ]);
+  const brokerStats = new Map<number, BrokerSummary>();
+  for (const broker of cluster.brokers) {
+    brokerStats.set(broker.nodeId, {
+      nodeId: broker.nodeId,
+      host: broker.host,
+      port: broker.port,
+      controller: broker.nodeId === cluster.controller,
+      leaderCount: 0,
+      replicaCount: 0,
+      inSyncReplicaCount: 0,
+      outOfSyncReplicaCount: 0,
+      onlinePartitionCount: 0,
+      underReplicatedPartitionCount: 0,
+      leaderSkewPercent: 0,
+      partitionSkewPercent: 0
+    });
+  }
 
-    let totalLeaders = 0;
-    let totalReplicas = 0;
-    for (const topic of metadata.topics.filter((item) => !item.name.startsWith("__"))) {
-      for (const partition of topic.partitions) {
-        const leader = brokerStats.get(partition.leader);
-        if (leader) {
-          leader.leaderCount += 1;
-          leader.onlinePartitionCount += 1;
-          totalLeaders += 1;
-          if (partition.isr.length < partition.replicas.length) {
-            leader.underReplicatedPartitionCount += 1;
-          }
+  let totalLeaders = 0;
+  let totalReplicas = 0;
+  for (const topic of metadata.topics.filter((item) => !item.name.startsWith("__"))) {
+    for (const partition of topic.partitions) {
+      const leader = brokerStats.get(partition.leader);
+      if (leader) {
+        leader.leaderCount += 1;
+        leader.onlinePartitionCount += 1;
+        totalLeaders += 1;
+        if (partition.isr.length < partition.replicas.length) {
+          leader.underReplicatedPartitionCount += 1;
         }
+      }
 
-        for (const replicaId of partition.replicas) {
-          const replica = brokerStats.get(replicaId);
-          if (!replica) continue;
-          replica.replicaCount += 1;
-          totalReplicas += 1;
-          if (partition.isr.includes(replicaId)) {
-            replica.inSyncReplicaCount += 1;
-          } else {
-            replica.outOfSyncReplicaCount += 1;
-          }
+      for (const replicaId of partition.replicas) {
+        const replica = brokerStats.get(replicaId);
+        if (!replica) continue;
+        replica.replicaCount += 1;
+        totalReplicas += 1;
+        if (partition.isr.includes(replicaId)) {
+          replica.inSyncReplicaCount += 1;
+        } else {
+          replica.outOfSyncReplicaCount += 1;
         }
       }
     }
+  }
 
-    const averageLeaders = brokerStats.size > 0 ? totalLeaders / brokerStats.size : 0;
-    const averageReplicas = brokerStats.size > 0 ? totalReplicas / brokerStats.size : 0;
-    return [...brokerStats.values()]
-      .map((broker) => ({
-        ...broker,
-        leaderSkewPercent: averageLeaders > 0 ? ((broker.leaderCount - averageLeaders) / averageLeaders) * 100 : 0,
-        partitionSkewPercent: averageReplicas > 0 ? ((broker.replicaCount - averageReplicas) / averageReplicas) * 100 : 0
+  const averageLeaders = brokerStats.size > 0 ? totalLeaders / brokerStats.size : 0;
+  const averageReplicas = brokerStats.size > 0 ? totalReplicas / brokerStats.size : 0;
+  return [...brokerStats.values()]
+    .map((broker) => ({
+      ...broker,
+      leaderSkewPercent: averageLeaders > 0 ? ((broker.leaderCount - averageLeaders) / averageLeaders) * 100 : 0,
+      partitionSkewPercent: averageReplicas > 0 ? ((broker.replicaCount - averageReplicas) / averageReplicas) * 100 : 0
+    }))
+    .sort((left, right) => left.nodeId - right.nodeId);
+}
+
+async function loadBrokerDetail(admin: Admin, brokerId: number): Promise<BrokerDetail> {
+  const brokers = await loadBrokerSummaries(admin);
+  const broker = brokers.find((item) => item.nodeId === brokerId);
+  if (!broker) {
+    throw new Error("Broker not found.");
+  }
+  const configsResponse = await admin.describeConfigs({
+    resources: [{ type: ConfigResourceTypes.BROKER, name: String(brokerId) }],
+    includeSynonyms: true
+  });
+  const configResource = configsResponse.resources[0];
+  const configs: BrokerConfigEntry[] = (configResource?.configEntries ?? [])
+    .map((entry) => ({
+      name: entry.configName,
+      value: entry.isSensitive ? "" : entry.configValue ?? "",
+      source: configSourceLabel(entry.configSource),
+      isDefault: entry.isDefault,
+      isSensitive: entry.isSensitive,
+      readOnly: entry.readOnly,
+      synonyms: (entry.configSynonyms ?? []).map((synonym) => ({
+        name: synonym.configName,
+        value: entry.isSensitive ? "" : synonym.configValue ?? "",
+        source: configSourceLabel(synonym.configSource)
       }))
-      .sort((left, right) => left.nodeId - right.nodeId);
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    broker,
+    configs,
+    logDirectories: [],
+    logDirectoriesSupported: false
+  };
+}
+
+ipcMain.handle("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
+  return withAdmin(serverId, loadBrokerSummaries);
+});
+
+ipcMain.handle("kafka:broker-detail", async (_event, serverId: string, brokerId: number): Promise<BrokerDetail> => {
+  return withAdmin(serverId, (admin) => loadBrokerDetail(admin, brokerId));
+});
+
+ipcMain.handle("kafka:broker-config-update", async (_event, request: BrokerConfigUpdateRequest): Promise<BrokerDetail> => {
+  return withAdmin(request.serverId, async (admin) => {
+    await admin.alterConfigs({
+      validateOnly: Boolean(request.validateOnly),
+      resources: [{
+        type: ConfigResourceTypes.BROKER,
+        name: String(request.brokerId),
+        configEntries: [{ name: request.name, value: request.value }]
+      }]
+    });
+    return loadBrokerDetail(admin, request.brokerId);
   });
 });
 
@@ -851,9 +1257,10 @@ ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName:
     const metadata = await admin.fetchTopicMetadata({ topics: [topicName] });
     const topic = metadata.topics[0];
     if (!topic) {
-      throw new Error("토픽을 찾을 수 없습니다.");
+      throw new Error("Topic not found.");
     }
     const offsets = await admin.fetchTopicOffsets(topicName);
+    const configs = await loadTopicConfigs(admin, topicName);
     return {
       name: topic.name,
       partitions: topic.partitions.map((partition) => ({
@@ -866,8 +1273,90 @@ ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName:
         partition: offset.partition,
         low: offset.low,
         high: offset.high
-      }))
+      })),
+      configs
     };
+  });
+});
+
+async function loadTopicConfigs(admin: Admin, topicName: string): Promise<TopicConfigEntry[]> {
+  const configsResponse = await admin.describeConfigs({
+    resources: [{ type: ConfigResourceTypes.TOPIC, name: topicName }],
+    includeSynonyms: true
+  });
+  const configResource = configsResponse.resources[0];
+  if (!configResource) return [];
+  if (configResource.errorMessage) {
+    throw new Error(configResource.errorMessage);
+  }
+  return (configResource.configEntries ?? [])
+    .map((entry) => ({
+      name: entry.configName,
+      value: entry.isSensitive ? "" : entry.configValue ?? "",
+      source: configSourceLabel(entry.configSource),
+      isDefault: entry.isDefault,
+      isSensitive: entry.isSensitive,
+      readOnly: entry.readOnly,
+      synonyms: (entry.configSynonyms ?? []).map((synonym) => ({
+        name: synonym.configName,
+        value: entry.isSensitive ? "" : synonym.configValue ?? "",
+        source: configSourceLabel(synonym.configSource)
+      }))
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+ipcMain.handle("kafka:topic-configs", async (_event, serverId: string, topicName: string): Promise<TopicConfigEntry[]> => {
+  return withAdmin(serverId, (admin) => loadTopicConfigs(admin, topicName));
+});
+
+ipcMain.handle("kafka:topic-config-update", async (_event, request: TopicConfigUpdateRequest): Promise<TopicConfigEntry[]> => {
+  const entries = request.entries
+    .map((entry) => ({ name: entry.name.trim(), value: entry.value }))
+    .filter((entry) => entry.name);
+  if (entries.length === 0) {
+    throw new Error("No topic settings to change.");
+  }
+  return withAdmin(request.serverId, async (admin) => {
+    await admin.alterConfigs({
+      validateOnly: Boolean(request.validateOnly),
+      resources: [{
+        type: ConfigResourceTypes.TOPIC,
+        name: request.topic,
+        configEntries: entries
+      }]
+    });
+    return loadTopicConfigs(admin, request.topic);
+  });
+});
+
+ipcMain.handle("kafka:topic-create", async (_event, request: TopicCreateRequest): Promise<void> => {
+  const topic = request.topic.trim();
+  const partitions = Math.trunc(Number(request.partitions));
+  const replicationFactor = Math.trunc(Number(request.replicationFactor));
+  const configEntries = (request.configs ?? [])
+    .map((entry) => ({ name: entry.name.trim(), value: entry.value.trim() }))
+    .filter((entry) => entry.name && entry.value !== "");
+  if (!topic) {
+    throw new Error("Topic name is required.");
+  }
+  if (!Number.isInteger(partitions) || partitions < 1) {
+    throw new Error("Partitions must be 1 or higher.");
+  }
+  if (!Number.isInteger(replicationFactor) || replicationFactor < 1) {
+    throw new Error("Replication factor must be 1 or higher.");
+  }
+  await withAdmin(request.serverId, async (admin) => {
+    await admin.createTopics({
+      topics: [{
+        topic,
+        numPartitions: partitions,
+        replicationFactor,
+        configEntries
+      }],
+      waitForLeaders: true,
+      timeout: 15000
+    });
   });
 });
 
@@ -970,6 +1459,16 @@ ipcMain.handle("kafka:groups", async (_event, serverId: string): Promise<Consume
         };
       })
       .sort((a, b) => a.groupId.localeCompare(b.groupId));
+  });
+});
+
+ipcMain.handle("kafka:groups-delete", async (_event, request: ConsumerGroupMutationRequest): Promise<void> => {
+  const groupIds = request.groupIds.map((groupId) => groupId.trim()).filter(Boolean);
+  if (groupIds.length === 0) {
+    throw new Error("No consumer groups selected.");
+  }
+  await withAdmin(request.serverId, async (admin) => {
+    await admin.deleteGroups(groupIds);
   });
 });
 
@@ -1126,15 +1625,18 @@ ipcMain.handle("messages:export-offset", async (_event, request: OffsetMessageEx
 
 ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise<ProducedMessage[]> => {
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const producer = createKafka(profile).producer();
   await producer.connect();
   try {
+    const value = encodeManualAvro(profile, request.topic, request.value, manualSchema);
     const result = await producer.send({
       topic: request.topic,
       messages: [
         {
           key: request.key || undefined,
-          value: request.value,
+          value,
           headers: request.headers
         }
       ]
@@ -1149,38 +1651,23 @@ ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise
   }
 });
 
-function toConsumedMessage(serverId: string | undefined, topic: string, partition: number, message: KafkaMessage): ConsumedMessage {
-  const headers: Record<string, string> = {};
-  for (const [key, value] of Object.entries(message.headers ?? {})) {
-    if (Array.isArray(value)) {
-      headers[key] = value.map((item) => (Buffer.isBuffer(item) ? item.toString("utf8") : String(item))).join(", ");
-    } else if (value !== undefined) {
-      headers[key] = Buffer.isBuffer(value) ? value.toString("utf8") : String(value);
-    }
-  }
-  return {
-    serverId,
-    topic,
-    partition,
-    offset: message.offset,
-    timestamp: new Date(Number(message.timestamp)).toISOString(),
-    key: message.key?.toString("utf8") ?? "",
-    value: message.value?.toString("utf8") ?? "",
-    headers
-  };
-}
-
 ipcMain.handle("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> => {
   return consumeOffsetBatch(request);
 });
 
 ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRangeRequest): Promise<ConsumedMessage[]> => {
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
   const limit = Math.max(1, Number(request.limit) || 100);
   const messages: ConsumedMessage[] = [];
   const admin = kafka.admin();
-  const consumer = kafka.consumer({ groupId: `kafka-tool-time-${Date.now()}` });
+  const consumer = kafka.consumer({
+    groupId: kafkaToolConsumerGroupId("time", [request.serverId, request.topic, request.partition ?? "all"]),
+    minBytes: 1,
+    maxWaitTimeInMs: 250
+  });
   let settled = false;
 
   await admin.connect();
@@ -1202,17 +1689,29 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
     return [];
   }
 
+  const seekablePartitions = partitions.filter((partition) => {
+    const offset = startOffsets.get(partition);
+    return offset !== undefined && offset !== "-1" && /^\d+$/.test(offset);
+  });
+  if (seekablePartitions.length === 0) {
+    return [];
+  }
+
   const completed = new Set<number>();
   await consumer.connect();
   await consumer.subscribe({ topic: request.topic, fromBeginning: true });
 
   return await new Promise<ConsumedMessage[]>((resolve, reject) => {
+    let idleTimeout: NodeJS.Timeout | null = null;
+
+    const resetIdleTimeout = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
+      idleTimeout = setTimeout(finish, messages.length > 0 ? 900 : 1500);
+    };
+
     const cleanup = () => {
-      void consumer.stop()
-        .catch(() => undefined)
-        .finally(() => {
-          void consumer.disconnect().catch(() => undefined);
-        });
+      if (idleTimeout) clearTimeout(idleTimeout);
+      void shutdownConsumer(consumer);
     };
 
     const finish = () => {
@@ -1235,21 +1734,22 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
 
     consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
-        if (!partitions.includes(partition)) {
+        if (!seekablePartitions.includes(partition)) {
           return;
         }
+        resetIdleTimeout();
 
         const timestamp = Number(message.timestamp);
         if (timestamp > request.endTimestamp) {
           completed.add(partition);
-          if (completed.size >= partitions.length) {
+          if (completed.size >= seekablePartitions.length) {
             finish();
           }
           return;
         }
 
         if (timestamp >= request.startTimestamp) {
-          messages.push(toConsumedMessage(request.serverId, topic, partition, message));
+          messages.push(await toConsumedMessage(profile, topic, partition, message, manualSchema));
           if (messages.length >= limit) {
             finish();
           }
@@ -1259,13 +1759,14 @@ ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRa
 
     setTimeout(() => {
       try {
-        for (const partition of partitions) {
+        for (const partition of seekablePartitions) {
           consumer.seek({
             topic: request.topic,
             partition,
             offset: startOffsets.get(partition) ?? "0"
           });
         }
+        resetIdleTimeout();
       } catch (error) {
         fail(error);
       }
@@ -1278,34 +1779,93 @@ ipcMain.handle("kafka:consume-stop", async (_event, request?: StopConsumeRequest
 });
 
 ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
-  await stopActiveConsumer({ serverId: request.serverId, topic: request.topic });
+  const consumerId = request.consumerId ?? "default";
+  await stopActiveConsumer({ serverId: request.serverId, topic: request.topic, consumerId });
+  const key = consumeKey(request.serverId, request.topic, consumerId);
+  const recorder = await createLiveRecorder(request);
+  if (recorder) {
+    activeLiveRecorders.set(key, recorder);
+  }
   const profile = await getProfile(request.serverId);
+  const preferences = await readPreferences();
+  const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
-  const groupId = `kafka-tool-${Date.now()}`;
+  const groupId = kafkaToolConsumerGroupId("live", [request.serverId, request.topic, consumerId]);
   const consumer = kafka.consumer({ groupId });
-  activeConsumers.set(consumeKey(request.serverId, request.topic), consumer);
+  const admin = kafka.admin();
+  activeConsumers.set(key, consumer);
 
-  await consumer.connect();
-  await consumer.subscribe({ topic: request.topic, fromBeginning: request.fromBeginning });
+  try {
+    await admin.connect();
+    const liveStartOffsets = new Map(
+      (await admin.fetchTopicOffsets(request.topic))
+        .filter((item) => request.partition === undefined || item.partition === request.partition)
+        .map((item) => [item.partition, item.offset])
+    );
+    await admin.disconnect();
 
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      if (request.partition !== undefined && partition !== request.partition) {
-        return;
+    await consumer.connect();
+    await consumer.subscribe({ topic: request.topic, fromBeginning: request.fromBeginning });
+
+    await consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        if (request.partition !== undefined && partition !== request.partition) {
+          return;
+        }
+        if (isBeforeOffset(message.offset, liveStartOffsets.get(partition))) {
+          return;
+        }
+        const payload = {
+          ...await toConsumedMessage(profile, topic, partition, message, manualSchema),
+          serverId: request.serverId,
+          consumerId
+        };
+        writeLiveRecord(key, payload);
+        mainWindow?.webContents.send("kafka:consume-message", payload);
       }
-      const payload = toConsumedMessage(request.serverId, topic, partition, message);
-      mainWindow?.webContents.send("kafka:consume-message", payload);
-    }
-  }).catch((error) => {
-    activeConsumers.delete(consumeKey(request.serverId, request.topic));
+    }).catch((error) => {
+      activeConsumers.delete(key);
+      closeLiveRecorder(key);
+      void shutdownConsumer(consumer);
+      sendConsumeError(error);
+    });
+    setTimeout(() => {
+      for (const [partition, offset] of liveStartOffsets) {
+        try {
+          consumer.seek({ topic: request.topic, partition, offset });
+        } catch {
+          // The offset filter above still prevents old messages from reaching the renderer.
+        }
+      }
+    }, 0);
+  } catch (error) {
+    activeConsumers.delete(key);
+    closeLiveRecorder(key);
+    await admin.disconnect().catch(() => undefined);
+    await shutdownConsumer(consumer);
     sendConsumeError(error);
-  });
+    throw error;
+  }
+  return { liveRecordPath: recorder?.path };
 });
+
+if (process.platform === "win32") {
+  app.setAppUserModelId(appUserModelId);
+}
 
 app.whenReady().then(createWindow);
 
-app.on("before-quit", () => {
-  void stopActiveConsumer();
+app.on("before-quit", (event) => {
+  if (isCleaningUpConsumers || activeConsumers.size === 0) {
+    return;
+  }
+  event.preventDefault();
+  isCleaningUpConsumers = true;
+  void stopActiveConsumer()
+    .finally(() => {
+      isCleaningUpConsumers = false;
+      app.quit();
+    });
 });
 
 app.on("window-all-closed", () => {
@@ -1318,4 +1878,19 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     void createWindow();
   }
+});
+
+async function cleanupConsumersAndExit() {
+  if (isCleaningUpConsumers) return;
+  isCleaningUpConsumers = true;
+  await stopActiveConsumer();
+  process.exit(0);
+}
+
+process.on("SIGINT", () => {
+  void cleanupConsumersAndExit();
+});
+
+process.on("SIGTERM", () => {
+  void cleanupConsumersAndExit();
 });
