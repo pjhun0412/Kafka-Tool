@@ -8,6 +8,14 @@ It is built for developers and operators who need to register Kafka clusters, br
 
 Current release: `2.0.0`
 
+## Documentation
+
+- [Changelog](CHANGELOG.md)
+- [Release guide](docs/release.md)
+- [macOS internal install](docs/macos-install.md)
+- [Consume filters](docs/consume-filters.md)
+- [Avro](docs/avro.md)
+
 ## Highlights
 
 - Multi-cluster server profile management
@@ -37,6 +45,7 @@ Live mode starts from the latest topic offsets for the current session, so old c
 Large offset queries are paged automatically when the requested limit is greater than `10,000`. The current page can be exported, and the full captured offset range can also be exported.
 
 Message filtering supports plain text, field filters, regex, and JSON path comparisons.
+See [Consume filters](docs/consume-filters.md) for more examples.
 
 ```text
 key:PR1001
@@ -83,6 +92,7 @@ Kafka Tool supports two Avro modes:
 - Manual schema registered per topic
 
 Confluent wire-format messages can be decoded automatically when schema IDs are available. Manual schemas can be pasted, uploaded, or drag-and-dropped into the schema editor.
+See [Avro](docs/avro.md) for details.
 
 ## Preferences
 
@@ -173,10 +183,12 @@ out/latest.yml
 ```
 
 Install using `Kafka-Tool-Setup-{version}.exe`, not the `win-unpacked` directory.
+See [macOS internal install](docs/macos-install.md) for unsigned internal macOS installs.
 
 ## Release
 
 Auto update uses `electron-updater` and GitHub Releases.
+See [Release guide](docs/release.md) for the full release flow.
 
 Publish a Windows release:
 
