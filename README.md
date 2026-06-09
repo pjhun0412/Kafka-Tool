@@ -152,6 +152,12 @@ Build a Windows installer locally:
 npm run package:win
 ```
 
+Build a macOS package on macOS:
+
+```bash
+CSC_IDENTITY_AUTO_DISCOVERY=false npm run package:mac
+```
+
 Generated files are written to:
 
 ```text
@@ -178,6 +184,12 @@ Publish a Windows release:
 $env:GH_TOKEN="your_github_token"
 npm run release:win
 Remove-Item Env:GH_TOKEN
+```
+
+Publish a macOS release from macOS:
+
+```bash
+GH_TOKEN="your_github_token" CSC_IDENTITY_AUTO_DISCOVERY=false npm run release:mac
 ```
 
 The GitHub token needs repository access for:
