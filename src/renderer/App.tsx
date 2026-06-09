@@ -78,6 +78,7 @@ import {
   useWorkspaceTasks
 } from "./hooks/workspace";
 import { useServerFormStore } from "./stores/ui/serverFormStore";
+import { useTopicCreateStore } from "./stores/ui/topicCreateStore";
 export function App() {
   const kafkaApi = window.kafkaApi;
   const {
@@ -96,6 +97,10 @@ export function App() {
   const { openNewServerForm, openEditServerForm } = useServerFormStore(useShallow((state) => ({
     openNewServerForm: state.openNewServerForm,
     openEditServerForm: state.openEditServerForm
+  })));
+  const { openTopicCreateForm, closeTopicCreateForm } = useTopicCreateStore(useShallow((state) => ({
+    openTopicCreateForm: state.openTopicCreateForm,
+    closeTopicCreateForm: state.closeTopicCreateForm
   })));
   const {
     viewByServer,
@@ -196,6 +201,9 @@ export function App() {
     setFontFamily,
     fontSize,
     setFontSize,
+    language,
+    setLanguage,
+    resolvedLanguage,
     exportFormatTemplate,
     setExportFormatTemplate,
     startSidebarResize,
@@ -230,6 +238,8 @@ export function App() {
     setFontFamily,
     fontSize,
     setFontSize,
+    language,
+    setLanguage,
     exportFormatTemplate,
     setExportFormatTemplate
   });
@@ -413,6 +423,7 @@ export function App() {
   });
   useElectronMenuEvents({
     kafkaApi,
+    language: resolvedLanguage,
     openPreferencesSection,
     applyImportedSettings,
     setStatus,
@@ -505,7 +516,6 @@ export function App() {
     selectedTopic,
     consumeStates,
     selectedDefaultConsumeState,
-    runTask,
     runWorkspaceTask,
     updateConsumeStateFor,
     setActiveConsumeTaskKeys,
@@ -810,6 +820,7 @@ export function App() {
     }
   });
   const {
+    createTopic,
     requestTopicAction,
     requestTopicActionFor,
     confirmTopicAction
@@ -846,6 +857,11 @@ export function App() {
     setToast
   });
 
+  async function submitTopicCreate(form: Parameters<typeof createTopic>[0]) {
+    await createTopic(form);
+    closeTopicCreateForm();
+  }
+
   const { executeQuickSearch } = useQuickSearchActions({
     quickSearchResults,
     quickSearchIndex,
@@ -876,8 +892,7 @@ export function App() {
     closeQuickSearch,
     openPreferences,
     setSidebarCollapsed,
-    setQuickSearchIndex,
-    executeQuickSearch
+    setQuickSearchIndex
   });
 
   const { manualAvroTopicNames, manualAvroSchemaRows } = useManualAvroSchemaSummary(
@@ -906,6 +921,7 @@ export function App() {
     selectedTopic,
     view,
     visibleSplitPane,
+    selectedConsumeState,
     splitConsumeState,
     selectedDefaultConsumeState,
     refreshBrokers,
@@ -996,6 +1012,7 @@ export function App() {
     toggleTopicRow,
     toggleAllTopicRows,
     copySelectedTopicNames,
+    openTopicCreateForm,
     requestTopicAction,
     toggleFavoriteTopic,
     loadConsumerGroupLag,
@@ -1030,6 +1047,7 @@ export function App() {
     toggleTopicRow,
     toggleAllTopicRows,
     copySelectedTopicNames,
+    openTopicCreateForm,
     requestTopicAction,
     toggleFavoriteTopic,
     loadConsumerGroupLagFor,
@@ -1136,6 +1154,7 @@ export function App() {
     produceHeaders: selectedProduceDraft.headers,
     produceValue: selectedProduceDraft.value,
     paneToast: primaryPaneToast,
+    language: resolvedLanguage,
     hasAvroSchema: (topic) => manualAvroTopicNames.has(topic),
     onSelectCluster: setSelectedServerId,
     callbacks: primaryPaneCallbacks
@@ -1164,6 +1183,7 @@ export function App() {
     produceHeaders: splitProduceDraft.headers,
     produceValue: splitProduceDraft.value,
     paneToast: splitPaneToast,
+    language: resolvedLanguage,
     callbacks: splitPaneCallbacks
   }) : null;
   const overlayProps = useWorkspaceOverlayProps({
@@ -1181,10 +1201,13 @@ export function App() {
     onExecuteQuickSearch: (result) => void executeQuickSearch(result),
     fontFamily,
     fontSize,
+    language,
+    resolvedLanguage,
     exportFormatTemplate,
     manualAvroSchemaRows,
     onFontFamily: setFontFamily,
     onFontSize: setFontSize,
+    onLanguage: setLanguage,
     onExportFormatTemplate: setExportFormatTemplate,
     onOpenManualAvroSchema: openManualAvroSchema,
     onDeleteManualAvroSchemaFor: deleteManualAvroSchemaFor,
@@ -1193,6 +1216,7 @@ export function App() {
     onReadSchemaFile: readSchemaFile,
     onDeleteManualAvroSchema: deleteManualAvroSchema,
     onSaveManualAvroSchema: saveManualAvroSchema,
+    onCreateTopic: submitTopicCreate,
     confirmTopicAction,
     topicContextMenu,
     serverContextMenu,

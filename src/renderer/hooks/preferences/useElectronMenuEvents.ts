@@ -1,10 +1,12 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ImportSettingsResult, KafkaApi, UpdateStatus } from "../../../shared/types";
+import type { AppLanguage } from "../../i18n";
 import type { ToastState } from "../../uiTypes";
 
 type ElectronMenuEventParams = {
   kafkaApi: KafkaApi | undefined;
+  language: AppLanguage;
   openPreferencesSection: (section: "editor" | "avro") => void;
   applyImportedSettings: (result: ImportSettingsResult) => void;
   setStatus: (status: string) => void;
@@ -25,11 +27,17 @@ function getUpdateToastKind(updateStatus: UpdateStatus): "loading" | "success" |
 
 export function useElectronMenuEvents({
   kafkaApi,
+  language,
   openPreferencesSection,
   applyImportedSettings,
   setStatus,
   setToast
 }: ElectronMenuEventParams) {
+  useEffect(() => {
+    if (!kafkaApi) return;
+    void kafkaApi.setMenuLanguage(language);
+  }, [kafkaApi, language]);
+
   useEffect(() => {
     if (!kafkaApi) return;
     const offPreferencesOpen = kafkaApi.onPreferencesOpen((section) => {
@@ -44,12 +52,12 @@ export function useElectronMenuEvents({
     if (!kafkaApi) return;
     const offImported = kafkaApi.onSettingsImported((result) => {
       applyImportedSettings(result);
-      setStatus("설정 가져오기가 완료되었습니다.");
-      setToast({ message: "설정 가져오기가 완료되었습니다.", kind: "success" });
+      setStatus("Settings import completed.");
+      setToast({ message: "Settings import completed.", kind: "success" });
     });
     const offExported = kafkaApi.onSettingsExported((filePath) => {
-      setStatus(`설정 내보내기가 완료되었습니다: ${filePath}`);
-      setToast({ message: "설정 내보내기가 완료되었습니다.", kind: "success" });
+      setStatus(`Settings export completed: ${filePath}`);
+      setToast({ message: "Settings export completed.", kind: "success" });
     });
     const offSettingsError = kafkaApi.onSettingsError((error) => {
       setStatus(error);

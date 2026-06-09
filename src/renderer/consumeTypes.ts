@@ -23,6 +23,9 @@ export type TopicConsumeState = {
   inspectorCollapsed: boolean;
   autoScroll: boolean;
   maxMessages: number;
+  liveRecordEnabled: boolean;
+  liveRecordPath: string;
+  liveRecordCount: number;
   messagePaneHeight: number;
   offsetPagination: {
     totalLimit: number;
@@ -52,6 +55,9 @@ export const emptyConsumeState: TopicConsumeState = {
   inspectorCollapsed: false,
   autoScroll: true,
   maxMessages: 1000,
+  liveRecordEnabled: false,
+  liveRecordPath: "",
+  liveRecordCount: 0,
   messagePaneHeight: 230,
   offsetPagination: null
 };

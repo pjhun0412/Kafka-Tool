@@ -1,10 +1,13 @@
 ﻿import React from "react";
-import { Calendar, Play, Square } from "lucide-react";
+import { CircleDot, Play, RefreshCw, Square } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import type { ConsumeFilterMode, ConsumeMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { Button } from "../../ui";
 import { ConsumeExportMenu } from "./ConsumeExportMenu";
 import { ConsumePagingBar } from "./ConsumePagingBar";
+import { DateTimePicker } from "./DateTimePicker";
 
 type ConsumeToolbarProps = {
   mode: ConsumeMode;
@@ -18,6 +21,9 @@ type ConsumeToolbarProps = {
   timeEnd: string;
   autoScroll: boolean;
   maxMessages: number;
+  liveRecordEnabled: boolean;
+  liveRecordPath: string;
+  liveRecordCount: number;
   filterMode: ConsumeFilterMode;
   hasActiveMessageFilter: boolean;
   filteredMessages: ConsumedMessage[];
@@ -36,6 +42,7 @@ type ConsumeToolbarProps = {
   onTimeEnd: (value: string) => void;
   onAutoScroll: (value: boolean) => void;
   onMaxMessages: (value: number) => void;
+  onLiveRecordEnabled: (value: boolean) => void;
   onPagePrev: () => void;
   onPageNext: () => void;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
@@ -45,6 +52,9 @@ type ConsumeToolbarProps = {
 };
 
 export function ConsumeToolbar(props: ConsumeToolbarProps) {
+  const language = useAppLanguage();
+  const isStartingLive = props.mode === "live" && props.isQuerying && !props.isConsuming;
+  const isStoppingLive = props.mode === "live" && props.isQuerying && props.isConsuming;
   return (
     <>
       <div className="toolbar">
@@ -53,48 +63,59 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
           <button className={props.mode === "timeRange" ? "active" : ""} onClick={() => props.onMode("timeRange")} disabled={props.isConsuming}>Time</button>
           <button className={props.mode === "live" ? "active" : ""} onClick={() => props.onMode("live")}>Live</button>
         </div>
-        <input className="small-input" type="number" min={0} value={props.partition} onChange={(event) => props.onPartition(event.target.value)} placeholder="partition" />
+        <input className="small-input" type="number" min={0} value={props.partition} onChange={(event) => props.onPartition(event.target.value)} placeholder={t(language, "placeholder.partition")} />
         {props.mode === "offset" && (
           <>
-            <input className="small-input" type="number" min={0} value={props.offset} onChange={(event) => props.onOffset(event.target.value)} placeholder="offset" />
+            <input className="small-input" type="number" min={0} value={props.offset} onChange={(event) => props.onOffset(event.target.value)} placeholder={t(language, "placeholder.offset")} />
             <input className="tiny-input" type="number" min={1} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
-            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title="Message order">
-              <option value="asc">Oldest</option>
-              <option value="desc">Newest</option>
+            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title={t(language, "title.messageOrder")}>
+              <option value="asc">{t(language, "label.oldest")}</option>
+              <option value="desc">{t(language, "label.newest")}</option>
             </select>
           </>
         )}
         {props.mode === "timeRange" && (
           <>
-            <label className="date-field">
-              <Calendar size={14} />
-              <input type="datetime-local" value={props.timeStart} onChange={(event) => props.onTimeStart(event.target.value)} />
-            </label>
-            <label className="date-field">
-              <Calendar size={14} />
-              <input type="datetime-local" value={props.timeEnd} onChange={(event) => props.onTimeEnd(event.target.value)} />
-            </label>
+            <DateTimePicker value={props.timeStart} label={t(language, "label.startTime")} onChange={props.onTimeStart} />
+            <DateTimePicker value={props.timeEnd} label={t(language, "label.endTime")} onChange={props.onTimeEnd} />
             <input className="tiny-input" type="number" min={1} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
-            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title="Message order">
-              <option value="asc">Oldest</option>
-              <option value="desc">Newest</option>
+            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title={t(language, "title.messageOrder")}>
+              <option value="asc">{t(language, "label.oldest")}</option>
+              <option value="desc">{t(language, "label.newest")}</option>
             </select>
           </>
         )}
         {props.isConsuming ? (
-          <Button variant="danger" onClick={props.onStop}><Square size={16} /> Pause</Button>
+          <Button variant="danger" onClick={props.onStop} disabled={props.isQuerying}>
+            {isStoppingLive ? <RefreshCw size={16} className="spin" /> : <Square size={16} />}
+            {isStoppingLive ? t(language, "label.stopping") : t(language, "label.pause")}
+          </Button>
         ) : (
-          <Button variant="primary" onClick={props.onStart}><Play size={16} /> {props.mode === "live" ? "Start" : "Consume"}</Button>
+          <Button variant="primary" onClick={props.onStart} disabled={props.isQuerying}>
+            {isStartingLive ? <RefreshCw size={16} className="spin" /> : <Play size={16} />}
+            {isStartingLive ? t(language, "label.starting") : props.mode === "live" ? t(language, "label.start") : "Consume"}
+          </Button>
         )}
         {props.mode === "live" && (
           <label className="auto-scroll-toggle">
             <input type="checkbox" checked={props.autoScroll} onChange={(event) => props.onAutoScroll(event.target.checked)} />
-            Auto Scroll
+            {t(language, "label.autoScroll")}
+          </label>
+        )}
+        {props.mode === "live" && (
+          <label className="auto-scroll-toggle" title={props.liveRecordPath || t(language, "title.liveRecord")}>
+            <input
+              type="checkbox"
+              checked={props.liveRecordEnabled}
+              onChange={(event) => props.onLiveRecordEnabled(event.target.checked)}
+              disabled={props.isConsuming}
+            />
+            {t(language, "label.record")}
           </label>
         )}
         {props.mode === "live" && (
           <label className="max-messages-control">
-            Max
+            {t(language, "label.max")}
             <select value={props.maxMessages} onChange={(event) => props.onMaxMessages(Number(event.target.value))}>
               <option value={100}>100</option>
               <option value={500}>500</option>
@@ -107,7 +128,13 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
         {props.mode === "live" && (
           <span className={props.isConsuming ? "streaming-badge active" : "streaming-badge"}>
             <span />
-            Streaming
+            {t(language, "label.streaming")}
+          </span>
+        )}
+        {props.mode === "live" && props.liveRecordPath && (
+          <span className="recording-badge" title={props.liveRecordPath}>
+            <CircleDot size={13} />
+            {t(language, "label.recording")} {props.liveRecordCount.toLocaleString()}
           </span>
         )}
         <ConsumeExportMenu
@@ -119,7 +146,7 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
           onExportAll={props.onExportAll}
         />
         <span className={props.isConsuming ? "count live-count" : "count"}>
-          {props.isConsuming ? "Live" : ""} {props.filterMode === "highlight" && props.hasActiveMessageFilter ? `${props.filteredMessages.length} highlighted` : props.filteredMessages.length}/{props.totalMessageCount} messages
+          {props.isConsuming ? "Live" : ""} {props.filterMode === "highlight" && props.hasActiveMessageFilter ? t(language, "label.highlighted", { count: String(props.filteredMessages.length) }) : props.filteredMessages.length}/{props.totalMessageCount} {t(language, "label.messages")}
         </span>
       </div>
       {props.isLargeOffsetRequest && (

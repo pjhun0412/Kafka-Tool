@@ -9,15 +9,17 @@ import {
 export type { PreferenceGroup, PreferencePage } from "../../stores/ui/preferencesStore";
 
 export type PreferenceSearchMatches = {
+  application: boolean;
   editor: boolean;
   export: boolean;
   avro: boolean;
   pages: Set<PreferencePage>;
 };
 
-const allPreferencePages = new Set<PreferencePage>(["editor-font", "export-log", "avro-schemas"]);
+const allPreferencePages = new Set<PreferencePage>(["language", "editor-font", "export-log", "avro-schemas"]);
 
 const preferenceSearchEntries: Array<{ group: PreferenceGroup; page: PreferencePage; keywords: string }> = [
+  { group: "application", page: "language", keywords: "application language locale korean english system auto" },
   { group: "editor", page: "editor-font", keywords: "editor font family size d2coding font" },
   { group: "export", page: "export-log", keywords: "export log format download csv json" },
   { group: "avro", page: "avro-schemas", keywords: "avro schema schemas registry raw confluent" }
@@ -54,6 +56,7 @@ export function usePreferenceNavigation() {
   const preferenceSearchMatches = useMemo<PreferenceSearchMatches>(() => {
     if (!normalizedPreferencesQuery) {
       return {
+        application: true,
         editor: true,
         export: true,
         avro: true,
@@ -63,6 +66,7 @@ export function usePreferenceNavigation() {
 
     const matched = preferenceSearchEntries.filter((entry) => entry.keywords.toLowerCase().includes(normalizedPreferencesQuery));
     return {
+      application: matched.some((entry) => entry.group === "application"),
       editor: matched.some((entry) => entry.group === "editor"),
       export: matched.some((entry) => entry.group === "export"),
       avro: matched.some((entry) => entry.group === "avro"),

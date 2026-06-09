@@ -1,5 +1,7 @@
-﻿import type React from "react";
+import type React from "react";
 import type { SplitDropSide } from "../../hooks/state/useWorkspacePaneState";
+import { useAppLanguage } from "../../hooks/state/useAppLanguage";
+import { t } from "../../i18n";
 
 type WorkspaceLayoutProps = {
   sidebarCollapsed: boolean;
@@ -34,6 +36,7 @@ export function WorkspaceLayout({
   onWorkspaceDragLeave,
   onWorkspaceDrop
 }: WorkspaceLayoutProps) {
+  const language = useAppLanguage();
   return (
     <div
       className={sidebarCollapsed ? "app-shell sidebar-collapsed" : "app-shell"}
@@ -41,7 +44,7 @@ export function WorkspaceLayout({
     >
       {sidebar}
 
-      <div className="sidebar-resizer" onPointerDown={onSidebarResize} title="Resize sidebar" />
+      <div className="sidebar-resizer" onPointerDown={onSidebarResize} title={t(language, "title.resizeSidebar")} />
 
       <main
         className={splitMode ? "workspace split-mode" : "workspace"}
@@ -52,11 +55,11 @@ export function WorkspaceLayout({
       >
         {splitDropSide && (
           <div className={`split-drop-indicator ${splitDropSide}`}>
-            {splitDropSide === "right" ? "Drop here to split" : "Drop split here to close"}
+            {splitDropSide === "right" ? t(language, "workspace.dropToSplit") : t(language, "workspace.dropToCloseSplit")}
           </div>
         )}
         {primaryPane}
-        {splitMode && <div className="workspace-split-resizer" onPointerDown={onWorkspaceSplitResize} title="Resize split panes" />}
+        {splitMode && <div className="workspace-split-resizer" onPointerDown={onWorkspaceSplitResize} title={t(language, "title.resizeSplitPanes")} />}
         {splitPane}
       </main>
 

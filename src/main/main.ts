@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu } from "electron";
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, type WriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ConfigResourceTypes, Kafka, logLevel, type Admin, type Consumer } from "kafkajs";
@@ -13,6 +13,7 @@ import type {
   ConsumeOffsetResult,
   ConsumeTimeRangeRequest,
   AppPreferences,
+  AppMenuLanguage,
   AppSettingsBundle,
   BrokerConfigEntry,
   BrokerConfigUpdateRequest,
@@ -31,6 +32,7 @@ import type {
   StopConsumeRequest,
   TopicConfigEntry,
   TopicConfigUpdateRequest,
+  TopicCreateRequest,
   TopicDetail,
   TopicMessageCounts,
   TopicMutationRequest,
@@ -41,10 +43,12 @@ import type {
 const devServerUrl = process.env.KAFKA_TOOL_DEV_SERVER_URL;
 let mainWindow: BrowserWindow | null = null;
 const activeConsumers = new Map<string, Consumer>();
+const activeLiveRecorders = new Map<string, { stream: WriteStream; path: string; count: number }>();
 let windowBoundsSaveTimer: NodeJS.Timeout | null = null;
 let autoUpdaterConfigured = false;
 const appUserModelId = "local.kafka-tool";
 let isCleaningUpConsumers = false;
+let menuLanguage: AppMenuLanguage = app.getLocale().toLowerCase().startsWith("ko") ? "ko" : "en";
 
 function appIconPath() {
   return path.join(app.getAppPath(), "build/icon.ico");
@@ -58,14 +62,20 @@ function preferencesPath() {
   return path.join(app.getPath("userData"), "preferences.json");
 }
 
+function resolveMenuLanguage(preference: "auto" | "ko" | "en" | undefined): AppMenuLanguage {
+  if (preference === "ko" || preference === "en") return preference;
+  return app.getLocale().toLowerCase().startsWith("ko") ? "ko" : "en";
+}
+
 const defaultPreferences: AppPreferences = {
   favoriteTopicsByServer: {},
   consumeDefaultsByServer: {},
   manualAvroSchemasByServer: {},
   layout: {},
   appearance: {
-    fontFamily: "D2Coding, Consolas, 'Courier New', monospace",
-    fontSize: 13
+    fontFamily: "Inter, 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontSize: 13,
+    language: "auto"
   },
   exportFormatTemplate: "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"
 };
@@ -144,7 +154,7 @@ function mergePreferences(current: AppPreferences, next: AppPreferences): AppPre
 
 function normalizeImportedServers(servers: unknown): ServerProfile[] {
   if (!Array.isArray(servers)) {
-    throw new Error("설정 파일에 servers 배열이 없습니다.");
+    throw new Error("Settings file does not contain a servers array.");
   }
   return servers.map((server) => {
     const item = server as Partial<ServerProfile>;
@@ -153,7 +163,7 @@ function normalizeImportedServers(servers: unknown): ServerProfile[] {
       ? item.brokers.map((broker) => String(broker).trim()).filter(Boolean)
       : [];
     if (!name || brokers.length === 0) {
-      throw new Error("서버 설정 파일에 잘못된 서버 항목이 있습니다.");
+      throw new Error("Server settings file contains an invalid server entry.");
     }
     return {
       id: typeof item.id === "string" && item.id.trim() ? item.id : randomUUID(),
@@ -205,23 +215,145 @@ async function importSettingsFromFile(): Promise<ImportSettingsResult | null> {
   return { servers, preferences };
 }
 
+const menuText = {
+  ko: {
+    file: "파일",
+    importSettings: "설정 가져오기...",
+    exportSettings: "설정 내보내기...",
+    preferences: "환경설정...",
+    avroSchemas: "Avro Schemas...",
+    checkUpdates: "업데이트 확인...",
+    close: "닫기",
+    quit: "종료",
+    importTitle: "설정 가져오기",
+    importMessage: "현재 서버 목록과 환경설정을 가져온 파일로 교체할까요?",
+    importButton: "가져오기",
+    cancelButton: "취소",
+    help: "도움말",
+    shortcuts: "단축키",
+    splitTabs: "탭 분할",
+    searchTips: "검색과 필터",
+    kafkaTips: "Kafka 작업 팁",
+    about: "Kafka Tool 정보",
+    helpOk: "확인",
+    helpShortcutsTitle: "단축키",
+    helpShortcutsMessage: [
+      "Ctrl+P 또는 Ctrl+K: 빠른 검색을 엽니다.",
+      "Ctrl+O: 설정 파일을 가져옵니다.",
+      "Ctrl+S: 설정 파일을 내보냅니다.",
+      "Ctrl+,: 환경설정을 엽니다.",
+      "Topic/Consumer/Broker 목록에서는 행을 클릭해 상세 화면으로 이동합니다."
+    ].join("\n"),
+    helpSplitTitle: "탭 분할",
+    helpSplitMessage: [
+      "클러스터 탭이나 Topic 탭을 드래그해 화면을 분할할 수 있습니다.",
+      "분할 영역의 닫기 드롭존으로 탭을 끌면 분할 패널을 닫습니다.",
+      "각 서버의 분할 상태는 서버별로 유지됩니다.",
+      "Consume 화면의 메시지 목록과 JSON Viewer 사이 경계선을 드래그해 높이를 조절할 수 있습니다."
+    ].join("\n"),
+    helpSearchTitle: "검색과 필터",
+    helpSearchMessage: [
+      "Topics 검색은 공백으로 AND 검색, -단어로 제외, /패턴/으로 정규식을 지원합니다.",
+      "빠른 검색에서 @\"Server Name\" topic 형식으로 특정 서버 안에서 찾을 수 있습니다.",
+      "Consume 필터는 key:, value:, headers:, empty:, 정규식, JSON path 비교식을 지원합니다.",
+      "그리드 컬럼의 필터 아이콘으로 컬럼별 텍스트/범위 필터를 적용할 수 있습니다."
+    ].join("\n"),
+    helpKafkaTitle: "Kafka 작업 팁",
+    helpKafkaMessage: [
+      "Topic 우클릭 메뉴에서 열기, 이름 복사, Avro Schema 등록, 비우기, 삭제를 실행할 수 있습니다.",
+      "Topic Settings에서는 Kafka가 수정 가능하다고 내려준 config만 편집합니다.",
+      "Consumer 상세는 Topic별로 접고 펼쳐 Lag와 offset을 확인할 수 있습니다.",
+      "대량 Consume 조회는 가상화 그리드로 렌더링되며, Offset 조회는 Prev/Next로 페이지 이동할 수 있습니다."
+    ].join("\n"),
+    aboutTitle: "Kafka Tool 정보",
+    aboutMessage: "Kafka Tool 데스크톱 클라이언트\nTopic, Consumer, Broker, Produce/Consume 작업을 한 곳에서 관리합니다.",
+    saveLiveRecord: "Live Record 저장"
+  },
+  en: {
+    file: "File",
+    importSettings: "Import Settings...",
+    exportSettings: "Export Settings...",
+    preferences: "Preferences...",
+    avroSchemas: "Avro Schemas...",
+    checkUpdates: "Check for Updates...",
+    close: "Close",
+    quit: "Quit",
+    importTitle: "Import Settings",
+    importMessage: "Replace the current server list and preferences with the imported file?",
+    importButton: "Import",
+    cancelButton: "Cancel",
+    help: "Help",
+    shortcuts: "Shortcuts",
+    splitTabs: "Split tabs",
+    searchTips: "Search and filters",
+    kafkaTips: "Kafka work tips",
+    about: "About Kafka Tool",
+    helpOk: "OK",
+    helpShortcutsTitle: "Shortcuts",
+    helpShortcutsMessage: [
+      "Ctrl+P or Ctrl+K: open Quick Search.",
+      "Ctrl+O: import settings.",
+      "Ctrl+S: export settings.",
+      "Ctrl+,: open Preferences.",
+      "Click rows in Topic, Consumer, or Broker lists to open details."
+    ].join("\n"),
+    helpSplitTitle: "Split tabs",
+    helpSplitMessage: [
+      "Drag cluster tabs or Topic tabs to split the workspace.",
+      "Drop a tab onto the close split drop zone to close the split pane.",
+      "Split pane state is kept per server.",
+      "Drag the divider between the Consume message grid and JSON Viewer to resize them."
+    ].join("\n"),
+    helpSearchTitle: "Search and filters",
+    helpSearchMessage: [
+      "Topics search supports AND with spaces, exclusion with -word, and regex with /pattern/.",
+      "Use @\"Server Name\" topic in Quick Search to search inside one server.",
+      "Consume filters support key:, value:, headers:, empty:, regex, and JSON path comparisons.",
+      "Use each grid column's filter icon for column text/range filters."
+    ].join("\n"),
+    helpKafkaTitle: "Kafka work tips",
+    helpKafkaMessage: [
+      "Topic context menus can open, copy names, register Avro Schema, clear messages, or delete Topics.",
+      "Topic Settings only edits configs Kafka reports as editable.",
+      "Consumer details can expand/collapse by Topic to inspect Lag and offsets.",
+      "Large Consume results use a virtualized grid, and Offset queries support Prev/Next paging."
+    ].join("\n"),
+    aboutTitle: "About Kafka Tool",
+    aboutMessage: "Kafka Tool desktop client\nManage Topics, Consumers, Brokers, Produce, and Consume workflows in one place.",
+    saveLiveRecord: "Save Live Record"
+  }
+} satisfies Record<AppMenuLanguage, Record<string, string>>;
+
+function showHelpDialog(title: string, message: string) {
+  if (!mainWindow) return;
+  const labels = menuText[menuLanguage];
+  void dialog.showMessageBox(mainWindow, {
+    type: "info",
+    buttons: [labels.helpOk],
+    defaultId: 0,
+    title,
+    message
+  });
+}
+
 function createApplicationMenu() {
+  const labels = menuText[menuLanguage];
   const template: Electron.MenuItemConstructorOptions[] = [
     {
-      label: "File",
+      label: labels.file,
       submenu: [
         {
-          label: "Import Settings...",
+          label: labels.importSettings,
           accelerator: "CmdOrCtrl+O",
           click: async () => {
             if (!mainWindow) return;
             const confirm = await dialog.showMessageBox(mainWindow, {
               type: "question",
-              buttons: ["Import", "Cancel"],
+              buttons: [labels.importButton, labels.cancelButton],
               defaultId: 0,
               cancelId: 1,
-              title: "Import Settings",
-              message: "현재 서버 목록과 개인 설정을 가져온 파일로 교체할까요?"
+              title: labels.importTitle,
+              message: labels.importMessage
             });
             if (confirm.response !== 0) return;
             try {
@@ -236,7 +368,7 @@ function createApplicationMenu() {
           }
         },
         {
-          label: "Export Settings...",
+          label: labels.exportSettings,
           accelerator: "CmdOrCtrl+S",
           click: async () => {
             if (!mainWindow) return;
@@ -253,21 +385,21 @@ function createApplicationMenu() {
         },
         { type: "separator" },
         {
-          label: "Preferences...",
+          label: labels.preferences,
           accelerator: "CmdOrCtrl+,",
           click: () => {
             mainWindow?.webContents.send("preferences:open", "general");
           }
         },
         {
-          label: "Avro Schemas...",
+          label: labels.avroSchemas,
           click: () => {
             mainWindow?.webContents.send("preferences:open", "avro");
           }
         },
         { type: "separator" },
         {
-          label: "Check for Updates...",
+          label: labels.checkUpdates,
           click: async () => {
             try {
               await checkForUpdates();
@@ -281,7 +413,35 @@ function createApplicationMenu() {
           }
         },
         { type: "separator" },
-        process.platform === "darwin" ? { role: "close" } : { role: "quit" }
+        process.platform === "darwin"
+          ? { label: labels.close, role: "close" }
+          : { label: labels.quit, click: () => app.quit() }
+      ]
+    },
+    {
+      label: labels.help,
+      submenu: [
+        {
+          label: labels.shortcuts,
+          click: () => showHelpDialog(labels.helpShortcutsTitle, labels.helpShortcutsMessage)
+        },
+        {
+          label: labels.splitTabs,
+          click: () => showHelpDialog(labels.helpSplitTitle, labels.helpSplitMessage)
+        },
+        {
+          label: labels.searchTips,
+          click: () => showHelpDialog(labels.helpSearchTitle, labels.helpSearchMessage)
+        },
+        {
+          label: labels.kafkaTips,
+          click: () => showHelpDialog(labels.helpKafkaTitle, labels.helpKafkaMessage)
+        },
+        { type: "separator" },
+        {
+          label: labels.about,
+          click: () => showHelpDialog(labels.aboutTitle, labels.aboutMessage)
+        }
       ]
     }
   ];
@@ -292,7 +452,7 @@ async function getProfile(serverId: string) {
   const profiles = await readProfiles();
   const profile = profiles.find((item) => item.id === serverId);
   if (!profile) {
-    throw new Error("등록된 서버를 찾을 수 없습니다.");
+    throw new Error("Registered server not found.");
   }
   return profile;
 }
@@ -379,12 +539,70 @@ async function shutdownConsumer(consumer: Consumer) {
   }
 }
 
+function closeLiveRecorder(key: string) {
+  const recorder = activeLiveRecorders.get(key);
+  if (!recorder) return;
+  activeLiveRecorders.delete(key);
+  recorder.stream.end();
+}
+
+async function createLiveRecorder(request: StartConsumeRequest) {
+  if (!request.record || !mainWindow) return undefined;
+  const now = new Date();
+  const timestamp = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0")
+  ].join("");
+  const defaultPath = path.join(
+    app.getPath("documents"),
+    `${sanitizeFileName(request.topic)}-${timestamp}.jsonl`
+  );
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: menuText[menuLanguage].saveLiveRecord,
+    defaultPath,
+    filters: [
+      { name: "JSON Lines", extensions: ["jsonl"] },
+      { name: "JSON", extensions: ["json"] },
+      { name: "All Files", extensions: ["*"] }
+    ]
+  });
+  if (result.canceled || !result.filePath) {
+    throw new Error("Live recording canceled.");
+  }
+  await mkdir(path.dirname(result.filePath), { recursive: true });
+  const stream = createWriteStream(result.filePath, { encoding: "utf8", flags: "a" });
+  stream.on("error", sendConsumeError);
+  return {
+    path: result.filePath,
+    stream,
+    count: 0
+  };
+}
+
+function writeLiveRecord(key: string, payload: ConsumedMessage) {
+  const recorder = activeLiveRecorders.get(key);
+  if (!recorder) return;
+  recorder.count += 1;
+  recorder.stream.write(`${JSON.stringify(payload)}\n`);
+}
+
 function calculateLag(currentOffset: string, endOffset: string) {
   if (currentOffset === "-1" || !/^\d+$/.test(currentOffset) || !/^\d+$/.test(endOffset)) {
     return "-";
   }
   const lag = BigInt(endOffset) - BigInt(currentOffset);
   return lag < 0n ? "0" : lag.toString();
+}
+
+function isBeforeOffset(offset: string, startOffset: string | undefined) {
+  if (!startOffset || !/^\d+$/.test(offset) || !/^\d+$/.test(startOffset)) {
+    return false;
+  }
+  return BigInt(offset) < BigInt(startOffset);
 }
 
 function sanitizeFileName(value: string) {
@@ -577,6 +795,7 @@ async function stopActiveConsumer(request?: StopConsumeRequest) {
       .map((key) => {
         const consumer = activeConsumers.get(key);
         activeConsumers.delete(key);
+        closeLiveRecorder(key);
         return consumer;
       })
       .filter((consumer): consumer is Consumer => Boolean(consumer));
@@ -585,6 +804,9 @@ async function stopActiveConsumer(request?: StopConsumeRequest) {
   }
 
   const consumers = [...activeConsumers.values()];
+  for (const key of activeLiveRecorders.keys()) {
+    closeLiveRecorder(key);
+  }
   activeConsumers.clear();
   await Promise.all(consumers.map(shutdownConsumer));
 }
@@ -605,13 +827,13 @@ function configureAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("checking-for-update", () => {
-    sendUpdateStatus({ status: "checking", message: "업데이트 확인 중" });
+    sendUpdateStatus({ status: "checking", message: "Checking for updates..." });
   });
 
   autoUpdater.on("update-available", (info) => {
     sendUpdateStatus({
       status: "available",
-      message: `새 버전 ${info.version} 다운로드 중`,
+      message: `Downloading new version ${info.version}...`,
       version: info.version
     });
   });
@@ -619,7 +841,7 @@ function configureAutoUpdater() {
   autoUpdater.on("update-not-available", (info) => {
     sendUpdateStatus({
       status: "not-available",
-      message: `현재 최신 버전입니다. (${info.version})`,
+      message: `You are on the latest version. (${info.version})`,
       version: info.version
     });
   });
@@ -628,7 +850,7 @@ function configureAutoUpdater() {
     const percent = Math.round(progress.percent);
     sendUpdateStatus({
       status: "download-progress",
-      message: `업데이트 다운로드 중 ${percent}%`,
+      message: `Downloading update ${percent}%`,
       percent
     });
   });
@@ -636,18 +858,18 @@ function configureAutoUpdater() {
   autoUpdater.on("update-downloaded", (info) => {
     sendUpdateStatus({
       status: "downloaded",
-      message: `업데이트 ${info.version} 다운로드 완료`,
+      message: `Update ${info.version} downloaded`,
       version: info.version
     });
     if (!mainWindow) return;
     void dialog.showMessageBox(mainWindow, {
       type: "info",
-      buttons: ["재시작 후 업데이트", "나중에"],
+      buttons: ["Restart and update", "Later"],
       defaultId: 0,
       cancelId: 1,
-      title: "업데이트 준비 완료",
-      message: `Kafka Tool ${info.version} 업데이트를 설치할 준비가 됐습니다.`,
-      detail: "지금 재시작하면 업데이트가 적용됩니다."
+      title: "Update ready",
+      message: `Kafka Tool ${info.version} is ready to install.`,
+      detail: "Restart now to apply the update."
     }).then((result) => {
       if (result.response === 0) {
         autoUpdater.quitAndInstall(false, true);
@@ -668,7 +890,7 @@ async function checkForUpdates() {
   if (!app.isPackaged) {
     sendUpdateStatus({
       status: "error",
-      message: "업데이트 확인은 패키징된 앱에서만 동작합니다."
+      message: "Update checks only work in the packaged app."
     });
     return;
   }
@@ -706,6 +928,7 @@ function scheduleWindowBoundsSave() {
 async function createWindow() {
   const preloadPath = path.join(app.getAppPath(), "dist/preload/preload.js");
   const preferences = await readPreferences();
+  menuLanguage = resolveMenuLanguage(preferences.appearance?.language);
   const windowBounds = preferences.windowBounds;
   mainWindow = new BrowserWindow({
     width: windowBounds?.width ?? 1320,
@@ -775,10 +998,10 @@ ipcMain.handle("servers:list", async () => readProfiles());
 ipcMain.handle("servers:save", async (_event, server: Omit<ServerProfile, "id"> & { id?: string }) => {
   const brokers = server.brokers.map((broker) => broker.trim()).filter(Boolean);
   if (!server.name.trim()) {
-    throw new Error("서버 이름을 입력하세요.");
+    throw new Error("Enter a server name.");
   }
   if (brokers.length === 0) {
-    throw new Error("브로커 주소를 하나 이상 입력하세요.");
+    throw new Error("Enter at least one broker address.");
   }
 
   if (server.security?.sasl) {
@@ -861,6 +1084,12 @@ ipcMain.handle("preferences:save", async (_event, preferences: AppPreferences) =
   const mergedPreferences = mergePreferences(await readPreferences(), preferences);
   await writePreferences(mergedPreferences);
   return mergedPreferences;
+});
+
+ipcMain.handle("menu:set-language", async (_event, language: AppMenuLanguage) => {
+  if (language !== "ko" && language !== "en") return;
+  menuLanguage = language;
+  createApplicationMenu();
 });
 
 ipcMain.handle("kafka:health", async (_event, serverId: string): Promise<void> => {
@@ -970,7 +1199,7 @@ async function loadBrokerDetail(admin: Admin, brokerId: number): Promise<BrokerD
   const brokers = await loadBrokerSummaries(admin);
   const broker = brokers.find((item) => item.nodeId === brokerId);
   if (!broker) {
-    throw new Error("브로커를 찾을 수 없습니다.");
+    throw new Error("Broker not found.");
   }
   const configsResponse = await admin.describeConfigs({
     resources: [{ type: ConfigResourceTypes.BROKER, name: String(brokerId) }],
@@ -1028,9 +1257,10 @@ ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName:
     const metadata = await admin.fetchTopicMetadata({ topics: [topicName] });
     const topic = metadata.topics[0];
     if (!topic) {
-      throw new Error("토픽을 찾을 수 없습니다.");
+      throw new Error("Topic not found.");
     }
     const offsets = await admin.fetchTopicOffsets(topicName);
+    const configs = await loadTopicConfigs(admin, topicName);
     return {
       name: topic.name,
       partitions: topic.partitions.map((partition) => ({
@@ -1043,7 +1273,8 @@ ipcMain.handle("kafka:topic-detail", async (_event, serverId: string, topicName:
         partition: offset.partition,
         low: offset.low,
         high: offset.high
-      }))
+      })),
+      configs
     };
   });
 });
@@ -1084,7 +1315,7 @@ ipcMain.handle("kafka:topic-config-update", async (_event, request: TopicConfigU
     .map((entry) => ({ name: entry.name.trim(), value: entry.value }))
     .filter((entry) => entry.name);
   if (entries.length === 0) {
-    throw new Error("변경할 토픽 설정이 없습니다.");
+    throw new Error("No topic settings to change.");
   }
   return withAdmin(request.serverId, async (admin) => {
     await admin.alterConfigs({
@@ -1096,6 +1327,36 @@ ipcMain.handle("kafka:topic-config-update", async (_event, request: TopicConfigU
       }]
     });
     return loadTopicConfigs(admin, request.topic);
+  });
+});
+
+ipcMain.handle("kafka:topic-create", async (_event, request: TopicCreateRequest): Promise<void> => {
+  const topic = request.topic.trim();
+  const partitions = Math.trunc(Number(request.partitions));
+  const replicationFactor = Math.trunc(Number(request.replicationFactor));
+  const configEntries = (request.configs ?? [])
+    .map((entry) => ({ name: entry.name.trim(), value: entry.value.trim() }))
+    .filter((entry) => entry.name && entry.value !== "");
+  if (!topic) {
+    throw new Error("Topic name is required.");
+  }
+  if (!Number.isInteger(partitions) || partitions < 1) {
+    throw new Error("Partitions must be 1 or higher.");
+  }
+  if (!Number.isInteger(replicationFactor) || replicationFactor < 1) {
+    throw new Error("Replication factor must be 1 or higher.");
+  }
+  await withAdmin(request.serverId, async (admin) => {
+    await admin.createTopics({
+      topics: [{
+        topic,
+        numPartitions: partitions,
+        replicationFactor,
+        configEntries
+      }],
+      waitForLeaders: true,
+      timeout: 15000
+    });
   });
 });
 
@@ -1520,16 +1781,29 @@ ipcMain.handle("kafka:consume-stop", async (_event, request?: StopConsumeRequest
 ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
   const consumerId = request.consumerId ?? "default";
   await stopActiveConsumer({ serverId: request.serverId, topic: request.topic, consumerId });
+  const key = consumeKey(request.serverId, request.topic, consumerId);
+  const recorder = await createLiveRecorder(request);
+  if (recorder) {
+    activeLiveRecorders.set(key, recorder);
+  }
   const profile = await getProfile(request.serverId);
   const preferences = await readPreferences();
   const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
   const groupId = kafkaToolConsumerGroupId("live", [request.serverId, request.topic, consumerId]);
   const consumer = kafka.consumer({ groupId });
-  const key = consumeKey(request.serverId, request.topic, consumerId);
+  const admin = kafka.admin();
   activeConsumers.set(key, consumer);
 
   try {
+    await admin.connect();
+    const liveStartOffsets = new Map(
+      (await admin.fetchTopicOffsets(request.topic))
+        .filter((item) => request.partition === undefined || item.partition === request.partition)
+        .map((item) => [item.partition, item.offset])
+    );
+    await admin.disconnect();
+
     await consumer.connect();
     await consumer.subscribe({ topic: request.topic, fromBeginning: request.fromBeginning });
 
@@ -1538,23 +1812,41 @@ ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeReques
         if (request.partition !== undefined && partition !== request.partition) {
           return;
         }
+        if (isBeforeOffset(message.offset, liveStartOffsets.get(partition))) {
+          return;
+        }
         const payload = {
           ...await toConsumedMessage(profile, topic, partition, message, manualSchema),
+          serverId: request.serverId,
           consumerId
         };
+        writeLiveRecord(key, payload);
         mainWindow?.webContents.send("kafka:consume-message", payload);
       }
     }).catch((error) => {
       activeConsumers.delete(key);
+      closeLiveRecorder(key);
       void shutdownConsumer(consumer);
       sendConsumeError(error);
     });
+    setTimeout(() => {
+      for (const [partition, offset] of liveStartOffsets) {
+        try {
+          consumer.seek({ topic: request.topic, partition, offset });
+        } catch {
+          // The offset filter above still prevents old messages from reaching the renderer.
+        }
+      }
+    }, 0);
   } catch (error) {
     activeConsumers.delete(key);
+    closeLiveRecorder(key);
+    await admin.disconnect().catch(() => undefined);
     await shutdownConsumer(consumer);
     sendConsumeError(error);
     throw error;
   }
+  return { liveRecordPath: recorder?.path };
 });
 
 if (process.platform === "win32") {

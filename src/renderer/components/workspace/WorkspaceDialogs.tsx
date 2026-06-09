@@ -1,27 +1,33 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { ServerProfile } from "../../../shared/types";
+import type { ServerProfile, TopicCreateRequest } from "../../../shared/types";
+import type { AppLanguage, LanguagePreference } from "../../i18n";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import { usePreferenceNavigation } from "../../hooks/preferences/usePreferenceNavigation";
 import { useFeedbackStore } from "../../stores/ui/feedbackStore";
 import { useManualAvroSchemaStore } from "../../stores/ui/manualAvroSchemaStore";
 import { useServerFormStore } from "../../stores/ui/serverFormStore";
 import { useSidebarInteractionStore } from "../../stores/ui/sidebarInteractionStore";
+import { useTopicCreateStore } from "../../stores/ui/topicCreateStore";
 import { ConnectionErrorDialog } from "../modals/ConnectionErrorDialog";
 import { ManualAvroSchemaDialog } from "../modals/ManualAvroSchemaDialog";
 import { PreferencesDialog } from "../modals/PreferencesDialog";
 import { ServerProfileDialog } from "../modals/ServerProfileDialog";
 import { TopicActionDialog } from "../modals/TopicActionDialog";
+import { TopicCreateDialog } from "../modals/TopicCreateDialog";
 
 export function WorkspaceDialogs(props: {
   loading: boolean;
   onSaveServer: () => void;
   fontFamily: string;
   fontSize: number;
+  language: LanguagePreference;
+  resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchemaFor: (serverId: string, topic: string) => void;
@@ -30,6 +36,7 @@ export function WorkspaceDialogs(props: {
   onReadSchemaFile: (file?: File) => Promise<void>;
   onDeleteManualAvroSchema: () => void;
   onSaveManualAvroSchema: () => void;
+  onCreateTopic: (request: TopicCreateRequest) => Promise<void>;
   onConfirmTopicAction: () => void;
 }) {
   const {
@@ -59,6 +66,17 @@ export function WorkspaceDialogs(props: {
     isSchemaDragOver: state.isSchemaDragOver,
     setIsSchemaDragOver: state.setIsSchemaDragOver,
     closeManualAvroForm: state.closeManualAvroForm
+  })));
+  const {
+    isTopicCreateOpen,
+    topicCreateForm,
+    setTopicCreateForm,
+    closeTopicCreateForm
+  } = useTopicCreateStore(useShallow((state) => ({
+    isTopicCreateOpen: state.isTopicCreateOpen,
+    topicCreateForm: state.topicCreateForm,
+    setTopicCreateForm: state.setTopicCreateForm,
+    closeTopicCreateForm: state.closeTopicCreateForm
   })));
   const { connectionError, setConnectionError } = useFeedbackStore(useShallow((state) => ({
     connectionError: state.connectionError,
@@ -109,6 +127,8 @@ export function WorkspaceDialogs(props: {
           matches={preferenceSearchMatches}
           fontFamily={props.fontFamily}
           fontSize={props.fontSize}
+          language={props.language}
+          resolvedLanguage={props.resolvedLanguage}
           exportFormatTemplate={props.exportFormatTemplate}
           manualAvroSchemaRows={props.manualAvroSchemaRows}
           onActivePage={setActivePreferencesPage}
@@ -116,6 +136,7 @@ export function WorkspaceDialogs(props: {
           onQuery={setPreferencesQuery}
           onFontFamily={props.onFontFamily}
           onFontSize={props.onFontSize}
+          onLanguage={props.onLanguage}
           onExportFormatTemplate={props.onExportFormatTemplate}
           onOpenManualAvroSchema={(serverId, topic) => {
             setIsPreferencesOpen(false);
@@ -143,6 +164,31 @@ export function WorkspaceDialogs(props: {
         <ConnectionErrorDialog
           error={connectionError}
           onClose={() => setConnectionError(null)}
+        />
+      )}
+      {isTopicCreateOpen && (
+        <TopicCreateDialog
+          form={topicCreateForm}
+          loading={props.loading}
+          onForm={setTopicCreateForm}
+          onClose={closeTopicCreateForm}
+          onCreate={() => {
+            const configs = [
+              { name: "cleanup.policy", value: topicCreateForm.cleanupPolicy },
+              { name: "min.insync.replicas", value: topicCreateForm.minInSyncReplicas },
+              { name: "retention.ms", value: topicCreateForm.retentionMs },
+              { name: "retention.bytes", value: topicCreateForm.retentionBytes },
+              { name: "max.message.bytes", value: topicCreateForm.maxMessageBytes },
+              ...topicCreateForm.configs
+            ].filter((config) => config.name.trim() && config.value.trim());
+            props.onCreateTopic({
+              serverId: topicCreateForm.serverId,
+              topic: topicCreateForm.topic,
+              partitions: Number(topicCreateForm.partitions),
+              replicationFactor: Number(topicCreateForm.replicationFactor),
+              configs
+            });
+          }}
         />
       )}
       {pendingTopicAction && (

@@ -112,19 +112,25 @@ export function DataGrid<TData extends object>(props: {
                 onClick={() => props.onRowClick?.(row.original)}
                 onDoubleClick={() => props.onRowDoubleClick?.(row.original)}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    style={{
-                      width: cell.column.getSize(),
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap"
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const isRowActionCell = cell.column.id === "check" || cell.column.id === "select" || cell.column.id === "favorite";
+                  return (
+                    <td
+                      key={cell.id}
+                      className={isRowActionCell ? "grid-row-action-cell" : undefined}
+                      onClick={isRowActionCell ? (event) => event.stopPropagation() : undefined}
+                      onDoubleClick={isRowActionCell ? (event) => event.stopPropagation() : undefined}
+                      style={{
+                        width: cell.column.getSize(),
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}

@@ -9,7 +9,7 @@ import type {
   WorkspacePaneId
 } from "../../uiTypes";
 import { workspaceMessages } from "../../workspaceMessages";
-import { buildSplitConsumeResetState, clearGroupSelectionForServer } from "./workspaceRefreshUtils";
+import { buildConsumeResetState, clearGroupSelectionForServer } from "./workspaceRefreshUtils";
 
 type WorkspaceRefreshActionsParams = {
   activeWorkspacePane: WorkspacePaneId;
@@ -17,6 +17,7 @@ type WorkspaceRefreshActionsParams = {
   selectedTopic: string;
   view: View;
   visibleSplitPane: SplitPaneState | null;
+  selectedConsumeState: TopicConsumeState;
   splitConsumeState: TopicConsumeState;
   selectedDefaultConsumeState: TopicConsumeState;
   refreshBrokers: () => Promise<void>;
@@ -58,6 +59,7 @@ export function useWorkspaceRefreshActions({
   selectedTopic,
   view,
   visibleSplitPane,
+  selectedConsumeState,
   splitConsumeState,
   selectedDefaultConsumeState,
   refreshBrokers,
@@ -130,7 +132,7 @@ export function useWorkspaceRefreshActions({
       if (isTopicStreaming(selectedServerId, selectedTopic, "primary")) {
         await stopConsume(selectedServerId, selectedTopic, "primary");
       }
-      updateSelectedConsumeState(selectedDefaultConsumeState);
+      updateSelectedConsumeState(buildConsumeResetState(selectedDefaultConsumeState, selectedConsumeState));
       setStatus(workspaceMessages.consumeReset);
       if (pane) {
         showPaneToast(pane, workspaceMessages.consumeReset, "success", { serverId: selectedServerId, topic: selectedTopic });
@@ -177,7 +179,7 @@ export function useWorkspaceRefreshActions({
       if (isTopicStreaming(pane.serverId, pane.topic, "split")) {
         await stopConsume(pane.serverId, pane.topic, "split");
       }
-      updateConsumeStateFor(pane.serverId, pane.topic, buildSplitConsumeResetState(getDefaultConsumeState(pane.serverId), state), "split");
+      updateConsumeStateFor(pane.serverId, pane.topic, buildConsumeResetState(getDefaultConsumeState(pane.serverId), state), "split");
       setStatus(workspaceMessages.consumeReset);
       showPaneToast("split", workspaceMessages.consumeReset, "success", { serverId: pane.serverId, topic: pane.topic });
       return;

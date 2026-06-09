@@ -128,7 +128,7 @@ export function validateJsonLikeValue(value: string) {
     return null;
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `Value JSON 형식이 올바르지 않습니다. ${detail}`;
+    return `Value JSON format is invalid. ${detail}`;
   }
 }
 
@@ -147,7 +147,7 @@ export function parseProduceHeaders(value: string): Record<string, string> | str
     );
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `Headers JSON 형식이 올바르지 않습니다. ${detail}`;
+    return `Headers JSON format is invalid. ${detail}`;
   }
 }
 

@@ -9,7 +9,6 @@ type AppKeyboardShortcutParams = {
   openPreferences: (page?: PreferencePage) => void;
   setSidebarCollapsed: (action: boolean | ((current: boolean) => boolean)) => void;
   setQuickSearchIndex: (action: number | ((current: number) => number)) => void;
-  executeQuickSearch: () => void | Promise<void>;
 };
 
 export function useAppKeyboardShortcuts({
@@ -19,8 +18,7 @@ export function useAppKeyboardShortcuts({
   closeQuickSearch,
   openPreferences,
   setSidebarCollapsed,
-  setQuickSearchIndex,
-  executeQuickSearch
+  setQuickSearchIndex
 }: AppKeyboardShortcutParams) {
   useEffect(() => {
     if (!isQuickSearchOpen) return;
@@ -51,21 +49,6 @@ export function useAppKeyboardShortcuts({
       if (event.key === "Escape") {
         event.preventDefault();
         closeQuickSearch();
-        return;
-      }
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setQuickSearchIndex((current) => Math.min(current + 1, Math.max(0, quickSearchResultCount - 1)));
-        return;
-      }
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setQuickSearchIndex((current) => Math.max(0, current - 1));
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        void executeQuickSearch();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -77,7 +60,6 @@ export function useAppKeyboardShortcuts({
     closeQuickSearch,
     openPreferences,
     setSidebarCollapsed,
-    setQuickSearchIndex,
-    executeQuickSearch
+    setQuickSearchIndex
   ]);
 }

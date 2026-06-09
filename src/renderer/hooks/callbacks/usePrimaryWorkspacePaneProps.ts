@@ -19,6 +19,8 @@ type PrimaryPaneCallbackProps =
   | "onToggleTopicSelected"
   | "onToggleAllTopicsSelected"
   | "onCopySelectedTopics"
+  | "onCreateTopic"
+  | "onClearTopicMessages"
   | "onPurgeSelectedTopics"
   | "onDeleteSelectedTopics"
   | "onToggleTopicFavorite"
@@ -68,6 +70,8 @@ export function createPrimaryWorkspacePaneProps({
     onToggleTopicSelected: callbacks.toggleTopicSelected,
     onToggleAllTopicsSelected: callbacks.toggleAllTopicsSelected,
     onCopySelectedTopics: callbacks.copySelectedTopics,
+    onCreateTopic: callbacks.createTopic,
+    onClearTopicMessages: callbacks.clearTopicMessages,
     onPurgeSelectedTopics: callbacks.purgeSelectedTopics,
     onDeleteSelectedTopics: callbacks.deleteSelectedTopics,
     onToggleTopicFavorite: callbacks.toggleTopicFavorite,

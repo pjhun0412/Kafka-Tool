@@ -2,6 +2,8 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ConsumedMessage } from "../../../../shared/types";
 import type { ConsumeFilterMode } from "../../../uiTypes";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import { formatHeaders, formatTimestamp, previewHeaders, previewValue } from "../../../utils";
 import { DataGrid } from "../../DataGrid";
 
@@ -137,6 +139,7 @@ export const MessageGrid = memo(function MessageGrid(props: {
   highlightedMessageKeys: Set<string>;
   onSelectMessage: (message: ConsumedMessage) => void;
 }) {
+  const language = useAppLanguage();
   const getRowClassName = useCallback((row: MessageGridRow) => {
     const classes = [];
     if (props.selectedMessageKey === row.rowKey) classes.push("selected");
@@ -156,7 +159,7 @@ export const MessageGrid = memo(function MessageGrid(props: {
       data={props.rows}
       columns={messageGridColumns}
       className="tanstack-message-table"
-      emptyText="No messages"
+      emptyText={t(language, "label.noMessages")}
       getRowKey={(row) => row.rowKey}
       getRowClassName={getRowClassName}
       onRowClick={handleRowClick}

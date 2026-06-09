@@ -1,5 +1,7 @@
-﻿import React from "react";
+import React from "react";
 import { X } from "lucide-react";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 
 export function OpenedTopicTabs(props: {
   topics: string[];
@@ -11,10 +13,11 @@ export function OpenedTopicTabs(props: {
   onDragStart: (event: React.DragEvent, topic: string) => void;
   onDragEnd: () => void;
 }) {
+  const language = useAppLanguage();
   return (
     <div className="topic-tabs" aria-label="Opened topics">
       {props.topics.length === 0 ? (
-        <div className="topic-tabs-empty">토픽을 선택하세요.</div>
+        <div className="topic-tabs-empty">{t(language, "topic.select")}</div>
       ) : (
         props.topics.map((topic) => (
           <button

@@ -2,6 +2,7 @@ export * from "./consumeTypes";
 export * from "./feedbackTypes";
 export * from "./topicTypes";
 export * from "./workspaceTypes";
+import { INTER_FONT_FAMILY, LEGACY_DEFAULT_FONT_FAMILY } from "./fontConfig";
 
 export const emptyServer = {
   name: "",
@@ -21,8 +22,8 @@ export const emptyServer = {
 };
 
 export const fontOptions = [
-  { value: "D2Coding, Consolas, 'Courier New', monospace", label: "D2Coding stack" },
+  { value: INTER_FONT_FAMILY, label: "Inter + Noto Sans KR" },
+  { value: LEGACY_DEFAULT_FONT_FAMILY, label: "D2Coding stack" },
   { value: "Consolas, 'Courier New', monospace", label: "Consolas stack" },
-  { value: "'JetBrains Mono', Consolas, monospace", label: "JetBrains Mono stack" },
-  { value: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", label: "System UI stack" }
+  { value: "'JetBrains Mono', Consolas, monospace", label: "JetBrains Mono stack" }
 ];

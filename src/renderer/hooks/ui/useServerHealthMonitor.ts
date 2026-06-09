@@ -54,8 +54,8 @@ export function useServerHealthMonitor({
           });
           setFailedServerIds((current) => {
             if (!current.includes(serverId)) return current;
-            setToast({ message: `${server.name} 서버 연결이 복구되었습니다.`, kind: "success" });
-            setStatus(`${server.name} 서버 연결이 복구되었습니다.`);
+            setToast({ message: `${server.name} server connection recovered.`, kind: "success" });
+            setStatus(`${server.name} server connection recovered.`);
             return current.filter((id) => id !== serverId);
           });
           setConnectedServerIds((current) => (current.includes(serverId) ? current : [...current, serverId]));
@@ -68,8 +68,8 @@ export function useServerHealthMonitor({
               setConnectedServerIds((ids) => ids.filter((id) => id !== serverId));
               setFailedServerIds((ids) => {
                 if (ids.includes(serverId)) return ids;
-                setToast({ message: `${server.name} 서버 연결이 끊겼습니다.`, kind: "error" });
-                setStatus(`${server.name} 서버 연결이 끊겼습니다: ${message}`);
+                setToast({ message: `${server.name} server connection lost.`, kind: "error" });
+                setStatus(`${server.name} server connection lost: ${message}`);
                 return [...ids, serverId];
               });
             }

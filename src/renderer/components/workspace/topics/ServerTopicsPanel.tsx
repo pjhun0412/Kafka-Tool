@@ -1,9 +1,11 @@
 ﻿import React, { useMemo } from "react";
 import type { ColumnDef, OnChangeFn, SortingState } from "@tanstack/react-table";
-import { Copy, Star, Trash2 } from "lucide-react";
+import { Copy, Plus, Star, Trash2 } from "lucide-react";
 import type { TopicSummary } from "../../../../shared/types";
 import { DataGrid } from "../../DataGrid";
 import { formatCount } from "../../../utils";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 
 export function ServerTopicsPanel(props: {
   topics: TopicSummary[];
@@ -16,10 +18,12 @@ export function ServerTopicsPanel(props: {
   onToggleSelected: (topic: string) => void;
   onToggleAllSelected: (topics: string[]) => void;
   onCopySelected: () => void;
+  onCreateTopic: () => void;
   onPurgeSelected: () => void;
   onDeleteSelected: () => void;
   onToggleFavorite: (topic: string) => void;
 }) {
+  const language = useAppLanguage();
   const favorites = new Set(props.favoriteTopicNames);
   const selected = new Set(props.selectedTopics);
   const visibleTopicNames = props.topics.map((topic) => topic.name);
@@ -28,18 +32,36 @@ export function ServerTopicsPanel(props: {
   const columns = useMemo<ColumnDef<TopicSummary>[]>(() => [
     {
       id: "check",
-      header: "CHK",
+      header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="check-column" onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+        <span
+          role="button"
+          tabIndex={0}
+          className="grid-check-cell"
+          onClick={(event) => {
+            event.stopPropagation();
+            props.onToggleSelected(row.original.name);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              props.onToggleSelected(row.original.name);
+            }
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          title={`Select ${row.original.name}`}
+        >
           <input
             type="checkbox"
             checked={selected.has(row.original.name)}
-            onChange={() => props.onToggleSelected(row.original.name)}
+            readOnly
             title={`Select ${row.original.name}`}
           />
         </span>
-      )
+      ),
+      enableColumnFilter: false,
+      size: 32
     },
     {
       accessorKey: "name",
@@ -63,32 +85,52 @@ export function ServerTopicsPanel(props: {
     {
       id: "favorite",
       header: "Fav",
+      size: 36,
       accessorFn: (topic) => favorites.has(topic.name) ? 1 : 0,
       cell: ({ row }) => {
         const isFavorite = favorites.has(row.original.name);
         return (
-          <button
-            type="button"
-            className={isFavorite ? "topic-favorite server-topic-favorite favorite" : "topic-favorite server-topic-favorite"}
+          <span
+            className="grid-favorite-cell"
+            role="button"
+            tabIndex={0}
             onClick={(event) => {
               event.stopPropagation();
               props.onToggleFavorite(row.original.name);
             }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                props.onToggleFavorite(row.original.name);
+              }
+            }}
             onDoubleClick={(event) => event.stopPropagation()}
-            title={isFavorite ? "Remove favorite" : "Add favorite"}
-            aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
+            title={isFavorite ? t(language, "title.removeFavorite") : t(language, "title.addFavorite")}
+            aria-label={isFavorite ? t(language, "title.removeFavorite") : t(language, "title.addFavorite")}
           >
-            <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
-          </button>
+            <button
+              type="button"
+              className={isFavorite ? "topic-favorite server-topic-favorite favorite" : "topic-favorite server-topic-favorite"}
+              tabIndex={-1}
+            >
+              <Star size={14} fill={isFavorite ? "currentColor" : "none"} />
+            </button>
+          </span>
         );
       }
     }
-  ], [favorites, props.onToggleFavorite, props.onToggleSelected, selected]);
+  ], [favorites, language, props.onToggleFavorite, props.onToggleSelected, selected]);
   return (
     <section className="panel server-topics-panel">
       <div className="section-title">
-        <h2>Topics</h2>
-        <span>{props.topics.length} topics</span>
+        <h2>{t(language, "label.topics")}</h2>
+        <div className="section-title-actions">
+          <span>{props.topics.length} {t(language, "label.topics")}</span>
+          <button className="primary compact" type="button" onClick={props.onCreateTopic} title={t(language, "title.createTopic")}>
+            <Plus size={14} />
+            {t(language, "topicCreate.create")}
+          </button>
+        </div>
       </div>
       <div className="topic-actionbar">
         <label className="topic-select-all">
@@ -101,17 +143,17 @@ export function ServerTopicsPanel(props: {
             onChange={() => props.onToggleAllSelected(visibleTopicNames)}
             disabled={visibleTopicNames.length === 0}
           />
-          {props.selectedTopics.length} selected
+          {t(language, "label.selected", { count: String(props.selectedTopics.length) })}
         </label>
-        <button className="ghost compact" onClick={props.onCopySelected} disabled={props.selectedTopics.length === 0}><Copy size={14} /> Copy</button>
-        <button className="ghost compact" onClick={props.onPurgeSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> Purge</button>
-        <button className="danger compact" onClick={props.onDeleteSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> Delete</button>
+        <button className="ghost compact" onClick={props.onCopySelected} disabled={props.selectedTopics.length === 0}><Copy size={14} /> {t(language, "label.copy")}</button>
+        <button className="ghost compact" onClick={props.onPurgeSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> {t(language, "label.purge")}</button>
+        <button className="danger compact" onClick={props.onDeleteSelected} disabled={props.selectedTopics.length === 0}><Trash2 size={14} /> {t(language, "action.delete")}</button>
       </div>
       <DataGrid
         data={props.topics}
         columns={columns}
         className="server-topics-table"
-        emptyText="No topics found"
+        emptyText={t(language, "label.noTopicsFound")}
         sorting={props.sorting}
         onSortingChange={props.onSortingChange}
         getRowKey={(topic) => topic.name}

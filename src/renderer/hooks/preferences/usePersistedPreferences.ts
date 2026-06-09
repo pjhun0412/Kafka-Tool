@@ -1,5 +1,7 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import type { AppPreferences, KafkaApi, ManualAvroSchema } from "../../../shared/types";
+import { INTER_FONT_FAMILY, LEGACY_DEFAULT_FONT_FAMILY, LEGACY_INTER_FONT_FAMILY } from "../../fontConfig";
+import { normalizeLanguagePreference, type LanguagePreference } from "../../i18n";
 
 type PersistedPreferenceParams = {
   kafkaApi: KafkaApi | undefined;
@@ -24,9 +26,17 @@ type PersistedPreferenceParams = {
   setFontFamily: (fontFamily: string) => void;
   fontSize: number;
   setFontSize: (fontSize: number) => void;
+  language: LanguagePreference;
+  setLanguage: (language: LanguagePreference) => void;
   exportFormatTemplate: string;
   setExportFormatTemplate: (template: string) => void;
 };
+
+function normalizeStoredFontFamily(fontFamily: string) {
+  return fontFamily === LEGACY_DEFAULT_FONT_FAMILY || fontFamily === LEGACY_INTER_FONT_FAMILY
+    ? INTER_FONT_FAMILY
+    : fontFamily;
+}
 
 export function usePersistedPreferences({
   kafkaApi,
@@ -51,6 +61,8 @@ export function usePersistedPreferences({
   setFontFamily,
   fontSize,
   setFontSize,
+  language,
+  setLanguage,
   exportFormatTemplate,
   setExportFormatTemplate
 }: PersistedPreferenceParams) {
@@ -75,11 +87,12 @@ export function usePersistedPreferences({
         setMessagePaneHeight(preferences.layout.messagePaneHeight);
       }
       if (typeof preferences.appearance?.fontFamily === "string") {
-        setFontFamily(preferences.appearance.fontFamily);
+        setFontFamily(normalizeStoredFontFamily(preferences.appearance.fontFamily));
       }
       if (typeof preferences.appearance?.fontSize === "number") {
         setFontSize(preferences.appearance.fontSize);
       }
+      setLanguage(normalizeLanguagePreference(preferences.appearance?.language));
       if (typeof preferences.exportFormatTemplate === "string") {
         setExportFormatTemplate(preferences.exportFormatTemplate);
       }
@@ -95,6 +108,7 @@ export function usePersistedPreferences({
     setFavoriteTopicsByServer,
     setFontFamily,
     setFontSize,
+    setLanguage,
     setManualAvroSchemasByServer,
     setMessagePaneHeight,
     setPreferencesLoaded,
@@ -120,7 +134,8 @@ export function usePersistedPreferences({
       },
       appearance: {
         fontFamily,
-        fontSize
+        fontSize,
+        language
       },
       exportFormatTemplate
     }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
@@ -136,6 +151,7 @@ export function usePersistedPreferences({
     messagePaneHeight,
     fontFamily,
     fontSize,
+    language,
     exportFormatTemplate,
     setStatus
   ]);

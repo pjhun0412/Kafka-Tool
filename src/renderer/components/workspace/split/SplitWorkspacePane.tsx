@@ -11,6 +11,7 @@ import type {
   TopicSummary
 } from "../../../../shared/types";
 import type { OffsetOrder, PaneToastState, SplitPaneState, TopicConsumeState, View } from "../../../uiTypes";
+import type { AppLanguage } from "../../../i18n";
 import { PaneToastView } from "../feedback/WorkspaceFeedback";
 import { OpenedTopicTabs } from "../tabs/OpenedTopicTabs";
 import { TopicWorkTabs } from "../tabs/WorkspaceModeTabs";
@@ -51,6 +52,8 @@ export function SplitWorkspacePane(props: {
   onToggleTopicSelected: (topic: string) => void;
   onToggleAllTopicsSelected: (topics: string[]) => void;
   onCopySelectedTopics: () => void;
+  onCreateTopic: () => void;
+  onClearTopicMessages: () => void;
   onPurgeSelectedTopics: () => void;
   onDeleteSelectedTopics: () => void;
   onToggleTopicFavorite: (topic: string) => void;
@@ -76,6 +79,7 @@ export function SplitWorkspacePane(props: {
   onProduceValue: (value: string) => void;
   onProduce: () => void;
   paneToast: PaneToastState;
+  language: AppLanguage;
 }) {
   const isTopicView = props.pane.view === "info" || props.pane.view === "consume" || props.pane.view === "produce" || props.pane.view === "settings";
   function editTopicSettings() {
@@ -92,7 +96,7 @@ export function SplitWorkspacePane(props: {
       className={props.active ? "workspace-pane split-pane active-pane" : "workspace-pane split-pane inactive-pane"}
       onMouseDown={props.onActivate}
     >
-      {props.paneToast && <PaneToastView toast={props.paneToast} />}
+      {props.paneToast && <PaneToastView toast={props.paneToast} language={props.language} />}
       {isTopicView && (
         <>
           <div className="split-topic-tabs-row">
@@ -124,6 +128,7 @@ export function SplitWorkspacePane(props: {
         serverId={props.pane.serverId}
         view={props.pane.view}
         topic={props.pane.topic}
+        language={props.language}
         detail={props.pane.detail}
         topics={props.topics}
         brokers={props.brokers}
@@ -148,6 +153,8 @@ export function SplitWorkspacePane(props: {
         onToggleTopicSelected={props.onToggleTopicSelected}
         onToggleAllTopicsSelected={props.onToggleAllTopicsSelected}
         onCopySelectedTopics={props.onCopySelectedTopics}
+        onCreateTopic={props.onCreateTopic}
+        onClearTopicMessages={props.onClearTopicMessages}
         onPurgeSelectedTopics={props.onPurgeSelectedTopics}
         onDeleteSelectedTopics={props.onDeleteSelectedTopics}
         onToggleTopicFavorite={props.onToggleTopicFavorite}

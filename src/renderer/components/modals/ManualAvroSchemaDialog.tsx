@@ -1,6 +1,8 @@
 ﻿import { Braces, FolderOpen, Trash2, X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ManualAvroSchema, ServerProfile } from "../../../shared/types";
+import { useAppLanguage } from "../../hooks/state/useAppLanguage";
+import { t } from "../../i18n";
 import type { ManualAvroForm } from "../../stores/ui/manualAvroSchemaStore";
 
 type ManualAvroSchemaDialogProps = {
@@ -28,6 +30,7 @@ export function ManualAvroSchemaDialog({
   onClose,
   onSave
 }: ManualAvroSchemaDialogProps) {
+  const language = useAppLanguage();
   const serverName = servers.find((server) => server.id === form.serverId)?.name ?? form.serverId;
 
   return (
@@ -35,21 +38,21 @@ export function ManualAvroSchemaDialog({
       <section className="server-modal avro-schema-modal" role="dialog" aria-modal="true" aria-labelledby="manual-avro-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal-title">
           <div>
-            <span className="eyebrow">Manual Avro Schema</span>
-            <h2 id="manual-avro-title">Register schema</h2>
+            <span className="eyebrow">{t(language, "avro.manual.eyebrow")}</span>
+            <h2 id="manual-avro-title">{t(language, "avro.manual.title")}</h2>
           </div>
-          <button className="modal-close" onClick={onClose} title="Close">
+          <button className="modal-close" onClick={onClose} title={t(language, "title.close")}>
             <X size={18} />
           </button>
         </div>
         <div className="schema-meta">
-          <span>Server</span>
+          <span>{t(language, "label.server")}</span>
           <strong>{serverName}</strong>
-          <span>Topic</span>
+          <span>{t(language, "label.topic")}</span>
           <strong>{form.topic}</strong>
         </div>
         <label>
-          Wire format
+          {t(language, "avro.manual.wireFormat")}
           <select
             value={form.encoding}
             onChange={(event) => onForm((current) => ({ ...current, encoding: event.target.value as ManualAvroSchema["encoding"], error: "" }))}
@@ -60,7 +63,7 @@ export function ManualAvroSchemaDialog({
         </label>
         {form.encoding === "confluent" && (
           <label>
-            Schema ID
+            {t(language, "avro.manual.schemaId")}
             <input
               type="number"
               min={0}
@@ -72,7 +75,7 @@ export function ManualAvroSchemaDialog({
         )}
         <div className="schema-file-row">
           <label className="ghost schema-file-button">
-            <FolderOpen size={15} /> Schema file upload
+            <FolderOpen size={15} /> {t(language, "avro.manual.upload")}
             <input
               type="file"
               accept=".avsc,.json,application/json"
@@ -82,7 +85,7 @@ export function ManualAvroSchemaDialog({
               }}
             />
           </label>
-          <span>Paste JSON directly, upload a file, or drop it below.</span>
+          <span>{t(language, "avro.manual.help")}</span>
         </div>
         <label
           className={isDragOver ? "schema-drop-zone dragging" : "schema-drop-zone"}
@@ -97,7 +100,7 @@ export function ManualAvroSchemaDialog({
             void onReadFile(event.dataTransfer.files?.[0]);
           }}
         >
-          Schema JSON
+          {t(language, "avro.manual.schemaJson")}
           <textarea
             spellCheck={false}
             value={form.schema}
@@ -109,12 +112,12 @@ export function ManualAvroSchemaDialog({
         <div className="modal-actions">
           {registered && (
             <button className="danger" onClick={onDelete}>
-              <Trash2 size={16} /> Delete
+              <Trash2 size={16} /> {t(language, "action.delete")}
             </button>
           )}
-          <button className="ghost" onClick={onClose}>Cancel</button>
+          <button className="ghost" onClick={onClose}>{t(language, "action.cancel")}</button>
           <button className="primary" onClick={onSave}>
-            <Braces size={16} /> Save
+            <Braces size={16} /> {t(language, "action.save")}
           </button>
         </div>
       </section>

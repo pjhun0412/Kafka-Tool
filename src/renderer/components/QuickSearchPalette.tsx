@@ -1,5 +1,7 @@
-﻿import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { HelpCircle, Search, X } from "lucide-react";
+import { useAppLanguage } from "../hooks/state/useAppLanguage";
+import { t } from "../i18n";
 import type { QuickSearchResult, QuickSearchScopedQuery } from "../quickSearch";
 
 type QuickSearchPaletteProps = {
@@ -10,7 +12,7 @@ type QuickSearchPaletteProps = {
   connectedServerIds: string[];
   scope: QuickSearchScopedQuery;
   onQuery: (query: string) => void;
-  onIndex: (index: number) => void;
+  onIndex: (index: number | ((current: number) => number)) => void;
   onClose: () => void;
   onExecute: (result: QuickSearchResult) => void;
 };
@@ -22,8 +24,12 @@ function kindLabel(kind: QuickSearchResult["kind"]) {
 }
 
 export function QuickSearchPalette(props: QuickSearchPaletteProps) {
+  const language = useAppLanguage();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const selectedResultRef = useRef<HTMLButtonElement | null>(null);
+  const selectedSuggestionRef = useRef<HTMLButtonElement | null>(null);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const showServerSuggestions = props.scope.serverSuggestions.length > 0 && props.query.trim().startsWith("@");
 
   useEffect(() => {
     if (props.open) {
@@ -35,6 +41,24 @@ export function QuickSearchPalette(props: QuickSearchPaletteProps) {
     if (!props.open) return;
     selectedResultRef.current?.scrollIntoView({ block: "nearest" });
   }, [props.open, props.selectedIndex, props.results.length]);
+
+  useEffect(() => {
+    setSelectedSuggestionIndex(0);
+  }, [props.query, props.scope.serverSuggestions.length]);
+
+  useEffect(() => {
+    if (!props.open || !showServerSuggestions) return;
+    selectedSuggestionRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [props.open, selectedSuggestionIndex, showServerSuggestions]);
+
+  function applyServerSuggestion(index = selectedSuggestionIndex) {
+    const server = props.scope.serverSuggestions[index];
+    if (!server) return false;
+    props.onQuery(`@"${server.name}" `);
+    props.onIndex(0);
+    requestAnimationFrame(() => inputRef.current?.focus());
+    return true;
+  }
 
   if (!props.open) return null;
 
@@ -58,54 +82,80 @@ export function QuickSearchPalette(props: QuickSearchPaletteProps) {
               }
               if (event.key === "ArrowDown") {
                 event.preventDefault();
-                props.onIndex(Math.min(props.results.length - 1, props.selectedIndex + 1));
+                if (showServerSuggestions) {
+                  setSelectedSuggestionIndex((current) => Math.min(props.scope.serverSuggestions.length - 1, current + 1));
+                  return;
+                }
+                props.onIndex((current) => Math.min(Math.max(0, props.results.length - 1), current + 1));
               }
               if (event.key === "ArrowUp") {
                 event.preventDefault();
-                props.onIndex(Math.max(0, props.selectedIndex - 1));
+                if (showServerSuggestions) {
+                  setSelectedSuggestionIndex((current) => Math.max(0, current - 1));
+                  return;
+                }
+                props.onIndex((current) => Math.max(0, current - 1));
+              }
+              if (event.key === "Tab" && showServerSuggestions) {
+                event.preventDefault();
+                applyServerSuggestion();
               }
               if (event.key === "Enter") {
                 event.preventDefault();
+                if (showServerSuggestions && applyServerSuggestion()) return;
                 const result = props.results[props.selectedIndex];
                 if (result) props.onExecute(result);
               }
             }}
-            placeholder='Search topics, consumers, commands, or scope with @"Server Name" topic'
+            placeholder={t(language, "placeholder.searchQuick")}
           />
           {props.query && (
-            <button onClick={() => props.onQuery("")} title="Clear search">
+            <button onClick={() => props.onQuery("")} title={t(language, "title.clearSearch")}>
               <X size={15} />
             </button>
           )}
           <span className="quick-search-help-trigger">
-            <button type="button" title="Quick search help" aria-label="Quick search help">
+            <button type="button" title={t(language, "title.quickSearchHelp")} aria-label={t(language, "title.quickSearchHelp")}>
               <HelpCircle size={15} />
             </button>
             <span className="quick-search-help-popover" role="tooltip">
-              <strong>Quick Search</strong>
-              <span><b>Ctrl+P</b> or <b>Ctrl+K</b>: open search</span>
-              <span><b>topic name</b>: find topics, tabs, consumers, servers</span>
-              <span><b>@&quot;Server Name&quot; topic</b>: search inside one server</span>
-              <span><b>&gt;topic delete topic-name</b>: delete topic after confirmation</span>
-              <span><b>&gt;topic purge topic-name</b>: purge topic after confirmation</span>
+              <strong>{t(language, "quickSearch.title")}</strong>
+              <span>{t(language, "quickSearch.openHelp")}</span>
+              <span>{t(language, "quickSearch.topicHelp")}</span>
+              <span>{t(language, "quickSearch.scopeHelp")}</span>
+              <span>{t(language, "quickSearch.deleteHelp")}</span>
+              <span>{t(language, "quickSearch.purgeHelp")}</span>
             </span>
           </span>
         </div>
         {props.scope.serverToken && !props.scope.serverId && (
-          <div className="quick-search-warning">No server matched @{props.scope.serverToken}. Use quotes for names with spaces.</div>
+          <div className="quick-search-warning">{t(language, "quickSearch.noServerMatched", { server: props.scope.serverToken })}</div>
         )}
-        {props.scope.serverSuggestions.length > 0 && props.query.trim().startsWith("@") && (
+        {showServerSuggestions && (
           <div className="quick-search-suggestions">
-            {props.scope.serverSuggestions.map((server) => (
-              <button key={server.id} onClick={() => props.onQuery(`@"${server.name}" `)}>
-                @{server.name}
-              </button>
+            {props.scope.serverSuggestions.map((server, index) => (
+              (() => {
+                const connected = props.connectedServerIds.includes(server.id);
+                return (
+                  <button
+                    key={server.id}
+                    ref={index === selectedSuggestionIndex ? selectedSuggestionRef : undefined}
+                    className={`${index === selectedSuggestionIndex ? "active" : ""} ${connected ? "connected" : "disconnected"}`}
+                    onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                    onClick={() => applyServerSuggestion(index)}
+                  >
+                    <span className="quick-search-server-state" aria-hidden="true" />
+                    <strong>@{server.name}</strong>
+                    <small>{connected ? t(language, "title.connected") : t(language, "label.disconnected")}</small>
+                  </button>
+                );
+              })()
             ))}
           </div>
         )}
         <div className="quick-search-results">
           {props.results.length === 0 ? (
-            <div className="quick-search-empty">No results</div>
+            <div className="quick-search-empty">{t(language, "label.noResults")}</div>
           ) : props.results.map((result, index) => {
             const disconnected = Boolean(result.serverId && !props.connectedServerIds.includes(result.serverId));
             return (
@@ -116,12 +166,12 @@ export function QuickSearchPalette(props: QuickSearchPaletteProps) {
                 onMouseEnter={() => props.onIndex(index)}
                 onClick={() => props.onExecute(result)}
               >
-                <span className="quick-search-kind">{kindLabel(result.kind)}</span>
+                <span className={`quick-search-kind kind-${result.kind}`}>{kindLabel(result.kind)}</span>
                 <span className="quick-search-copy">
                   <strong>{result.title}</strong>
                   <small>{result.subtitle}</small>
                 </span>
-                {disconnected && <span className="quick-search-badge">Disconnected</span>}
+                {disconnected && <span className="quick-search-badge">{t(language, "label.disconnected")}</span>}
               </button>
             );
           })}

@@ -78,7 +78,7 @@ export function useProduceActions({
     const result = pane
       ? await runPaneTask(pane, "Sending message...", executeProduce, { serverId, topic })
       : await runTask("Sending message...", executeProduce);
-    setStatus(`전송 완료: ${result.map((item) => `p${item.partition}@${item.offset}`).join(", ")}`);
+    setStatus(`Message sent: ${result.map((item) => `p${item.partition}@${item.offset}`).join(", ")}`);
   }
 
   function sendMessageToProduce(serverId: string, topic: string, message: ConsumedMessage, targetPane: WorkspacePaneId = "primary") {

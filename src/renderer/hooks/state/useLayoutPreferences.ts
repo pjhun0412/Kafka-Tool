@@ -1,6 +1,7 @@
 ﻿import type React from "react";
 import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { resolveLanguage } from "../../i18n";
 import { DEFAULT_FONT_FAMILY, useLayoutStore } from "../../stores/ui/layoutStore";
 import { sanitizeFontFamily } from "../../utils";
 
@@ -18,6 +19,8 @@ export function useLayoutPreferences() {
     setFontFamily,
     fontSize,
     setFontSize,
+    language,
+    setLanguage,
     exportFormatTemplate,
     setExportFormatTemplate
   } = useLayoutStore(useShallow((state) => ({
@@ -33,9 +36,12 @@ export function useLayoutPreferences() {
     setFontFamily: state.setFontFamily,
     fontSize: state.fontSize,
     setFontSize: state.setFontSize,
+    language: state.language,
+    setLanguage: state.setLanguage,
     exportFormatTemplate: state.exportFormatTemplate,
     setExportFormatTemplate: state.setExportFormatTemplate
   })));
+  const resolvedLanguage = resolveLanguage(language);
 
   useEffect(() => {
     const safeFontFamily = sanitizeFontFamily(fontFamily) || DEFAULT_FONT_FAMILY;
@@ -90,6 +96,9 @@ export function useLayoutPreferences() {
     setFontFamily,
     fontSize,
     setFontSize,
+    language,
+    setLanguage,
+    resolvedLanguage,
     exportFormatTemplate,
     setExportFormatTemplate,
     startSidebarResize,

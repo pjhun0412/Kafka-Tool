@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Save, X } from "lucide-react";
 import type { TopicConfigEntry } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 
 type CustomConfigDraft = {
   id: string;
@@ -51,6 +53,7 @@ function nextCustomId() {
 }
 
 export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topic: string }) {
+  const language = useAppLanguage();
   const [configs, setConfigs] = useState<TopicConfigEntry[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -159,27 +162,27 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
     setError("");
   }
 
-  if (!topic) return <section className="panel empty">토픽을 선택하세요.</section>;
+  if (!topic) return <section className="panel empty">{t(language, "topic.select")}</section>;
 
   return (
     <section className="panel topic-settings-panel">
       <div className="section-title">
         <h2>{topic}</h2>
-        <span>{configs.length} settings</span>
+        <span>{configs.length} {t(language, "label.settings")}</span>
       </div>
       <div className="topic-settings-toolbar">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by key or value" />
-        <button type="button" onClick={() => setEditing(true)}>Edit settings</button>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t(language, "placeholder.searchKeyValue")} />
+        <button type="button" onClick={() => setEditing(true)}>{t(language, "action.editSettings")}</button>
       </div>
       {error && <div className="broker-detail-error">{error}</div>}
       {loading ? (
-        <div className="broker-detail-empty">Loading topic settings...</div>
+        <div className="broker-detail-empty">{t(language, "loading.topicSettings")}</div>
       ) : (
         <div className="topic-settings-table">
           <div className="topic-settings-row topic-settings-heading">
-            <span>Key</span>
-            <span>Value</span>
-            <span>Source</span>
+            <span>{t(language, "label.key")}</span>
+            <span>{t(language, "label.value")}</span>
+            <span>{t(language, "label.source")}</span>
           </div>
           {visibleConfigs.map((config) => (
             <div className={isEditableConfig(config) ? "topic-settings-row editable" : "topic-settings-row readonly"} key={config.name}>
@@ -188,7 +191,7 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
               <span>{config.source}</span>
             </div>
           ))}
-          {visibleConfigs.length === 0 && <div className="broker-detail-empty">No settings matched</div>}
+          {visibleConfigs.length === 0 && <div className="broker-detail-empty">{t(language, "label.noSettingsMatched")}</div>}
         </div>
       )}
       {editing && (
@@ -196,18 +199,18 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
           <div className="topic-settings-edit-panel">
             <div className="topic-settings-edit-header">
               <div>
-                <h3>Edit settings</h3>
+                <h3>{t(language, "action.editSettings")}</h3>
                 <span>{topic}</span>
               </div>
-              <button type="button" title="Close" onClick={cancelEdit}><X size={16} /></button>
+              <button type="button" title={t(language, "title.close")} onClick={cancelEdit}><X size={16} /></button>
             </div>
             <div className="topic-settings-form">
               <label>
-                <span>Topic Name</span>
+                <span>{t(language, "label.topicName")}</span>
                 <input value={topic} disabled />
               </label>
               <label>
-                <span>Cleanup policy</span>
+                <span>{t(language, "label.cleanupPolicy")}</span>
                 <select value={drafts["cleanup.policy"] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, "cleanup.policy": event.target.value }))}>
                   <option value="">Not Set</option>
                   <option value="delete">Delete</option>
@@ -216,11 +219,11 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
                 </select>
               </label>
               <label>
-                <span>Min In Sync Replicas</span>
+                <span>{t(language, "label.minInSyncReplicas")}</span>
                 <input value={drafts["min.insync.replicas"] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, "min.insync.replicas": event.target.value }))} />
               </label>
               <label>
-                <span>Time to retain data (in ms)</span>
+                <span>{t(language, "label.retentionMs")}</span>
                 <input value={drafts["retention.ms"] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, "retention.ms": event.target.value }))} />
               </label>
               <div className="topic-settings-presets">
@@ -232,7 +235,7 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
               </div>
               <div className="topic-settings-form-grid">
                 <label>
-                  <span>Max size on disk in GB</span>
+                  <span>{t(language, "label.retentionBytesGb")}</span>
                   <select value={drafts["retention.bytes"] ?? "-1"} onChange={(event) => setDrafts((current) => ({ ...current, "retention.bytes": event.target.value }))}>
                     {retentionByteOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -240,14 +243,14 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
                   </select>
                 </label>
                 <label>
-                  <span>Maximum message size in bytes</span>
+                  <span>{t(language, "label.maxMessageBytes")}</span>
                   <input value={drafts["max.message.bytes"] ?? ""} onChange={(event) => setDrafts((current) => ({ ...current, "max.message.bytes": event.target.value }))} />
                 </label>
               </div>
               <div className="topic-settings-custom-header">
-                <strong>Custom parameters</strong>
+                <strong>{t(language, "label.customParameters")}</strong>
                 <button type="button" onClick={() => setCustomDrafts((current) => [...current, { id: nextCustomId(), name: "", value: "" }])}>
-                  <Plus size={14} /> Add Custom Parameter
+                  <Plus size={14} /> {t(language, "label.addCustomParameter")}
                 </button>
               </div>
               {customDrafts.map((draft) => (
@@ -256,26 +259,26 @@ export function TopicSettingsPanel({ serverId, topic }: { serverId: string; topi
                     value={draft.name}
                     onChange={(event) => setCustomDrafts((current) => current.map((item) => item.id === draft.id ? { ...item, name: event.target.value } : item))}
                   >
-                    <option value="">Select parameter</option>
+                    <option value="">{t(language, "label.selectParameter")}</option>
                     {customParameterOptions.map((option) => (
                       <option key={option.name} value={option.name} disabled={!option.enabled}>{option.name}</option>
                     ))}
                   </select>
                   <input
                     value={draft.value}
-                    placeholder="value"
+                    placeholder={t(language, "placeholder.value")}
                     onChange={(event) => setCustomDrafts((current) => current.map((item) => item.id === draft.id ? { ...item, value: event.target.value } : item))}
                   />
-                  <button type="button" title="Remove custom parameter" onClick={() => setCustomDrafts((current) => current.filter((item) => item.id !== draft.id))}>
+                  <button type="button" title={t(language, "title.removeCustomParameter")} onClick={() => setCustomDrafts((current) => current.filter((item) => item.id !== draft.id))}>
                     <X size={14} />
                   </button>
                 </div>
               ))}
             </div>
             <div className="topic-settings-edit-actions">
-              <button type="button" disabled={saving} onClick={cancelEdit}>Cancel</button>
+              <button type="button" disabled={saving} onClick={cancelEdit}>{t(language, "action.cancel")}</button>
               <button type="button" disabled={saving || changedCount === 0} onClick={() => void saveSettings()}>
-                <Save size={14} /> {saving ? "Saving" : "Update topic"}
+                <Save size={14} /> {saving ? t(language, "action.saving") : t(language, "action.updateTopic")}
               </button>
             </div>
           </div>

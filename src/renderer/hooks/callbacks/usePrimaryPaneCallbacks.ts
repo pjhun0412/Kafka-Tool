@@ -27,6 +27,7 @@ export type PrimaryPaneCallbacksParams = {
   toggleTopicRow: (topic: string) => void;
   toggleAllTopicRows: (topics: string[]) => void;
   copySelectedTopicNames: (topics?: string[]) => Promise<void>;
+  openTopicCreateForm: (serverId: string) => void;
   requestTopicAction: (kind: "delete" | "purge", topics?: string[]) => void;
   toggleFavoriteTopic: (topic: string) => void;
   loadConsumerGroupLag: (groupId: string) => Promise<void>;
@@ -67,6 +68,7 @@ export function usePrimaryPaneCallbacks({
   toggleTopicRow,
   toggleAllTopicRows,
   copySelectedTopicNames,
+  openTopicCreateForm,
   requestTopicAction,
   toggleFavoriteTopic,
   loadConsumerGroupLag,
@@ -110,6 +112,10 @@ export function usePrimaryPaneCallbacks({
     toggleTopicSelected: toggleTopicRow,
     toggleAllTopicsSelected: toggleAllTopicRows,
     copySelectedTopics: () => void copySelectedTopicNames(),
+    createTopic: () => openTopicCreateForm(selectedServerId),
+    clearTopicMessages: () => {
+      if (selectedTopic) requestTopicAction("purge", [selectedTopic]);
+    },
     purgeSelectedTopics: () => requestTopicAction("purge"),
     deleteSelectedTopics: () => requestTopicAction("delete"),
     toggleTopicFavorite: toggleFavoriteTopic,
@@ -153,6 +159,7 @@ export function usePrimaryPaneCallbacks({
     loadConsumerGroupLag,
     moveOffsetPageFor,
     openManualAvroSchema,
+    openTopicCreateForm,
     openTopicTab,
     produce,
     refreshActiveWorkspaceView,

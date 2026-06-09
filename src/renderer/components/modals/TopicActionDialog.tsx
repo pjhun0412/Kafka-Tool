@@ -1,4 +1,6 @@
-﻿import { Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
+import { useAppLanguage } from "../../hooks/state/useAppLanguage";
+import { t } from "../../i18n";
 import type { TopicAction } from "../../uiTypes";
 
 type TopicActionDialogProps = {
@@ -18,6 +20,7 @@ export function TopicActionDialog({
   onClose,
   onConfirm
 }: TopicActionDialogProps) {
+  const language = useAppLanguage();
   const isDelete = action.kind === "delete";
   const isConfirmed = confirmText.trim().toUpperCase() === action.kind.toUpperCase();
 
@@ -32,37 +35,33 @@ export function TopicActionDialog({
       >
         <div className="modal-title">
           <div>
-            <span className="eyebrow">Topic {action.kind}</span>
-            <h2 id="topic-action-title">{isDelete ? "Delete selected topics" : "Purge selected topics"}</h2>
+            <span className="eyebrow">{t(language, isDelete ? "topicAction.deleteEyebrow" : "topicAction.purgeEyebrow")}</span>
+            <h2 id="topic-action-title">{t(language, isDelete ? "topicAction.deleteTitle" : "topicAction.purgeTitle")}</h2>
           </div>
-          <button className="modal-close" onClick={onClose} title="Close">
+          <button className="modal-close" onClick={onClose} title={t(language, "title.close")}>
             <X size={18} />
           </button>
         </div>
         <div className="topic-action-warning">
-          <strong>{action.topics.length} topic(s) selected</strong>
-          <p>
-            {isDelete
-              ? "Delete removes the selected topics from the cluster."
-              : "Purge keeps the topics, but removes records up to the current high offsets."}
-          </p>
+          <strong>{t(language, "topicAction.selected", { count: String(action.topics.length) })}</strong>
+          <p>{t(language, isDelete ? "topicAction.deleteDescription" : "topicAction.purgeDescription")}</p>
           <div className="topic-action-list">
             {action.topics.map((topic) => <span key={topic}>{topic}</span>)}
           </div>
         </div>
         <label>
-          Type {action.kind.toUpperCase()} to confirm
+          {t(language, "topicAction.confirm", { word: action.kind.toUpperCase() })}
           <input value={confirmText} onChange={(event) => onConfirmText(event.target.value)} autoFocus />
         </label>
         <div className="modal-actions">
-          <button className="ghost" onClick={onClose}>Cancel</button>
+          <button className="ghost" onClick={onClose}>{t(language, "action.cancel")}</button>
           <button
             className={isDelete ? "danger" : "primary"}
             onClick={onConfirm}
             disabled={!isConfirmed || loading}
           >
             <Trash2 size={16} />
-            {isDelete ? "Delete" : "Purge"}
+            {isDelete ? t(language, "action.delete") : t(language, "label.purge")}
           </button>
         </div>
       </section>

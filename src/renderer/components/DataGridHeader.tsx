@@ -1,6 +1,8 @@
 ﻿import React from "react";
 import { Filter, X } from "lucide-react";
 import { flexRender, type Header, type Table } from "@tanstack/react-table";
+import { useAppLanguage } from "../hooks/state/useAppLanguage";
+import { t } from "../i18n";
 import { getFilterVariant, hasFilterValue, isRangeFilterValue, SortIndicator } from "./DataGridFiltering";
 
 export function DataGridHeader<TData extends object>(props: {
@@ -9,6 +11,7 @@ export function DataGridHeader<TData extends object>(props: {
   openFilterColumnId: string;
   onOpenFilterColumnId: React.Dispatch<React.SetStateAction<string>>;
 }) {
+  const language = useAppLanguage();
   function openColumnFilter(header: Header<TData, unknown>) {
     const variant = getFilterVariant(header.column, props.data);
     const currentValue = header.column.getFilterValue();
@@ -31,7 +34,7 @@ export function DataGridHeader<TData extends object>(props: {
           onKeyDown={(event) => {
             if (event.key === "Escape") props.onOpenFilterColumnId("");
           }}
-          placeholder="Contains"
+          placeholder={t(language, "placeholder.contains")}
         />
       );
     }
@@ -46,7 +49,7 @@ export function DataGridHeader<TData extends object>(props: {
           onKeyDown={(event) => {
             if (event.key === "Escape") props.onOpenFilterColumnId("");
           }}
-          placeholder="Min"
+          placeholder={t(language, "placeholder.min")}
         />
         <span>~</span>
         <input
@@ -56,7 +59,7 @@ export function DataGridHeader<TData extends object>(props: {
           onKeyDown={(event) => {
             if (event.key === "Escape") props.onOpenFilterColumnId("");
           }}
-          placeholder="Max"
+          placeholder={t(language, "placeholder.max")}
         />
       </div>
     );
@@ -83,7 +86,7 @@ export function DataGridHeader<TData extends object>(props: {
                           <button
                             className="grid-header-button sortable"
                             onClick={header.column.getToggleSortingHandler()}
-                            title="Sort column"
+                            title={t(language, "title.sortColumn")}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             <span className={sorted ? "sort-indicator active" : "sort-indicator"}>
@@ -99,7 +102,7 @@ export function DataGridHeader<TData extends object>(props: {
                           <button
                             className={filterActive || isFilterOpen ? "grid-filter-button active" : "grid-filter-button"}
                             type="button"
-                            title="Filter column"
+                            title={t(language, "title.filterColumn")}
                             onClick={(event) => {
                               event.stopPropagation();
                               openColumnFilter(header);
@@ -119,16 +122,16 @@ export function DataGridHeader<TData extends object>(props: {
                 <th colSpan={headerGroup.headers.length}>
                   <div className="grid-filter-panel">
                     <span>
-                      Filter
+                      {t(language, "label.filter")}
                       <strong>{flexRender(activeHeader.column.columnDef.header, activeHeader.getContext())}</strong>
                     </span>
                     {renderFilterEditor(activeHeader)}
                     {hasFilterValue(activeHeader.column.getFilterValue()) && (
-                      <button type="button" title="Clear column filter" onClick={() => activeHeader.column.setFilterValue("")}>
-                        Clear
+                      <button type="button" title={t(language, "title.clearColumnFilter")} onClick={() => activeHeader.column.setFilterValue("")}>
+                        {t(language, "label.clear")}
                       </button>
                     )}
-                    <button type="button" title="Close filter" onClick={() => props.onOpenFilterColumnId("")}>
+                    <button type="button" title={t(language, "title.closeFilter")} onClick={() => props.onOpenFilterColumnId("")}>
                       <X size={14} />
                     </button>
                   </div>

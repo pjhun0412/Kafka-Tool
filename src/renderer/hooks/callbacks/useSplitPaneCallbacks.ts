@@ -23,6 +23,7 @@ export type SplitPaneCallbacksParams = {
   toggleTopicRow: (topic: string) => void;
   toggleAllTopicRows: (topics: string[]) => void;
   copySelectedTopicNames: (topics?: string[]) => Promise<void>;
+  openTopicCreateForm: (serverId: string) => void;
   requestTopicAction: (kind: "delete" | "purge", topics?: string[]) => void;
   toggleFavoriteTopic: (topic: string) => void;
   loadConsumerGroupLagFor: (serverId: string, groupId: string, target?: WorkspaceActionTarget) => Promise<void>;
@@ -57,6 +58,7 @@ export function useSplitPaneCallbacks({
   toggleTopicRow,
   toggleAllTopicRows,
   copySelectedTopicNames,
+  openTopicCreateForm,
   requestTopicAction,
   toggleFavoriteTopic,
   loadConsumerGroupLagFor,
@@ -106,6 +108,12 @@ export function useSplitPaneCallbacks({
     toggleTopicSelected: toggleTopicRow,
     toggleAllTopicsSelected: toggleAllTopicRows,
     copySelectedTopics: () => void copySelectedTopicNames(),
+    createTopic: () => {
+      if (pane) openTopicCreateForm(pane.serverId);
+    },
+    clearTopicMessages: () => {
+      if (pane?.topic) requestTopicAction("purge", [pane.topic]);
+    },
     purgeSelectedTopics: () => requestTopicAction("purge"),
     deleteSelectedTopics: () => requestTopicAction("delete"),
     toggleTopicFavorite: toggleFavoriteTopic,
@@ -153,6 +161,7 @@ export function useSplitPaneCallbacks({
     exportOffsetConditionMessages,
     loadConsumerGroupLagFor,
     moveOffsetPageFor,
+    openTopicCreateForm,
     openManualAvroSchema,
     pane,
     produceFor,

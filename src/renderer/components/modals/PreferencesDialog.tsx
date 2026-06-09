@@ -2,9 +2,12 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import type { PreferenceGroup, PreferencePage, PreferenceSearchMatches } from "../../hooks/preferences/usePreferenceNavigation";
+import { t, type AppLanguage, type LanguagePreference } from "../../i18n";
+import { DEFAULT_EXPORT_FORMAT_TEMPLATE, DEFAULT_FONT_FAMILY } from "../../stores/ui/layoutStore";
 import { AvroSchemasPreferences } from "./preferences/AvroSchemasPreferences";
 import { EditorFontPreferences } from "./preferences/EditorFontPreferences";
 import { ExportLogPreferences } from "./preferences/ExportLogPreferences";
+import { LanguagePreferences } from "./preferences/LanguagePreferences";
 import { PreferencesNav } from "./preferences/PreferencesNav";
 
 type PreferencesDialogProps = {
@@ -15,6 +18,8 @@ type PreferencesDialogProps = {
   matches: PreferenceSearchMatches;
   fontFamily: string;
   fontSize: number;
+  language: LanguagePreference;
+  resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onActivePage: (page: PreferencePage) => void;
@@ -22,6 +27,7 @@ type PreferencesDialogProps = {
   onQuery: (query: string) => void;
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchema: (serverId: string, topic: string) => void;
@@ -36,6 +42,8 @@ export function PreferencesDialog({
   matches,
   fontFamily,
   fontSize,
+  language,
+  resolvedLanguage,
   exportFormatTemplate,
   manualAvroSchemaRows,
   onActivePage,
@@ -43,20 +51,22 @@ export function PreferencesDialog({
   onQuery,
   onFontFamily,
   onFontSize,
+  onLanguage,
   onExportFormatTemplate,
   onOpenManualAvroSchema,
   onDeleteManualAvroSchema,
   onClose
 }: PreferencesDialogProps) {
+  const uiLanguage = resolvedLanguage;
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="server-modal preferences-modal" role="dialog" aria-modal="true" aria-labelledby="preferences-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal-title">
           <div>
-            <span className="eyebrow">Application</span>
-            <h2 id="preferences-title">Preferences</h2>
+            <span className="eyebrow">{t(uiLanguage, "preferences.eyebrow")}</span>
+            <h2 id="preferences-title">{t(uiLanguage, "preferences.title")}</h2>
           </div>
-          <button className="modal-close" onClick={onClose} title="Close">
+          <button className="modal-close" onClick={onClose} title={t(uiLanguage, "title.close")}>
             <X size={18} />
           </button>
         </div>
@@ -81,6 +91,13 @@ export function PreferencesDialog({
                 onFontSize={onFontSize}
               />
             )}
+            {activePage === "language" && (
+              <LanguagePreferences
+                language={language}
+                resolvedLanguage={resolvedLanguage}
+                onLanguage={onLanguage}
+              />
+            )}
             {activePage === "export-log" && (
               <ExportLogPreferences
                 exportFormatTemplate={exportFormatTemplate}
@@ -99,14 +116,14 @@ export function PreferencesDialog({
         <div className="modal-actions">
           {activePage === "editor-font" && (
             <button className="ghost" onClick={() => {
-              onFontFamily("D2Coding, Consolas, 'Courier New', monospace");
+              onFontFamily(DEFAULT_FONT_FAMILY);
               onFontSize(13);
-              onExportFormatTemplate("[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}");
+              onExportFormatTemplate(DEFAULT_EXPORT_FORMAT_TEMPLATE);
             }}>
-              Reset
+              {t(uiLanguage, "action.reset")}
             </button>
           )}
-          <button className="primary" onClick={onClose}>Done</button>
+          <button className="primary" onClick={onClose}>{t(uiLanguage, "action.done")}</button>
         </div>
       </section>
     </div>

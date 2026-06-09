@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Braces, HardDrive, Layers, ListTree, MoreVertical, Play, RefreshCw, Send, Settings, Users } from "lucide-react";
 import type { View } from "../../../uiTypes";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 
 const topicWorkViews: View[] = ["info", "consume", "produce", "settings"];
 const serverWorkViews: View[] = ["brokers", "topics", "consumers"];
@@ -12,6 +14,7 @@ export function ServerWorkTabs(props: {
   onView: (view: View) => void;
   onRefresh: () => void;
 }) {
+  const language = useAppLanguage();
   return (
     <nav className="tabs server-work-tabs" onMouseDown={(event) => event.stopPropagation()}>
       {serverWorkViews.map((view) => (
@@ -28,7 +31,7 @@ export function ServerWorkTabs(props: {
         </button>
       ))}
       <button className="ghost" onClick={props.onRefresh} disabled={props.disabled || props.loading}>
-        <RefreshCw size={16} /> 새로고침
+        <RefreshCw size={16} /> {t(language, "label.refresh")}
       </button>
     </nav>
   );
@@ -43,6 +46,7 @@ export function TopicWorkTabs(props: {
   onRefresh: () => void;
   onEditSettings: () => void;
 }) {
+  const language = useAppLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,13 +75,13 @@ export function TopicWorkTabs(props: {
         <Braces size={16} /> Schema
       </button>
       <button className="ghost" onClick={props.onRefresh} disabled={props.refreshDisabled}>
-        <RefreshCw size={16} /> 새로고침
+        <RefreshCw size={16} /> {t(language, "label.refresh")}
       </button>
       <div className="topic-action-menu-wrap" ref={menuRef}>
         <button
           className={menuOpen ? "ghost icon-only topic-menu-button active" : "ghost icon-only topic-menu-button"}
           type="button"
-          title="Topic actions"
+          title={t(language, "title.topicActions")}
           disabled={props.disabled}
           onClick={() => setMenuOpen((current) => !current)}
         >
@@ -92,8 +96,8 @@ export function TopicWorkTabs(props: {
                 props.onEditSettings();
               }}
             >
-              Edit settings
-              <span>토픽 설정값을 수정합니다.</span>
+              {t(language, "action.editSettings")}
+              <span>{t(language, "label.topicSettingsEditDescription")}</span>
             </button>
           </div>
         )}

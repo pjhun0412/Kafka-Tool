@@ -1,4 +1,6 @@
-﻿import { CheckCircle2, Circle, XCircle } from "lucide-react";
+import { CheckCircle2, Circle, XCircle } from "lucide-react";
+import { useAppLanguage } from "../hooks/state/useAppLanguage";
+import { t } from "../i18n";
 
 type ServerConnectionIndicatorProps = {
   serverId: string;
@@ -13,8 +15,14 @@ export function ServerConnectionIndicator({
   failedServerIds,
   variant = "icon"
 }: ServerConnectionIndicatorProps) {
+  const language = useAppLanguage();
   const isConnected = connectedServerIds.includes(serverId);
   const isFailed = failedServerIds.includes(serverId);
+  const title = isFailed
+    ? t(language, "title.connectionFailed")
+    : isConnected
+      ? t(language, "title.connected")
+      : t(language, "title.disconnected");
   const className = [
     "connection-dot",
     isConnected ? "connected" : "",
@@ -23,12 +31,12 @@ export function ServerConnectionIndicator({
   ].filter(Boolean).join(" ");
 
   if (variant === "dot") {
-    return <span className={className} title={isFailed ? "Connection failed" : isConnected ? "Connected" : "Disconnected"} />;
+    return <span className={className} title={title} />;
   }
 
   if (isFailed) {
     return (
-      <span className={className} title="Connection failed">
+      <span className={className} title={title}>
         <XCircle size={14} strokeWidth={2.6} />
       </span>
     );
@@ -36,14 +44,14 @@ export function ServerConnectionIndicator({
 
   if (isConnected) {
     return (
-      <span className={className} title="Connected">
+      <span className={className} title={title}>
         <CheckCircle2 size={14} strokeWidth={2.6} />
       </span>
     );
   }
 
   return (
-    <span className={className} title="Disconnected">
+    <span className={className} title={title}>
       <Circle size={14} strokeWidth={2.6} />
     </span>
   );

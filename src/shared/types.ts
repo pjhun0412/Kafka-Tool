@@ -47,6 +47,7 @@ export type TopicDetail = {
     low: string;
     high: string;
   }>;
+  configs?: TopicConfigEntry[];
 };
 
 export type TopicConfigEntry = {
@@ -186,6 +187,7 @@ export type AppPreferences = {
   appearance?: Partial<{
     fontFamily: string;
     fontSize: number;
+    language: "auto" | "ko" | "en";
   }>;
   exportFormatTemplate?: string;
   windowBounds?: Partial<{
@@ -238,6 +240,7 @@ export type ConsumedMessage = {
 export type MessageExportFormat = "json" | "csv" | "log";
 
 export type AppPreferenceSection = "general" | "avro";
+export type AppMenuLanguage = "ko" | "en";
 
 export type MessageExportRequest = {
   topic: string;
@@ -256,6 +259,17 @@ export type TopicMutationRequest = {
   topics: string[];
 };
 
+export type TopicCreateRequest = {
+  serverId: string;
+  topic: string;
+  partitions: number;
+  replicationFactor: number;
+  configs?: Array<{
+    name: string;
+    value: string;
+  }>;
+};
+
 export type ConsumerGroupMutationRequest = {
   serverId: string;
   groupIds: string[];
@@ -268,12 +282,17 @@ export type UpdateStatus = {
   percent?: number;
 };
 
+export type StartConsumeResult = {
+  liveRecordPath?: string;
+};
+
 export type StartConsumeRequest = {
   serverId: string;
   topic: string;
   consumerId?: string;
   fromBeginning: boolean;
   partition?: number;
+  record?: boolean;
 };
 
 export type StopConsumeRequest = {
@@ -325,6 +344,7 @@ export type KafkaApi = {
   installUpdate: () => Promise<void>;
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
+  setMenuLanguage: (language: AppMenuLanguage) => Promise<void>;
   checkHealth: (serverId: string) => Promise<void>;
   listTopics: (serverId: string) => Promise<TopicSummary[]>;
   listTopicMessageCounts: (serverId: string, topics: string[]) => Promise<TopicMessageCounts>;
@@ -334,6 +354,7 @@ export type KafkaApi = {
   getTopicDetail: (serverId: string, topic: string) => Promise<TopicDetail>;
   getTopicConfigs: (serverId: string, topic: string) => Promise<TopicConfigEntry[]>;
   updateTopicConfigs: (request: TopicConfigUpdateRequest) => Promise<TopicConfigEntry[]>;
+  createTopic: (request: TopicCreateRequest) => Promise<void>;
   deleteTopics: (request: TopicMutationRequest) => Promise<void>;
   purgeTopics: (request: TopicMutationRequest) => Promise<void>;
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;
@@ -344,7 +365,7 @@ export type KafkaApi = {
   produce: (message: ProduceRequest) => Promise<ProducedMessage[]>;
   consumeFromOffset: (request: ConsumeOffsetRequest) => Promise<ConsumeOffsetResult>;
   consumeTimeRange: (request: ConsumeTimeRangeRequest) => Promise<ConsumedMessage[]>;
-  startConsume: (request: StartConsumeRequest) => Promise<void>;
+  startConsume: (request: StartConsumeRequest) => Promise<StartConsumeResult>;
   stopConsume: (request?: StopConsumeRequest) => Promise<void>;
   onConsumeMessage: (callback: (message: ConsumedMessage) => void) => () => void;
   onConsumeError: (callback: (error: string) => void) => () => void;

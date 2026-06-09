@@ -1,7 +1,9 @@
-﻿import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { RefreshCw, X } from "lucide-react";
+import { ChevronDown, ChevronRight, RefreshCw, X } from "lucide-react";
 import type { ConsumerGroupLagDetail, ConsumerGroupLagRow } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import { DataGrid } from "../../DataGrid";
 import { GroupStateBadge } from "./GroupStateBadge";
 
@@ -30,6 +32,8 @@ export function ConsumerGroupDetailView(props: {
   onBack: () => void;
   onRefreshDetail: () => void;
 }) {
+  const language = useAppLanguage();
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const normalizedQuery = props.query.trim().toLowerCase();
   const groupedTopics = groupRowsByTopic(props.detail.rows)
     .filter((topic) => topic.topic.toLowerCase().includes(normalizedQuery));
@@ -63,42 +67,72 @@ export function ConsumerGroupDetailView(props: {
     }
   ], []);
 
+  useEffect(() => {
+    setExpandedTopics(new Set());
+  }, [props.detail.groupId]);
+
+  function toggleTopic(topic: string) {
+    setExpandedTopics((current) => {
+      const next = new Set(current);
+      if (next.has(topic)) {
+        next.delete(topic);
+      } else {
+        next.add(topic);
+      }
+      return next;
+    });
+  }
+
   return (
     <section className="panel groups-panel">
       <div className="group-detail-header">
-        <button className="ghost compact" onClick={props.onBack}>Consumers</button>
+        <button className="ghost compact" onClick={props.onBack}>{t(language, "label.consumers")}</button>
         <span>/</span>
         <h2 title={props.detail.groupId}>{props.detail.groupId}</h2>
-        <button className="ghost compact" onClick={props.onRefreshDetail}><RefreshCw size={15} /> 새로고침</button>
+        <button className="ghost compact" onClick={props.onRefreshDetail}><RefreshCw size={15} /> {t(language, "label.refresh")}</button>
       </div>
       <div className="group-summary-grid">
-        <div><span>State</span><strong><GroupStateBadge state={props.detail.state} /></strong></div>
-        <div><span>Members</span><strong>{props.detail.members}</strong></div>
-        <div><span>Assigned Topics</span><strong>{new Set(props.detail.rows.map((row) => row.topic)).size}</strong></div>
-        <div><span>Assigned Partitions</span><strong>{props.detail.rows.length}</strong></div>
-        <div><span>Total Lag</span><strong className={props.detail.totalLag !== "-" && props.detail.totalLag !== "0" ? "lag-warn" : ""}>{props.detail.totalLag}</strong></div>
+        <div><span>{t(language, "label.state")}</span><strong><GroupStateBadge state={props.detail.state} /></strong></div>
+        <div><span>{t(language, "label.members")}</span><strong>{props.detail.members}</strong></div>
+        <div><span>{t(language, "label.assignedTopics")}</span><strong>{new Set(props.detail.rows.map((row) => row.topic)).size}</strong></div>
+        <div><span>{t(language, "label.assignedPartitions")}</span><strong>{props.detail.rows.length}</strong></div>
+        <div><span>{t(language, "label.totalLag")}</span><strong className={props.detail.totalLag !== "-" && props.detail.totalLag !== "0" ? "lag-warn" : ""}>{props.detail.totalLag}</strong></div>
       </div>
       <div className="search-box group-search">
-        <input value={props.query} onChange={(event) => props.onQuery(event.target.value)} placeholder="Search by topic name" />
-        {props.query && <button onClick={() => props.onQuery("")} title="Clear search"><X size={13} /></button>}
+        <input value={props.query} onChange={(event) => props.onQuery(event.target.value)} placeholder={t(language, "placeholder.searchTopicName")} />
+        {props.query && <button onClick={() => props.onQuery("")} title={t(language, "title.clearSearch")}><X size={13} /></button>}
       </div>
       <div className="group-topic-detail-list">
-        {groupedTopics.map((topic) => (
-          <section key={topic.topic} className="group-topic-card">
-            <div className="group-topic-row">
-              <strong title={topic.topic}>{topic.topic}</strong>
-              <span className={topic.totalLag !== "-" && topic.totalLag !== "0" ? "lag-warn" : ""}>{topic.totalLag}</span>
-            </div>
-            <DataGrid
-              data={topic.rows}
-              columns={lagColumns}
-              className="group-lag-table"
-              emptyText="No committed offsets"
-              getRowKey={(row) => `${row.topic}-${row.partition}`}
-            />
-          </section>
-        ))}
-        {groupedTopics.length === 0 && <div className="empty-list">No committed offsets</div>}
+        {groupedTopics.map((topic) => {
+          const isExpanded = expandedTopics.has(topic.topic);
+          return (
+            <section key={topic.topic} className={isExpanded ? "group-topic-card expanded" : "group-topic-card"}>
+              <button
+                type="button"
+                className="group-topic-row"
+                onClick={() => toggleTopic(topic.topic)}
+                aria-expanded={isExpanded}
+              >
+                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                <strong title={topic.topic}>{topic.topic}</strong>
+                <span className="group-topic-meta">
+                  {topic.rows.length} {t(language, "label.partitions")}
+                </span>
+                <span className={topic.totalLag !== "-" && topic.totalLag !== "0" ? "lag-warn" : ""}>{topic.totalLag}</span>
+              </button>
+              {isExpanded && (
+                <DataGrid
+                  data={topic.rows}
+                  columns={lagColumns}
+                  className="group-lag-table"
+                  emptyText={t(language, "label.noCommittedOffsets")}
+                  getRowKey={(row) => `${row.topic}-${row.partition}`}
+                />
+              )}
+            </section>
+          );
+        })}
+        {groupedTopics.length === 0 && <div className="empty-list">{t(language, "label.noCommittedOffsets")}</div>}
       </div>
     </section>
   );

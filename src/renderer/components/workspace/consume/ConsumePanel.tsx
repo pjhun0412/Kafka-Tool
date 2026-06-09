@@ -1,6 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { ChevronUp, RefreshCw } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
+import type { AppLanguage } from "../../../i18n";
+import { t } from "../../../i18n";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, JsonInspectorMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { JsonInspector } from "./JsonInspector";
@@ -12,6 +14,7 @@ import { useInspectorResize } from "./useInspectorResize";
 export function ConsumePanel(props: {
   messages: ConsumedMessage[];
   topic: string;
+  language: AppLanguage;
   selectedMessage: ConsumedMessage | null;
   mode: ConsumeMode;
   offsetOrder: OffsetOrder;
@@ -28,6 +31,9 @@ export function ConsumePanel(props: {
   isQuerying: boolean;
   autoScroll: boolean;
   maxMessages: number;
+  liveRecordEnabled: boolean;
+  liveRecordPath: string;
+  liveRecordCount: number;
   offsetPagination: TopicConsumeState["offsetPagination"];
   messagePaneHeight: number;
   onMode: (value: ConsumeMode) => void;
@@ -45,6 +51,7 @@ export function ConsumePanel(props: {
   onApplyFilter: (value: string) => void;
   onAutoScroll: (value: boolean) => void;
   onMaxMessages: (value: number) => void;
+  onLiveRecordEnabled: (value: boolean) => void;
   onPagePrev: () => void;
   onPageNext: () => void;
   onSelectMessage: (message: ConsumedMessage) => void;
@@ -119,13 +126,24 @@ export function ConsumePanel(props: {
     props.onClearFilter();
   }
 
+  const queryMessage = props.mode === "live"
+    ? props.isConsuming
+      ? t(props.language, "task.stoppingLiveConsume")
+      : t(props.language, "task.startingLiveConsume")
+    : props.mode === "timeRange"
+      ? t(props.language, "task.loadingTimeRangeMessages")
+      : t(props.language, "task.loadingMessages");
+
   return (
     <section className={props.isQuerying ? "panel consume-workspace querying" : "panel consume-workspace"}>
       {props.isQuerying && (
-        <div className="pane-local-toast">
-          <RefreshCw size={14} className="spin" />
-          <span>{props.topic || "Topic"} loading</span>
-        </div>
+        <>
+          <div className="consume-query-progress" aria-hidden="true" />
+          <div className="pane-local-toast">
+            <RefreshCw size={14} className="spin" />
+            <span>{props.topic || "Topic"} {queryMessage}</span>
+          </div>
+        </>
       )}
       <ConsumeToolbar
         mode={props.mode}
@@ -139,6 +157,9 @@ export function ConsumePanel(props: {
         timeEnd={props.timeEnd}
         autoScroll={props.autoScroll}
         maxMessages={props.maxMessages}
+        liveRecordEnabled={props.liveRecordEnabled}
+        liveRecordPath={props.liveRecordPath}
+        liveRecordCount={props.liveRecordCount}
         filterMode={props.filterMode}
         hasActiveMessageFilter={hasActiveMessageFilter}
         filteredMessages={filteredMessages}
@@ -157,6 +178,7 @@ export function ConsumePanel(props: {
         onTimeEnd={props.onTimeEnd}
         onAutoScroll={props.onAutoScroll}
         onMaxMessages={props.onMaxMessages}
+        onLiveRecordEnabled={props.onLiveRecordEnabled}
         onPagePrev={props.onPagePrev}
         onPageNext={props.onPageNext}
         onExport={props.onExport}
@@ -202,7 +224,7 @@ export function ConsumePanel(props: {
           </button>
         ) : (
           <>
-            <div className="consume-split-resizer" onPointerDown={startInspectorResize} title="Resize message grid and JSON viewer" />
+            <div className="consume-split-resizer" onPointerDown={startInspectorResize} title={t(props.language, "title.resizeMessageJsonPanels")} />
             <JsonInspector
               mode={inspectorMode}
               search={inspectorSearch}

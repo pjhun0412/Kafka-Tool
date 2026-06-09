@@ -1,6 +1,8 @@
 ﻿import { Braces, Copy, Layers, Pencil, Power, Trash2, Unplug } from "lucide-react";
 import type { ServerProfile } from "../../../shared/types";
+import { useAppLanguage } from "../../hooks/state/useAppLanguage";
 import type { ServerContextMenuState, TopicContextMenuState } from "../../hooks/state/useSidebarInteractionState";
+import { t } from "../../i18n";
 
 type WorkspaceContextMenusProps = {
   topicContextMenu: TopicContextMenuState;
@@ -39,6 +41,7 @@ export function WorkspaceContextMenus({
   onEditServer,
   onDeleteServer
 }: WorkspaceContextMenusProps) {
+  const language = useAppLanguage();
   return (
     <>
       {topicContextMenu && (
@@ -48,19 +51,19 @@ export function WorkspaceContextMenus({
           onClick={(event) => event.stopPropagation()}
         >
           <button onClick={() => { onCloseTopicMenu(); onOpenTopic(contextTopic); }}>
-            <Layers size={14} /> Open
+            <Layers size={14} /> {t(language, "context.open")}
           </button>
           <button onClick={() => { onCloseTopicMenu(); onCopyTopic(contextTopic); }}>
-            <Copy size={14} /> Copy name
+            <Copy size={14} /> {t(language, "context.copyName")}
           </button>
           <button onClick={() => { onCloseTopicMenu(); onRegisterAvroSchema(selectedServerId, contextTopic); }}>
-            <Braces size={14} /> Register Avro Schema
+            <Braces size={14} /> {t(language, "context.registerAvroSchema")}
           </button>
           <button className="danger-item" onClick={() => { onCloseTopicMenu(); onTopicAction("purge", [contextTopic]); }}>
-            <Trash2 size={14} /> Purge
+            <Trash2 size={14} /> {t(language, "context.purge")}
           </button>
           <button className="danger-item" onClick={() => { onCloseTopicMenu(); onTopicAction("delete", [contextTopic]); }}>
-            <Trash2 size={14} /> Delete
+            <Trash2 size={14} /> {t(language, "action.delete")}
           </button>
         </div>
       )}
@@ -72,18 +75,18 @@ export function WorkspaceContextMenus({
         >
           {connectedServerIds.includes(contextServer.id) ? (
             <button onClick={() => { onCloseServerMenu(); onDisconnectServer(contextServer.id); }}>
-              <Unplug size={14} /> Disconnect
+              <Unplug size={14} /> {t(language, "context.disconnect")}
             </button>
           ) : (
             <button onClick={() => { onCloseServerMenu(); onConnectServer(contextServer); }}>
-              <Power size={14} /> Connect
+              <Power size={14} /> {t(language, "context.connect")}
             </button>
           )}
           <button onClick={() => { onCloseServerMenu(); onEditServer(contextServer); }}>
-            <Pencil size={14} /> Edit
+            <Pencil size={14} /> {t(language, "context.edit")}
           </button>
           <button className="danger-item" onClick={() => { onCloseServerMenu(); onDeleteServer(contextServer.id); }}>
-            <Trash2 size={14} /> Delete
+            <Trash2 size={14} /> {t(language, "action.delete")}
           </button>
         </div>
       )}

@@ -1,3 +1,14 @@
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/inter/latin-800.css";
+@import "@fontsource/noto-sans-kr/korean-400.css";
+@import "@fontsource/noto-sans-kr/korean-500.css";
+@import "@fontsource/noto-sans-kr/korean-600.css";
+@import "@fontsource/noto-sans-kr/korean-700.css";
+@import "@fontsource/noto-sans-kr/korean-800.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,8 +17,8 @@
   :root {
     color: #d4d4d4;
     background: #1e1e1e;
-    --app-font-family: "D2Coding", Consolas, "Courier New", monospace;
-    --app-mono-font-family: "D2Coding", Consolas, "Courier New", monospace;
+    --app-font-family: Inter, "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --app-mono-font-family: Inter, "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --app-font-size: 13px;
     font-family: var(--app-font-family);
     font-size: var(--app-font-size);
@@ -177,7 +188,19 @@
   }
 
   .quick-search-suggestions button {
-    @apply shrink-0 rounded border border-cyan-200 bg-white px-2 py-1 text-[12px] font-extrabold text-cyan-800 hover:bg-cyan-100;
+    @apply grid shrink-0 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-1.5 rounded border border-cyan-200 bg-white px-2 py-1 text-[12px] font-extrabold text-cyan-800 hover:bg-cyan-100;
+  }
+
+  .quick-search-suggestions button strong {
+    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .quick-search-suggestions button small {
+    @apply text-[10px] font-extrabold uppercase;
+  }
+
+  .quick-search-server-state {
+    @apply h-2 w-2 rounded-full bg-slate-300;
   }
 
   .quick-search-help {
@@ -893,6 +916,10 @@
     @apply mb-2 flex shrink-0 items-center justify-between gap-2;
   }
 
+  .section-title-actions {
+    @apply inline-flex items-center gap-2;
+  }
+
   .section-title span,
   .count {
     @apply text-[13px] text-muted;
@@ -1241,6 +1268,76 @@
     margin: 0;
   }
 
+  .datetime-picker {
+    @apply relative shrink-0;
+  }
+
+  .datetime-trigger {
+    @apply flex h-9 min-h-9 w-[172px] items-center gap-2 rounded-md border border-line bg-white px-2 text-left text-[12px] font-extrabold text-slate-600 transition hover:border-brand/40 hover:bg-slate-50;
+  }
+
+  .datetime-trigger span {
+    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .datetime-popover {
+    @apply absolute left-0 top-[calc(100%+8px)] z-50 grid w-[278px] gap-2 rounded-lg border border-line bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.22)];
+  }
+
+  .datetime-popover-header {
+    @apply grid grid-cols-[28px_minmax(0,1fr)_28px] items-center gap-2;
+  }
+
+  .datetime-popover-header strong {
+    @apply text-center text-[13px] font-extrabold text-ink;
+  }
+
+  .datetime-popover-header button,
+  .datetime-footer button {
+    @apply grid min-h-7 place-items-center rounded-md bg-slate-100 px-2 text-[12px] font-extrabold text-slate-600 transition hover:bg-slate-200 hover:text-ink;
+  }
+
+  .datetime-weekdays,
+  .datetime-days {
+    @apply grid grid-cols-7 gap-1;
+  }
+
+  .datetime-weekdays span {
+    @apply grid h-6 place-items-center text-[10px] font-extrabold uppercase text-muted;
+  }
+
+  .datetime-days button {
+    @apply grid h-8 place-items-center rounded-md text-[12px] font-extrabold text-slate-700 transition hover:bg-cyan-50 hover:text-cyan-800;
+  }
+
+  .datetime-days button.muted {
+    @apply text-slate-300;
+  }
+
+  .datetime-days button.today {
+    @apply ring-1 ring-brand/30;
+  }
+
+  .datetime-days button.selected {
+    @apply bg-brand text-white shadow-sm hover:bg-brand hover:text-white;
+  }
+
+  .datetime-footer {
+    @apply mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-line pt-2;
+  }
+
+  .datetime-footer label {
+    @apply flex min-h-8 items-center gap-2 rounded-md border border-line bg-slate-50 px-2 text-slate-500;
+  }
+
+  .datetime-footer input {
+    @apply h-7 min-h-0 flex-1 border-0 bg-transparent p-0 text-[12px] font-extrabold text-ink ring-0;
+  }
+
+  .datetime-footer input:focus {
+    @apply border-0 ring-0;
+  }
+
   .count {
     @apply ml-auto;
   }
@@ -1260,6 +1357,10 @@
   .streaming-badge span {
     @apply h-2 w-2 rounded-full bg-emerald-500;
     animation: pulse-dot 1.2s ease-in-out infinite;
+  }
+
+  .recording-badge {
+    @apply inline-flex min-h-[28px] max-w-[220px] items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 text-[12px] font-extrabold text-red-700;
   }
 
   .auto-scroll-toggle {
@@ -1295,6 +1396,15 @@
     }
   }
 
+  @keyframes consume-progress-slide {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(320%);
+    }
+  }
+
   .message-list {
     @apply grid min-h-0 content-start gap-2.5 overflow-auto;
   }
@@ -1306,6 +1416,16 @@
 
   .consume-workspace.querying {
     @apply border-[#007acc]/70 shadow-[0_0_0_1px_rgba(0,122,204,0.38),0_12px_30px_rgba(0,0,0,0.28)];
+  }
+
+  .consume-query-progress {
+    @apply absolute left-0 right-0 top-0 z-40 h-[2px] overflow-hidden rounded-t-lg bg-[#264f78]/45;
+  }
+
+  .consume-query-progress::before {
+    content: "";
+    @apply absolute inset-y-0 left-0 w-1/3 bg-[#75beff];
+    animation: consume-progress-slide 1.15s ease-in-out infinite;
   }
 
   .pane-query-badge {
@@ -1545,6 +1665,7 @@
 
   .json-view {
     @apply min-h-0 overflow-auto rounded-lg border border-[#20333a] bg-[#0d1519] p-3 font-mono text-[12px] leading-5 text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)];
+    font-family: var(--app-font-family);
   }
 
   .json-view mark,
@@ -1574,6 +1695,7 @@
 
   .json-tree {
     @apply min-h-0 overflow-auto rounded-lg border border-line bg-[#0f161a] p-3 font-mono text-[12px] leading-5 text-cyan-50;
+    font-family: var(--app-font-family);
   }
 
   .json-node {
@@ -1758,15 +1880,27 @@
   }
 
   .group-topic-row {
-    @apply mb-2 flex min-h-8 items-center justify-between gap-3 px-1;
+    @apply flex min-h-8 w-full items-center justify-between gap-3 rounded-md border border-transparent px-1 text-left transition;
   }
 
   .group-topic-row strong {
-    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-ink;
+    @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-ink;
   }
 
   .group-topic-row span {
     @apply text-[13px] font-black;
+  }
+
+  .group-topic-row svg {
+    @apply shrink-0 text-muted;
+  }
+
+  .group-topic-card.expanded .group-topic-row {
+    @apply mb-2;
+  }
+
+  .group-topic-meta {
+    @apply shrink-0 text-muted;
   }
 
   .brokers-panel {
@@ -2019,6 +2153,38 @@
     @apply mb-2 flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-line bg-slate-50 px-2 py-1.5;
   }
 
+  .topic-info-summary,
+  .topic-info-configs {
+    @apply mb-3 grid gap-2;
+  }
+
+  .topic-info-summary {
+    @apply grid-cols-6;
+  }
+
+  .topic-info-configs {
+    @apply grid-cols-3;
+  }
+
+  .topic-info-summary div,
+  .topic-info-configs div {
+    @apply min-w-0 rounded-lg border border-line bg-white/[0.04] p-3;
+  }
+
+  .topic-info-summary span,
+  .topic-info-configs span {
+    @apply block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-bold uppercase text-muted;
+  }
+
+  .topic-info-summary strong,
+  .topic-info-configs strong {
+    @apply mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-slate-100;
+  }
+
+  .topic-info-partitions {
+    @apply mt-2;
+  }
+
   .topic-settings-panel {
     @apply relative flex flex-col overflow-hidden;
   }
@@ -2152,7 +2318,8 @@
   }
 
   .topic-select-all input,
-  .server-topics-table input[type="checkbox"] {
+  .server-topics-table input[type="checkbox"],
+  .consumer-groups-table input[type="checkbox"] {
     @apply m-0 h-4 min-h-0 w-4 shrink-0 accent-brand;
     padding: 0;
   }
@@ -2161,8 +2328,73 @@
     @apply w-12 max-w-12 text-center;
   }
 
+  .grid-check-cell,
+  .grid-favorite-cell {
+    @apply flex h-full min-h-8 w-full cursor-pointer items-center justify-center;
+  }
+
+  .grid-row-action-cell {
+    @apply cursor-pointer p-0 text-center;
+  }
+
+  .grid-check-cell input {
+    @apply pointer-events-none;
+  }
+
+  .grid-favorite-cell .topic-favorite {
+    @apply pointer-events-none;
+  }
+
   .topic-action-modal {
     @apply max-w-[560px];
+  }
+
+  .topic-create-modal {
+    @apply max-w-[680px];
+  }
+
+  .topic-create-grid {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .topic-create-retention {
+    @apply gap-2;
+  }
+
+  .topic-create-retention > span {
+    @apply text-[12px] font-bold text-muted;
+  }
+
+  .topic-create-presets {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .topic-create-presets button {
+    @apply min-h-7 rounded-md border border-line bg-white/[0.06] px-2 text-[12px] font-extrabold text-slate-100 hover:border-brand/60 hover:bg-brand/15;
+  }
+
+  .topic-create-size-grid {
+    @apply grid-cols-[minmax(150px,0.7fr)_minmax(220px,1fr)];
+  }
+
+  .topic-create-configs {
+    @apply gap-3;
+  }
+
+  .topic-create-configs .form-section-title {
+    @apply items-center justify-between;
+  }
+
+  .topic-create-config-row {
+    @apply grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-end gap-2;
+  }
+
+  .topic-create-config-row .icon-button {
+    @apply h-8 w-8;
+  }
+
+  .muted-help {
+    @apply m-0 text-[12px] text-muted;
   }
 
   .topic-action-warning {
@@ -2712,6 +2944,65 @@
     @apply bg-transparent text-slate-100;
   }
 
+  .datetime-trigger {
+    @apply border-[#3c3c3c] bg-[#2d2d2d] text-slate-200 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+  }
+
+  .datetime-popover {
+    @apply border-[#3c3c3c] bg-[#252526] text-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.48)];
+  }
+
+  .datetime-popover-header strong {
+    @apply text-white;
+  }
+
+  .datetime-popover-header button,
+  .datetime-footer button {
+    @apply bg-[#2d2d2d] text-slate-300 hover:bg-[#333333] hover:text-white;
+  }
+
+  .datetime-weekdays span {
+    @apply text-[#9da5b4];
+  }
+
+  .datetime-days button {
+    @apply text-slate-200 hover:bg-[#094771] hover:text-white;
+  }
+
+  .datetime-days button.muted {
+    @apply text-slate-600;
+  }
+
+  .datetime-days button.today {
+    @apply ring-[#3794ff]/45;
+  }
+
+  .datetime-days button.selected {
+    @apply bg-[#007acc] text-white hover:bg-[#007acc] hover:text-white;
+  }
+
+  .datetime-footer {
+    @apply border-[#303030];
+  }
+
+  .datetime-footer label {
+    @apply border-[#3c3c3c] bg-[#1e1e1e] text-slate-400;
+  }
+
+  .datetime-footer input {
+    @apply text-slate-100;
+    color-scheme: dark;
+  }
+
+  .filter-bar > select {
+    @apply border-[#3c3c3c] bg-[#1e1e1e] text-[#e6e6e6] shadow-none;
+    color-scheme: dark;
+  }
+
+  .filter-bar > select option {
+    @apply bg-[#1e1e1e] text-[#e6e6e6];
+  }
+
   .message-table,
   .schema-manager-list,
   .message-list,
@@ -2854,6 +3145,30 @@
     @apply rounded border-[#3c3c3c] bg-[#2d2d30] px-2.5 py-1 text-[12px] font-semibold text-[#9cdcfe] shadow-none hover:border-[#3794ff]/60 hover:bg-[#094771] hover:text-[#ffffff];
   }
 
+  .quick-search-suggestions button.active {
+    @apply border-[#3794ff]/70 bg-[#094771] text-[#ffffff] ring-1 ring-[#3794ff]/45;
+  }
+
+  .quick-search-suggestions button.connected .quick-search-server-state {
+    @apply bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.14)];
+  }
+
+  .quick-search-suggestions button.disconnected {
+    @apply opacity-60;
+  }
+
+  .quick-search-suggestions button.disconnected .quick-search-server-state {
+    @apply bg-slate-500;
+  }
+
+  .quick-search-suggestions button small {
+    @apply text-[#9da5b4];
+  }
+
+  .quick-search-suggestions button.connected small {
+    @apply text-emerald-300;
+  }
+
   .quick-search-results {
     @apply bg-[#252526] p-1.5;
   }
@@ -2891,6 +3206,30 @@
     @apply rounded border-[#3c3c3c] bg-[#2d2d30] text-[10px] font-semibold uppercase tracking-wide text-[#9cdcfe];
   }
 
+  .quick-search-kind.kind-server {
+    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-300;
+  }
+
+  .quick-search-kind.kind-topic {
+    @apply border-[#3794ff]/40 bg-[#094771]/80 text-[#9cdcfe];
+  }
+
+  .quick-search-kind.kind-tab {
+    @apply border-sky-400/35 bg-sky-400/10 text-sky-200;
+  }
+
+  .quick-search-kind.kind-consumer {
+    @apply border-violet-400/35 bg-violet-400/10 text-violet-200;
+  }
+
+  .quick-search-kind.kind-avro {
+    @apply border-amber-400/35 bg-amber-400/10 text-amber-200;
+  }
+
+  .quick-search-kind.kind-command {
+    @apply border-rose-400/35 bg-rose-400/10 text-rose-200;
+  }
+
   .quick-search-copy strong {
     @apply font-semibold text-[#e6e6e6];
   }
@@ -2900,7 +3239,7 @@
   }
 
   .quick-search-results > button.active .quick-search-kind {
-    @apply border-[#5aa7e8]/50 bg-[#094771] text-[#d7efff];
+    @apply brightness-125;
   }
 
   .quick-search-results > button.active .quick-search-copy strong {
@@ -3083,6 +3422,10 @@
     @apply border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
   }
 
+  .recording-badge {
+    @apply border-red-500/35 bg-red-500/10 text-red-200;
+  }
+
   .decode-badge.error,
   .form-error,
   .error-summary {
@@ -3139,6 +3482,15 @@
 
   .group-topic-card {
     @apply border-[#303030] bg-[#1e1e1e];
+  }
+
+  .group-topic-row {
+    @apply text-slate-300 hover:border-[#3c3c3c] hover:bg-[#252526] hover:text-slate-100;
+  }
+
+  .group-topic-row svg,
+  .group-topic-meta {
+    @apply text-[#9da5b4];
   }
 
   .group-state-badge {
@@ -3300,6 +3652,7 @@
   .json-tree,
   .json-tree * {
     @apply text-[#e6edf3];
+    font-family: var(--app-font-family);
   }
 
   .json-toolbar input,
@@ -3682,7 +4035,7 @@
   }
 
   .broker-page-title button {
-    @apply text-[#8a7cff] hover:border-[#4a4a4a] hover:bg-[#2d2d30];
+    @apply text-[#f0f0f0] hover:border-[#3794ff]/40 hover:bg-[#3794ff]/10 hover:text-[#ffffff];
   }
 
   .broker-page-title h2,
@@ -3709,7 +4062,7 @@
   }
 
   .broker-page-tabs button.active {
-    @apply border-[#7c6fff] bg-transparent text-[#8a7cff] hover:bg-transparent;
+    @apply border-[#3794ff] bg-transparent text-[#3794ff] hover:bg-transparent;
   }
 
   .broker-detail-header,

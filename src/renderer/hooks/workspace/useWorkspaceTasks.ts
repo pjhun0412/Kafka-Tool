@@ -31,9 +31,9 @@ export function useWorkspaceTasks({
     }
     try {
       const result = await task();
-      setStatus("완료");
+      setStatus("Done");
       if (showToast) {
-        setToast({ message: "완료", kind: "success" });
+        setToast({ message: "Done", kind: "success" });
       }
       return result;
     } catch (error) {
@@ -55,8 +55,8 @@ export function useWorkspaceTasks({
     setPaneToast({ pane, message: label, kind: "loading", ...scope });
     try {
       const result = await task();
-      setStatus("완료");
-      setPaneToast({ pane, message: "완료", kind: "success", ...scope });
+      setStatus("Done");
+      setPaneToast({ pane, message: "Done", kind: "success", ...scope });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

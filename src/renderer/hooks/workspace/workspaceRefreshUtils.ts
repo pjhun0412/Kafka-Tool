@@ -11,7 +11,7 @@ export function clearGroupSelectionForServer(
   setGroupLagByServer((current) => ({ ...current, [serverId]: {} }));
 }
 
-export function buildSplitConsumeResetState(defaultState: TopicConsumeState, currentState: TopicConsumeState): TopicConsumeState {
+export function buildConsumeResetState(defaultState: TopicConsumeState, currentState: TopicConsumeState): TopicConsumeState {
   return {
     ...defaultState,
     mode: currentState.mode,

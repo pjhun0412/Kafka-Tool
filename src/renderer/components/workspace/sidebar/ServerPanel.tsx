@@ -1,6 +1,8 @@
-﻿import React from "react";
+import React from "react";
 import { X } from "lucide-react";
 import type { ServerProfile } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import { ServerConnectionIndicator } from "../../ServerConnectionIndicator";
 
 type ServerDropTarget = { id: string; position: "before" | "after" } | null;
@@ -27,20 +29,21 @@ type ServerPanelProps = {
 };
 
 export function ServerPanel(props: ServerPanelProps) {
+  const language = useAppLanguage();
   return (
     <section className="sidebar-panel server-panel" style={{ height: props.height }}>
       <div className="sidebar-panel-title">
-        <span>Name</span>
-        <span>Server</span>
+        <span>{t(language, "label.name")}</span>
+        <span>{t(language, "label.server")}</span>
       </div>
       <div className="search-box server-search">
         <input
           value={props.query}
           onChange={(event) => props.onQuery(event.target.value)}
-          placeholder="Search server"
+          placeholder={t(language, "placeholder.searchServer")}
         />
         {props.query && (
-          <button onClick={() => props.onQuery("")} title="Clear server search">
+          <button onClick={() => props.onQuery("")} title={t(language, "title.clearServerSearch")}>
             <X size={13} />
           </button>
         )}
@@ -78,8 +81,8 @@ export function ServerPanel(props: ServerPanelProps) {
             </span>
           </button>
         ))}
-        {props.servers.length === 0 && <div className="empty-list">No servers</div>}
-        {props.servers.length > 0 && props.filteredServers.length === 0 && <div className="empty-list">No servers found</div>}
+        {props.servers.length === 0 && <div className="empty-list">{t(language, "label.noServers")}</div>}
+        {props.servers.length > 0 && props.filteredServers.length === 0 && <div className="empty-list">{t(language, "label.noServersFound")}</div>}
       </div>
     </section>
   );

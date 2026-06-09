@@ -1,6 +1,8 @@
 ﻿import type React from "react";
 import type { TopicSummary } from "../../../../shared/types";
 import type { TopicListFilter, TopicSortMode, WorkspaceActionTarget } from "../../../uiTypes";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import { TopicListItem } from "../topics";
 import { TopicSearchControls } from "./TopicSearchControls";
 
@@ -42,6 +44,7 @@ export function TopicSidebarPanel(props: {
   onFavoriteDrop: (draggedTopic: string, targetTopic: string, position: "before" | "after") => void;
   onFavoriteDragEnd: () => void;
 }) {
+  const language = useAppLanguage();
   return (
     <section className="sidebar-panel topic-list">
       <TopicSearchControls
@@ -65,7 +68,7 @@ export function TopicSidebarPanel(props: {
       />
       {props.favoriteTopics.length > 0 && (
         <div className={props.topicFilter === "favorites" ? "favorite-topic-section fill-available" : "favorite-topic-section"}>
-          <div className="favorite-topic-title">Favorites</div>
+          <div className="favorite-topic-title">{t(language, "label.favorites")}</div>
           {props.favoriteTopics.map((topic) => (
             <TopicListItem
               key={topic.name}
@@ -125,7 +128,7 @@ export function TopicSidebarPanel(props: {
               onContextMenu={(event) => props.onTopicContextMenu(event, topic.name)}
             />
           ))}
-          {props.filteredTopics.length === 0 && <div className="empty-list">No topics found</div>}
+          {props.filteredTopics.length === 0 && <div className="empty-list">{t(language, "label.noTopicsFound")}</div>}
         </div>
       )}
     </section>

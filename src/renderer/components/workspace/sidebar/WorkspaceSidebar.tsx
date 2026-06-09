@@ -1,6 +1,8 @@
 ﻿import type React from "react";
 import { Database, Plus } from "lucide-react";
 import type { ServerProfile, TopicSummary } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import type { DragPayload, TopicListFilter, TopicSortMode, WorkspaceActionTarget } from "../../../uiTypes";
 import { ServerPanel } from "./ServerPanel";
 import { TopicSidebarPanel } from "./TopicSidebarPanel";
@@ -117,15 +119,16 @@ export function WorkspaceSidebar({
   onFavoriteDrop,
   onFavoriteDragEnd
 }: WorkspaceSidebarProps) {
+  const language = useAppLanguage();
   return (
     <aside className="sidebar">
       <div className="brand">
         <Database size={24} />
         <div>
           <strong>Kafka Tool</strong>
-          <span>Desktop client</span>
+          <span>{t(language, "label.desktopClient")}</span>
         </div>
-        <button className="icon-button add-server" onClick={onNewServer} title="Add server">
+        <button className="icon-button add-server" onClick={onNewServer} title={t(language, "title.addServer")}>
           <Plus size={17} />
         </button>
       </div>
@@ -168,7 +171,7 @@ export function WorkspaceSidebar({
         onOpen={onOpenServer}
       />
 
-      <div className="sidebar-stack-resizer" onPointerDown={onServerPanelResize} title="Resize server/topic panels" />
+      <div className="sidebar-stack-resizer" onPointerDown={onServerPanelResize} title={t(language, "title.resizeServerTopicPanels")} />
 
       <TopicSidebarPanel
         topics={topics}

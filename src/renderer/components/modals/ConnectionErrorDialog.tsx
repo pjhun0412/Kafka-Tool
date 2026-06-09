@@ -1,4 +1,6 @@
 import { X } from "lucide-react";
+import { useAppLanguage } from "../../hooks/state/useAppLanguage";
+import { t } from "../../i18n";
 
 type ConnectionError = {
   serverName: string;
@@ -12,6 +14,7 @@ type ConnectionErrorDialogProps = {
 };
 
 export function ConnectionErrorDialog({ error, onClose }: ConnectionErrorDialogProps) {
+  const language = useAppLanguage();
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -23,10 +26,10 @@ export function ConnectionErrorDialog({ error, onClose }: ConnectionErrorDialogP
       >
         <div className="modal-title">
           <div>
-            <span className="eyebrow">Kafka connection failed</span>
-            <h2 id="connection-error-title">'{error.serverName}' 연결</h2>
+            <span className="eyebrow">{t(language, "connection.failedEyebrow")}</span>
+            <h2 id="connection-error-title">{t(language, "connection.title", { server: error.serverName })}</h2>
           </div>
-          <button className="modal-close" onClick={onClose} title="Close">
+          <button className="modal-close" onClick={onClose} title={t(language, "title.close")}>
             <X size={18} />
           </button>
         </div>
@@ -38,7 +41,7 @@ export function ConnectionErrorDialog({ error, onClose }: ConnectionErrorDialogP
           </div>
         </div>
         <div className="modal-actions">
-          <button className="primary" onClick={onClose}>확인</button>
+          <button className="primary" onClick={onClose}>{t(language, "action.confirm")}</button>
         </div>
       </section>
     </div>

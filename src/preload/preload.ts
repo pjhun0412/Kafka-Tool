@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -12,6 +12,7 @@ const api: KafkaApi = {
   installUpdate: () => ipcRenderer.invoke("updates:install"),
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
+  setMenuLanguage: (language: AppMenuLanguage) => ipcRenderer.invoke("menu:set-language", language),
   checkHealth: (serverId: string) => ipcRenderer.invoke("kafka:health", serverId),
   listTopics: (serverId: string) => ipcRenderer.invoke("kafka:topics", serverId),
   listTopicMessageCounts: (serverId: string, topics: string[]) => ipcRenderer.invoke("kafka:topic-message-counts", serverId, topics),
@@ -21,6 +22,7 @@ const api: KafkaApi = {
   getTopicDetail: (serverId: string, topic: string) => ipcRenderer.invoke("kafka:topic-detail", serverId, topic),
   getTopicConfigs: (serverId: string, topic: string) => ipcRenderer.invoke("kafka:topic-configs", serverId, topic),
   updateTopicConfigs: (request: TopicConfigUpdateRequest) => ipcRenderer.invoke("kafka:topic-config-update", request),
+  createTopic: (request: TopicCreateRequest) => ipcRenderer.invoke("kafka:topic-create", request),
   deleteTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-delete", request),
   purgeTopics: (request: TopicMutationRequest) => ipcRenderer.invoke("kafka:topics-purge", request),
   listConsumerGroups: (serverId: string) => ipcRenderer.invoke("kafka:groups", serverId),

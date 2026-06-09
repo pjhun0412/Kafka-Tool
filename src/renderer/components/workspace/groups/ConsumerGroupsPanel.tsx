@@ -2,6 +2,8 @@
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { RefreshCw, Trash2, X } from "lucide-react";
 import type { ConsumerGroupLagDetail, ConsumerGroupSummary } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import { DataGrid } from "../../DataGrid";
 import { ConsumerGroupDetailView } from "./ConsumerGroupDetailView";
 import { GroupStateBadge } from "./GroupStateBadge";
@@ -43,6 +45,7 @@ export function ConsumerGroupsPanel(props: {
   onRefresh: () => void;
   onRefreshDetail: () => void;
 }) {
+  const language = useAppLanguage();
   const [query, setQuery] = useState("");
   const [groupSorting, setGroupSorting] = useState<SortingState>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
@@ -79,23 +82,57 @@ export function ConsumerGroupsPanel(props: {
     {
       id: "select",
       header: () => (
-        <SelectionCheckbox
-          checked={allVisibleSelected}
-          indeterminate={partlyVisibleSelected}
-          title="Select visible consumer groups"
-          onChange={toggleVisibleGroupsSelected}
-        />
+        <span
+          className="grid-check-cell"
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleVisibleGroupsSelected();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggleVisibleGroupsSelected();
+            }
+          }}
+        >
+          <SelectionCheckbox
+            checked={allVisibleSelected}
+            indeterminate={partlyVisibleSelected}
+            title={t(language, "title.selectVisibleConsumerGroups")}
+            onChange={toggleVisibleGroupsSelected}
+          />
+        </span>
       ),
       cell: ({ row }) => (
-        <SelectionCheckbox
-          checked={selectedGroupIds.includes(row.original.groupId)}
+        <span
+          role="button"
+          tabIndex={0}
+          className="grid-check-cell"
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleGroupSelected(row.original.groupId);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              toggleGroupSelected(row.original.groupId);
+            }
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
           title={`Select ${row.original.groupId}`}
-          onChange={() => toggleGroupSelected(row.original.groupId)}
-        />
+        >
+          <SelectionCheckbox
+            checked={selectedGroupIds.includes(row.original.groupId)}
+            title={`Select ${row.original.groupId}`}
+            onChange={() => toggleGroupSelected(row.original.groupId)}
+          />
+        </span>
       ),
       enableSorting: false,
       enableColumnFilter: false,
-      size: 44
+      size: 32
     },
     {
       accessorKey: "groupId",
@@ -141,7 +178,7 @@ export function ConsumerGroupsPanel(props: {
       header: "State",
       cell: ({ row }) => <GroupStateBadge state={row.original.state} />
     }
-  ], [allVisibleSelected, partlyVisibleSelected, props.detailsByGroup, selectedGroupIds]);
+  ], [allVisibleSelected, language, partlyVisibleSelected, props.detailsByGroup, selectedGroupIds]);
   if (props.detail) {
     return (
       <ConsumerGroupDetailView
@@ -157,34 +194,34 @@ export function ConsumerGroupsPanel(props: {
   return (
     <section className="panel groups-panel">
       <div className="section-title">
-        <h2>Consumers</h2>
+        <h2>{t(language, "label.consumers")}</h2>
         <div className="inline-actions">
           <button
             className="ghost compact danger"
             disabled={selectedGroupIds.length === 0}
             onClick={() => {
-              if (!window.confirm(`${selectedGroupIds.length}개 컨슈머 그룹을 삭제할까요? 실행 중인 그룹은 Kafka에서 거부될 수 있습니다.`)) {
+              if (!window.confirm(t(language, "confirm.deleteConsumerGroups", { count: String(selectedGroupIds.length) }))) {
                 return;
               }
               props.onDeleteGroups(selectedGroupIds);
               setSelectedGroupIds([]);
             }}
-            title="Delete selected consumer groups"
+            title={t(language, "title.deleteSelectedConsumerGroups")}
           >
-            <Trash2 size={15} /> 삭제
+            <Trash2 size={15} /> {t(language, "action.delete")}
           </button>
-          <button className="ghost compact" onClick={props.onRefresh}><RefreshCw size={15} /> 조회</button>
+          <button className="ghost compact" onClick={props.onRefresh}><RefreshCw size={15} /> {t(language, "label.query")}</button>
         </div>
       </div>
       <div className="search-box group-search">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by Consumer Group ID" />
-        {query && <button onClick={() => setQuery("")} title="Clear search"><X size={13} /></button>}
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t(language, "placeholder.searchConsumerGroup")} />
+        {query && <button onClick={() => setQuery("")} title={t(language, "title.clearSearch")}><X size={13} /></button>}
       </div>
       <DataGrid
         data={filteredGroups}
         columns={groupColumns}
         className="consumer-groups-table"
-        emptyText="No consumer groups"
+        emptyText={t(language, "label.noConsumerGroups")}
         sorting={groupSorting}
         onSortingChange={setGroupSorting}
         getRowKey={(group) => group.groupId}

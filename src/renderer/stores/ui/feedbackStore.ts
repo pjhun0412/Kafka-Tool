@@ -24,7 +24,7 @@ function resolveValue<T>(value: SetValue<T>, current: T) {
 }
 
 export const useFeedbackStore = create<FeedbackStore>((set) => ({
-  status: "서버를 등록하거나 선택하세요.",
+  status: "Register or select a server.",
   toast: null,
   paneToast: null,
   loading: false,

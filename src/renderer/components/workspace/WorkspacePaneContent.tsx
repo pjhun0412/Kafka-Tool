@@ -9,6 +9,7 @@ import type {
   TopicDetail,
   TopicSummary
 } from "../../../shared/types";
+import type { AppLanguage } from "../../i18n";
 import { getDefaultTimeRangeValues } from "../../consumeConfig";
 import type { OffsetOrder, TopicConsumeState, View } from "../../uiTypes";
 import { ConsumePanel } from "./consume/ConsumePanel";
@@ -21,6 +22,7 @@ type WorkspacePaneContentProps = {
   serverId: string;
   view: View;
   topic: string;
+  language: AppLanguage;
   detail: TopicDetail | null;
   topics: TopicSummary[];
   brokers: BrokerSummary[];
@@ -45,6 +47,8 @@ type WorkspacePaneContentProps = {
   onToggleTopicSelected: (topic: string) => void;
   onToggleAllTopicsSelected: (topics: string[]) => void;
   onCopySelectedTopics: () => void;
+  onCreateTopic: () => void;
+  onClearTopicMessages: () => void;
   onPurgeSelectedTopics: () => void;
   onDeleteSelectedTopics: () => void;
   onToggleTopicFavorite: (topic: string) => void;
@@ -84,6 +88,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onToggleSelected={props.onToggleTopicSelected}
           onToggleAllSelected={props.onToggleAllTopicsSelected}
           onCopySelected={props.onCopySelectedTopics}
+          onCreateTopic={props.onCreateTopic}
           onPurgeSelected={props.onPurgeSelectedTopics}
           onDeleteSelected={props.onDeleteSelectedTopics}
           onToggleFavorite={props.onToggleTopicFavorite}
@@ -102,12 +107,13 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onRefreshDetail={props.onRefreshGroupDetail}
         />
       )}
-      {props.view === "info" && <TopicPanel detail={props.detail} />}
+      {props.view === "info" && <TopicPanel detail={props.detail} onClearMessages={props.onClearTopicMessages} />}
       {props.view === "settings" && <TopicSettingsPanel serverId={props.serverId} topic={props.topic} />}
       {props.view === "consume" && (
         <ConsumePanel
           messages={props.consumeState.messages}
           topic={props.topic}
+          language={props.language}
           selectedMessage={props.consumeState.selectedMessage}
           mode={props.consumeState.mode}
           offsetOrder={props.consumeState.offsetOrder}
@@ -124,6 +130,9 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           isQuerying={props.isQuerying}
           autoScroll={props.consumeState.autoScroll}
           maxMessages={props.consumeState.maxMessages}
+          liveRecordEnabled={props.consumeState.liveRecordEnabled}
+          liveRecordPath={props.consumeState.liveRecordPath}
+          liveRecordCount={props.consumeState.liveRecordCount}
           offsetPagination={props.consumeState.offsetPagination}
           messagePaneHeight={props.messagePaneHeight}
           onMode={(mode) => props.onUpdateConsume({
@@ -145,6 +154,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
           onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
           onMaxMessages={(maxMessages) => props.onUpdateConsume({ maxMessages })}
+          onLiveRecordEnabled={(liveRecordEnabled) => props.onUpdateConsume({ liveRecordEnabled })}
           onPagePrev={() => props.onOffsetPage("prev")}
           onPageNext={() => props.onOffsetPage("next")}
           onSelectMessage={(selectedMessage) => props.onUpdateConsume({ selectedMessage })}

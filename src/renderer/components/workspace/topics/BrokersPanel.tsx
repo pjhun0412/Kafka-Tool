@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ChevronLeft, Pencil, Save, X } from "lucide-react";
 import type { BrokerConfigEntry, BrokerDetail, BrokerSummary } from "../../../../shared/types";
+import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
+import { t } from "../../../i18n";
 import { DataGrid } from "../../DataGrid";
 import { formatCompactNumber, formatPercent } from "../../../utils";
 
@@ -18,6 +20,7 @@ function getConfigDisplayValue(config: BrokerConfigEntry) {
 }
 
 export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers: BrokerSummary[] }) {
+  const language = useAppLanguage();
   const [selectedBrokerId, setSelectedBrokerId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<BrokerDetailTab>("logs");
   const [detail, setDetail] = useState<BrokerDetail | null>(null);
@@ -174,7 +177,7 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
     return (
       <section className="panel brokers-panel broker-detail-page">
         <div className="broker-page-title">
-          <button type="button" title="Back to brokers" onClick={closeBrokerDetail}>
+          <button type="button" title={t(language, "title.backToBrokers")} onClick={closeBrokerDetail}>
             <ChevronLeft size={16} />
             Brokers
           </button>
@@ -205,7 +208,7 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
           <button className={activeTab === "metrics" ? "active" : ""} type="button" onClick={() => setActiveTab("metrics")}>Metrics</button>
         </div>
         {detailError && <div className="broker-detail-error">{detailError}</div>}
-        {detailLoading && <div className="broker-detail-empty">Loading broker details...</div>}
+        {detailLoading && <div className="broker-detail-empty">{t(language, "label.loadingBrokerDetails")}</div>}
         {!detailLoading && activeTab === "logs" && (
           <div className="broker-log-table">
             <div className="broker-log-header">
@@ -223,7 +226,7 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
               </div>
             )) : (
               <div className="broker-detail-empty">
-                KafkaJS does not expose DescribeLogDirs in the current client. Log directories can be added with a custom Kafka protocol request or external metrics integration.
+                {t(language, "label.logDirsUnsupported")}
               </div>
             )}
           </div>
@@ -231,8 +234,8 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
         {!detailLoading && activeTab === "configs" && (
           <div className="broker-configs-panel broker-page-configs">
             <div className="broker-config-toolbar">
-              <input value={configQuery} onChange={(event) => setConfigQuery(event.target.value)} placeholder="Search by key or value" />
-              <span>{visibleConfigs.length} configs</span>
+              <input value={configQuery} onChange={(event) => setConfigQuery(event.target.value)} placeholder={t(language, "placeholder.searchKeyValue")} />
+              <span>{t(language, "label.configCount", { count: String(visibleConfigs.length) })}</span>
             </div>
             <div className="broker-config-list">
               <div className="broker-config-row broker-config-heading">
@@ -257,7 +260,7 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
                       <input
                         autoFocus
                         value={draftValue}
-                        placeholder={config.isSensitive ? "Enter new sensitive value" : undefined}
+                        placeholder={config.isSensitive ? t(language, "placeholder.sensitiveValue") : undefined}
                         onChange={(event) => setConfigDrafts((current) => ({ ...current, [config.name]: event.target.value }))}
                       />
                     ) : (
@@ -267,11 +270,11 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
                     <div className="broker-config-actions">
                       {editing ? (
                         <>
-                          <button disabled={!changed || savingConfigName === config.name} type="button" title="Save config" onClick={() => void saveConfig(config)}>
+                          <button disabled={!changed || savingConfigName === config.name} type="button" title={t(language, "title.saveConfig")} onClick={() => void saveConfig(config)}>
                             <Save size={14} />
-                            {savingConfigName === config.name ? "Saving" : "Save"}
+                            {savingConfigName === config.name ? t(language, "label.saving") : t(language, "label.save")}
                           </button>
-                          <button type="button" title="Cancel edit" onClick={() => {
+                          <button type="button" title={t(language, "title.cancelEdit")} onClick={() => {
                             setConfigDrafts((current) => ({ ...current, [config.name]: config.value }));
                             setEditingConfigName("");
                           }}>
@@ -279,16 +282,16 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
                           </button>
                         </>
                       ) : (
-                        <button type="button" title="Edit config" onClick={() => setEditingConfigName(config.name)}>
+                        <button type="button" title={t(language, "title.editConfig")} onClick={() => setEditingConfigName(config.name)}>
                           <Pencil size={14} />
-                          Edit
+                          {t(language, "label.edit")}
                         </button>
                       )}
                     </div>
                   </div>
                 );
               })}
-              {visibleConfigs.length === 0 && <div className="broker-detail-empty">No configs matched</div>}
+              {visibleConfigs.length === 0 && <div className="broker-detail-empty">{t(language, "label.noConfigsMatched")}</div>}
             </div>
           </div>
         )}
@@ -344,7 +347,7 @@ export function BrokersPanel({ serverId, brokers }: { serverId: string; brokers:
         data={brokers}
         columns={columns}
         className="broker-table"
-        emptyText="No brokers loaded"
+        emptyText={t(language, "label.noBrokersLoaded")}
         getRowKey={(broker) => String(broker.nodeId)}
         onRowClick={(broker) => {
           setSelectedBrokerId(broker.nodeId);

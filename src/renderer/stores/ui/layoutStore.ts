@@ -1,7 +1,10 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
+import { INTER_FONT_FAMILY } from "../../fontConfig";
+import type { LanguagePreference } from "../../i18n";
 
-export const DEFAULT_FONT_FAMILY = "D2Coding, Consolas, 'Courier New', monospace";
+export const DEFAULT_FONT_FAMILY = INTER_FONT_FAMILY;
 export const DEFAULT_EXPORT_FORMAT_TEMPLATE = "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}";
+export const DEFAULT_LANGUAGE: LanguagePreference = "auto";
 
 type SetValue<T> = T | ((current: T) => T);
 
@@ -12,6 +15,7 @@ type LayoutStore = {
   messagePaneHeight: number;
   fontFamily: string;
   fontSize: number;
+  language: LanguagePreference;
   exportFormatTemplate: string;
   setSidebarWidth: (value: SetValue<number>) => void;
   setSidebarCollapsed: (value: SetValue<boolean>) => void;
@@ -19,6 +23,7 @@ type LayoutStore = {
   setMessagePaneHeight: (value: SetValue<number>) => void;
   setFontFamily: (value: SetValue<string>) => void;
   setFontSize: (value: SetValue<number>) => void;
+  setLanguage: (value: SetValue<LanguagePreference>) => void;
   setExportFormatTemplate: (value: SetValue<string>) => void;
 };
 
@@ -33,6 +38,7 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   messagePaneHeight: 230,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontSize: 13,
+  language: DEFAULT_LANGUAGE,
   exportFormatTemplate: DEFAULT_EXPORT_FORMAT_TEMPLATE,
   setSidebarWidth: (sidebarWidth) => set((current) => ({ sidebarWidth: resolveValue(sidebarWidth, current.sidebarWidth) })),
   setSidebarCollapsed: (sidebarCollapsed) => set((current) => ({ sidebarCollapsed: resolveValue(sidebarCollapsed, current.sidebarCollapsed) })),
@@ -40,6 +46,7 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   setMessagePaneHeight: (messagePaneHeight) => set((current) => ({ messagePaneHeight: resolveValue(messagePaneHeight, current.messagePaneHeight) })),
   setFontFamily: (fontFamily) => set((current) => ({ fontFamily: resolveValue(fontFamily, current.fontFamily) })),
   setFontSize: (fontSize) => set((current) => ({ fontSize: resolveValue(fontSize, current.fontSize) })),
+  setLanguage: (language) => set((current) => ({ language: resolveValue(language, current.language) })),
   setExportFormatTemplate: (exportFormatTemplate) => set((current) => ({
     exportFormatTemplate: resolveValue(exportFormatTemplate, current.exportFormatTemplate)
   }))

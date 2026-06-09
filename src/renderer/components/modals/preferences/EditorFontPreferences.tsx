@@ -1,4 +1,5 @@
-﻿import { fontOptions } from "../../../uiTypes";
+import { DEFAULT_FONT_FAMILY } from "../../../stores/ui/layoutStore";
+import { fontOptions } from "../../../uiTypes";
 
 export function EditorFontPreferences(props: {
   fontFamily: string;
@@ -16,7 +17,7 @@ export function EditorFontPreferences(props: {
         <label>
           Font Family
           <span>Enter a CSS font-family list. The first installed font will be used.</span>
-          <input list="font-family-options" value={props.fontFamily} onChange={(event) => props.onFontFamily(event.target.value)} placeholder="D2Coding, Consolas, 'Courier New', monospace" />
+          <input list="font-family-options" value={props.fontFamily} onChange={(event) => props.onFontFamily(event.target.value)} placeholder={DEFAULT_FONT_FAMILY} />
           <datalist id="font-family-options">
             {fontOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>

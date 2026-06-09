@@ -1,5 +1,6 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
-import type { ServerProfile } from "../../../shared/types";
+import type { ServerProfile, TopicCreateRequest } from "../../../shared/types";
+import type { AppLanguage, LanguagePreference } from "../../i18n";
 import type { QuickSearchResult, QuickSearchScopedQuery } from "../../quickSearch";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import type { ServerContextMenuState, TopicContextMenuState } from "../../hooks/state/useSidebarInteractionState";
@@ -18,16 +19,19 @@ type WorkspaceOverlaysProps = {
   connectedServerIds: string[];
   quickSearchScope: QuickSearchScopedQuery;
   onQuickSearchQuery: (query: string) => void;
-  onQuickSearchIndex: (index: number) => void;
+  onQuickSearchIndex: (index: number | ((current: number) => number)) => void;
   onCloseQuickSearch: () => void;
   onExecuteQuickSearch: (result: QuickSearchResult) => void;
 
   fontFamily: string;
   fontSize: number;
+  language: LanguagePreference;
+  resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchemaFor: (serverId: string, topic: string) => void;
@@ -37,6 +41,7 @@ type WorkspaceOverlaysProps = {
   onReadSchemaFile: (file?: File) => Promise<void>;
   onDeleteManualAvroSchema: () => void;
   onSaveManualAvroSchema: () => void;
+  onCreateTopic: (request: TopicCreateRequest) => Promise<void>;
 
   onConfirmTopicAction: () => void;
 
@@ -72,10 +77,13 @@ export function WorkspaceOverlays({
   onExecuteQuickSearch,
   fontFamily,
   fontSize,
+  language,
+  resolvedLanguage,
   exportFormatTemplate,
   manualAvroSchemaRows,
   onFontFamily,
   onFontSize,
+  onLanguage,
   onExportFormatTemplate,
   onOpenManualAvroSchema,
   onDeleteManualAvroSchemaFor,
@@ -84,6 +92,7 @@ export function WorkspaceOverlays({
   onReadSchemaFile,
   onDeleteManualAvroSchema,
   onSaveManualAvroSchema,
+  onCreateTopic,
   onConfirmTopicAction,
   topicContextMenu,
   serverContextMenu,
@@ -120,10 +129,13 @@ export function WorkspaceOverlays({
         onSaveServer={onSaveServer}
         fontFamily={fontFamily}
         fontSize={fontSize}
+        language={language}
+        resolvedLanguage={resolvedLanguage}
         exportFormatTemplate={exportFormatTemplate}
         manualAvroSchemaRows={manualAvroSchemaRows}
         onFontFamily={onFontFamily}
         onFontSize={onFontSize}
+        onLanguage={onLanguage}
         onExportFormatTemplate={onExportFormatTemplate}
         onOpenManualAvroSchema={onOpenManualAvroSchema}
         onDeleteManualAvroSchemaFor={onDeleteManualAvroSchemaFor}
@@ -132,6 +144,7 @@ export function WorkspaceOverlays({
         onReadSchemaFile={onReadSchemaFile}
         onDeleteManualAvroSchema={onDeleteManualAvroSchema}
         onSaveManualAvroSchema={onSaveManualAvroSchema}
+        onCreateTopic={onCreateTopic}
         onConfirmTopicAction={onConfirmTopicAction}
       />
       <WorkspaceContextMenus

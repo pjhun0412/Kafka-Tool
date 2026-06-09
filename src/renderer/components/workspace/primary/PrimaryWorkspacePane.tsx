@@ -12,6 +12,7 @@ import type {
   TopicSummary
 } from "../../../../shared/types";
 import type { OffsetOrder, PaneToastState, TopicConsumeState, View } from "../../../uiTypes";
+import type { AppLanguage } from "../../../i18n";
 import { PaneToastView } from "../feedback/WorkspaceFeedback";
 import { ClusterTabs } from "../tabs/ClusterTabs";
 import { OpenedTopicTabs } from "../tabs/OpenedTopicTabs";
@@ -54,6 +55,7 @@ export function PrimaryWorkspacePane(props: {
   produceHeaders: string;
   produceValue: string;
   paneToast: PaneToastState;
+  language: AppLanguage;
   hasAvroSchema: (topic: string) => boolean;
   onActivate: () => void;
   onToggleSidebar: () => void;
@@ -73,6 +75,8 @@ export function PrimaryWorkspacePane(props: {
   onToggleTopicSelected: (topic: string) => void;
   onToggleAllTopicsSelected: (topics: string[]) => void;
   onCopySelectedTopics: () => void;
+  onCreateTopic: () => void;
+  onClearTopicMessages: () => void;
   onPurgeSelectedTopics: () => void;
   onDeleteSelectedTopics: () => void;
   onToggleTopicFavorite: (topic: string) => void;
@@ -138,7 +142,7 @@ export function PrimaryWorkspacePane(props: {
           }
         }}
       >
-        {props.paneToast && <PaneToastView toast={props.paneToast} />}
+        {props.paneToast && <PaneToastView toast={props.paneToast} language={props.language} />}
         {isTopicView && (
           <>
             <OpenedTopicTabs
@@ -168,6 +172,7 @@ export function PrimaryWorkspacePane(props: {
           serverId={props.selectedServerId}
           view={props.view}
           topic={props.selectedTopic}
+          language={props.language}
           detail={props.detail}
           topics={props.topics}
           brokers={props.brokers}
@@ -192,6 +197,8 @@ export function PrimaryWorkspacePane(props: {
           onToggleTopicSelected={props.onToggleTopicSelected}
           onToggleAllTopicsSelected={props.onToggleAllTopicsSelected}
           onCopySelectedTopics={props.onCopySelectedTopics}
+          onCreateTopic={props.onCreateTopic}
+          onClearTopicMessages={props.onClearTopicMessages}
           onPurgeSelectedTopics={props.onPurgeSelectedTopics}
           onDeleteSelectedTopics={props.onDeleteSelectedTopics}
           onToggleTopicFavorite={props.onToggleTopicFavorite}

@@ -1,5 +1,5 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
-import type { AppPreferences, KafkaApi, TopicDetail, TopicSummary } from "../../../shared/types";
+import type { AppPreferences, KafkaApi, TopicCreateRequest, TopicDetail, TopicSummary } from "../../../shared/types";
 import type { SplitPaneState, ToastState, TopicAction, TopicConsumeState, TopicWorkView, View } from "../../uiTypes";
 import {
   getNextSelectedTopic,
@@ -86,6 +86,27 @@ export function useTopicMutationActions({
     setPendingTopicAction({ serverId, kind, topics: [...topicsToMutate] });
   }
 
+  async function createTopic(request: TopicCreateRequest) {
+    if (!kafkaApi) return;
+    const topic = request.topic.trim();
+    await runTask("Creating topic...", () => kafkaApi.createTopic({
+      ...request,
+      topic,
+      partitions: Math.trunc(Number(request.partitions)),
+      replicationFactor: Math.trunc(Number(request.replicationFactor)),
+      configs: (request.configs ?? [])
+        .map((config) => ({ name: config.name.trim(), value: config.value.trim() }))
+        .filter((config) => config.name && config.value !== "")
+    }));
+    await refreshTopicsForServer(request.serverId);
+    if (request.serverId === selectedServerId) {
+      await selectPrimaryTopic(topic);
+    } else {
+      setSelectedTopicByServer((current) => ({ ...current, [request.serverId]: topic }));
+    }
+    setToast({ message: "Topic created.", kind: "success" });
+  }
+
   function cleanupDeletedTopics(serverId: string, deletedTopics: string[]) {
     const deleted = new Set(deletedTopics);
     removeTopicsFromServerLists({
@@ -151,6 +172,7 @@ export function useTopicMutationActions({
   }
 
   return {
+    createTopic,
     requestTopicAction,
     requestTopicActionFor,
     confirmTopicAction

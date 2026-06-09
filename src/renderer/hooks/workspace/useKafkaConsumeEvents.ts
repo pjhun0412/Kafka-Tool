@@ -47,7 +47,8 @@ export function useKafkaConsumeEvents({
         const maxMessages = previous.maxMessages;
         return mergeConsumeState(current, serverId, message.topic, {
           messages: [message, ...previous.messages].slice(0, maxMessages),
-          selectedMessage: previous.selectedMessage ?? message
+          selectedMessage: previous.selectedMessage ?? message,
+          liveRecordCount: previous.liveRecordPath ? previous.liveRecordCount + 1 : previous.liveRecordCount
         });
       };
       if (targetPane === "split") {
