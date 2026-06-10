@@ -1,7 +1,6 @@
 import {
   useAppStateComposition,
   useAppRuntimeEffects,
-  useBrokerTopicResourceActions,
   useConsumerGroupAppActions,
   useConsumeRefreshActions,
   useManualAvroSchemaComposition,
@@ -20,9 +19,9 @@ import {
   useWorkspaceMenuDismissals,
   useWorkspaceModelComposition,
   useWorkspaceNavigationComposition,
-  useWorkspacePaneCompositions,
-  useWorkspaceResourceComposition
+  useWorkspacePaneCompositions
 } from "..";
+import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
@@ -292,7 +291,13 @@ export function useWorkspaceAppController() {
   const { toggleFavoriteTopic, reorderFavoriteTopic } = favoriteActions;
   const { toggleTopicRow, toggleAllTopicRows, copySelectedTopicNames } = rowSelectionActions;
   const selectedTopic = controllerSearch.selectedTopic;
-  const { topicDetailCacheActions, selectedServerResourceSetters } = useWorkspaceResourceComposition({
+  const {
+    getCachedTopicDetail,
+    setTopicDetailForServer,
+    selectedServerResourceSetters,
+    brokerActions,
+    topicActions
+  } = useWorkspaceControllerResources({
     topicDetailCache: {
       topicDetailCacheByServer,
       setTopicDetailByServer,
@@ -304,17 +309,7 @@ export function useWorkspaceAppController() {
       setSelectedTopicByServer,
       setOpenedTopicTabsByServer,
       setGroupsByServer
-    }
-  });
-  const { getCachedTopicDetail, setTopicDetailForServer } = topicDetailCacheActions;
-  const {
-    setTopics,
-    setSelectedTopic,
-    setOpenedTopicTabs,
-    setTopicDetail,
-    setGroups
-  } = selectedServerResourceSetters;
-  const { brokerActions, topicActions } = useBrokerTopicResourceActions({
+    },
     brokers: {
       kafkaApi,
       selectedServerId,
@@ -329,8 +324,6 @@ export function useWorkspaceAppController() {
       selectedTopicByServer,
       clearTopicQueryForServer,
       keepSelectedTopicRowsForServer,
-      getCachedTopicDetail,
-      setTopicDetailForServer,
       runTask,
       runWorkspaceTask,
       setTopicsByServer,
@@ -341,6 +334,13 @@ export function useWorkspaceAppController() {
       setSplitConsumeStatesByServer
     }
   });
+  const {
+    setTopics,
+    setSelectedTopic,
+    setOpenedTopicTabs,
+    setTopicDetail,
+    setGroups
+  } = selectedServerResourceSetters;
   const { refreshBrokers, refreshBrokersForServer } = brokerActions;
   const { refreshTopicsForServer, refreshTopics, loadTopicDetail, loadTopicDetailSilent } = topicActions;
   const {
