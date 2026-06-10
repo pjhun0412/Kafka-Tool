@@ -1,20 +1,18 @@
-import {
-  useAppStateComposition,
-  useConsumerGroupAppActions,
-  useConsumeRefreshActions,
-  useManualAvroSchemaComposition,
-  useMessageFlowActions,
-  usePrimaryTopicTabAppActions,
-  useQuickSearchAppActions,
-  useSettingsSchemaActions,
-  useWorkspaceChromeCompositions,
-  useWorkspaceContextMenuActions,
-  useWorkspaceDerivedState,
-  useWorkspaceLayoutComposition,
-  useWorkspaceMenuDismissals,
-  useWorkspaceModelComposition,
-  useWorkspacePaneCompositions
-} from "..";
+import { useConsumerGroupAppActions } from "../actions/useConsumerGroupAppActions";
+import { useConsumeRefreshActions } from "../actions/useConsumeRefreshActions";
+import { useManualAvroSchemaComposition } from "../actions/useManualAvroSchemaComposition";
+import { useMessageFlowActions } from "../actions/useMessageFlowActions";
+import { usePrimaryTopicTabAppActions } from "../actions/usePrimaryTopicTabAppActions";
+import { useQuickSearchAppActions } from "../actions/useQuickSearchAppActions";
+import { useSettingsSchemaActions } from "../actions/useSettingsSchemaActions";
+import { useWorkspaceContextMenuActions } from "../actions/useWorkspaceContextMenuActions";
+import { useWorkspaceChromeCompositions } from "../layout/useWorkspaceChromeCompositions";
+import { useWorkspaceLayoutComposition } from "../layout/useWorkspaceLayoutComposition";
+import { useWorkspaceMenuDismissals } from "../layout/useWorkspaceMenuDismissals";
+import { useAppStateComposition } from "../state/useAppStateComposition";
+import { useWorkspaceDerivedState } from "../state/useWorkspaceDerivedState";
+import { useWorkspaceModelComposition } from "../workspace/useWorkspaceModelComposition";
+import { useWorkspacePaneCompositions } from "../workspace/useWorkspacePaneCompositions";
 import { useWorkspaceControllerNavigation } from "./useWorkspaceControllerNavigation";
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerRuntime } from "./useWorkspaceControllerRuntime";
