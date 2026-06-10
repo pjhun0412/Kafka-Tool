@@ -1,0 +1,50 @@
+import type { ChromeSidebarProps, WorkspaceControllerChromeParams } from "../workspaceControllerChromeTypes";
+
+export function createSidebarChromeComposition({
+  state,
+  search,
+  sidebar,
+  manualAvroTopicNames
+}: WorkspaceControllerChromeParams): ChromeSidebarProps {
+  return {
+    serverPanelHeight: state.serverPanelHeight,
+    serverQuery: search.serverSearch.serverQuery,
+    servers: state.servers,
+    filteredServers: search.serverSearch.filteredServers,
+    selectedServerId: state.selectedServerId,
+    draggingServerId: state.draggingServerId,
+    serverDropTarget: state.serverDropTarget,
+    connectedServerIds: state.connectedServerIds,
+    failedServerIds: state.failedServerIds,
+    topics: search.topics,
+    filteredTopics: search.topicSearch.filteredTopics,
+    favoriteTopics: search.topicSearch.favoriteTopics,
+    nonFavoriteFilteredTopics: search.topicSearch.nonFavoriteFilteredTopics,
+    favoriteTopicNames: search.favoriteTopicNames,
+    manualAvroTopicNames,
+    selectedTopic: search.selectedTopic,
+    topicQuery: search.topicSearch.topicQuery,
+    topicSearchHistory: search.topicSearch.topicSearchHistory,
+    topicSearchError: search.topicSearch.topicSearchError,
+    topicFilter: search.topicSearch.topicFilter,
+    topicSort: search.topicSearch.topicSort,
+    isTopicSortMenuOpen: state.isTopicSortMenuOpen,
+    isSelectedServerConnected: search.isSelectedServerConnected,
+    loading: state.loading,
+    draggingFavoriteTopic: state.draggingFavoriteTopic,
+    favoriteDropTarget: state.favoriteDropTarget,
+    onNewServer: state.openNewServerForm,
+    onServerQuery: search.serverSearch.setServerQuery,
+    onServerSelect: state.setSelectedServerId,
+    onServerDragStart: state.setDraggingServerId,
+    onServerDropTarget: state.setServerDropTarget,
+    onServerPanelResize: state.startServerPanelResize,
+    onTopicSortMenuOpen: state.setIsTopicSortMenuOpen,
+    onTopicSort: search.topicSearch.setTopicSort,
+    onTopicQuery: search.topicSearch.setTopicQuery,
+    onTopicFilter: search.topicSearch.setTopicFilter,
+    onFavoriteDragStart: state.setDraggingFavoriteTopic,
+    onFavoriteDropTarget: state.setFavoriteDropTarget,
+    ...sidebar
+  };
+}

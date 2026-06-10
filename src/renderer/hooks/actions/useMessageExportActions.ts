@@ -1,5 +1,5 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
-import type { ConsumedMessage, KafkaApi, MessageExportFormat } from "../../../shared/types";
+import type { ConsumedMessage, KafkaApi, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { PaneToastState, ToastState, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
 
 type MessageExportActionParams = {
@@ -32,7 +32,8 @@ export function useMessageExportActions({
     messages: ConsumedMessage[],
     topicName = selectedTopic,
     pane?: WorkspacePaneId,
-    serverId?: string
+    serverId?: string,
+    payloadOptions?: MessageExportPayloadOptions
   ) {
     if (!kafkaApi || !topicName) return;
     if (messages.length === 0) {
@@ -49,7 +50,8 @@ export function useMessageExportActions({
       topic: topicName,
       format,
       messages,
-      template: exportFormatTemplate
+      template: exportFormatTemplate,
+      payloadOptions
     });
     const filePath = pane
       ? await runPaneTask(pane, "Exporting messages...", exportTask, { serverId, topic: topicName })
@@ -97,7 +99,12 @@ export function useMessageExportActions({
       order: state.offsetOrder,
       endOffsetExclusive: state.offsetPagination?.endOffsetExclusive,
       format,
-      template: exportFormatTemplate
+      template: exportFormatTemplate,
+      payloadOptions: {
+        keyFormat: state.keyFormat,
+        valueFormat: state.valueFormat,
+        payloadEncoding: state.payloadEncoding
+      }
     });
 
     if (pane) {

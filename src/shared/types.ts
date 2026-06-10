@@ -176,6 +176,9 @@ export type AppPreferences = {
     autoScroll: boolean;
     maxMessages: number;
     filterField: "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
+    keyFormat: "text" | "hex" | "base64";
+    valueFormat: "json" | "text" | "hex" | "base64";
+    payloadEncoding: "utf-8" | "euc-kr";
   }>>;
   manualAvroSchemasByServer?: Record<string, Record<string, ManualAvroSchema>>;
   layout?: Partial<{
@@ -226,6 +229,12 @@ export type ConsumedMessage = {
   timestamp: string;
   key: string;
   value: string;
+  rawKeyBase64?: string;
+  rawValueBase64?: string;
+  rawKeyBytes?: number;
+  rawValueBytes?: number;
+  rawKeyTruncated?: boolean;
+  rawValueTruncated?: boolean;
   headers: Record<string, string>;
   decoded?: {
     format: "avro";
@@ -237,7 +246,14 @@ export type ConsumedMessage = {
   };
 };
 
+export const RAW_PAYLOAD_BASE64_LIMIT_BYTES = 256 * 1024;
+
 export type MessageExportFormat = "json" | "csv" | "log";
+export type MessageExportPayloadOptions = {
+  keyFormat?: "text" | "hex" | "base64";
+  valueFormat?: "json" | "text" | "hex" | "base64";
+  payloadEncoding?: "utf-8" | "euc-kr";
+};
 
 export type AppPreferenceSection = "general" | "avro";
 export type AppMenuLanguage = "ko" | "en";
@@ -247,11 +263,13 @@ export type MessageExportRequest = {
   format: MessageExportFormat;
   messages: ConsumedMessage[];
   template?: string;
+  payloadOptions?: MessageExportPayloadOptions;
 };
 
 export type OffsetMessageExportRequest = ConsumeOffsetRequest & {
   format: MessageExportFormat;
   template?: string;
+  payloadOptions?: MessageExportPayloadOptions;
 };
 
 export type TopicMutationRequest = {

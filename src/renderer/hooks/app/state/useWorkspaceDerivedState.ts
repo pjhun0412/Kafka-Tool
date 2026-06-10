@@ -1,0 +1,42 @@
+import { emptyProduceDraft } from "../../state";
+import type { TopicDetail } from "../../../../shared/types";
+import type { SplitPaneState, TopicConsumeState, View } from "../../../uiTypes";
+import type { ProduceDraft } from "../../state/useProduceDraftStore";
+
+export type WorkspaceDerivedStateParams = {
+  selectedServerId: string;
+  selectedTopicByServer: Record<string, string>;
+  viewByServer: Record<string, View>;
+  openedTopicTabsByServer: Record<string, string[]>;
+  topicDetailByServer: Record<string, TopicDetail | null>;
+  consumeStatesByServer: Record<string, Record<string, TopicConsumeState>>;
+  splitPane: SplitPaneState | null;
+  getDefaultConsumeState: () => TopicConsumeState;
+  getProduceDraft: (serverId: string, topic: string) => ProduceDraft;
+};
+
+export function useWorkspaceDerivedState(params: WorkspaceDerivedStateParams) {
+  const selectedTopic = params.selectedTopicByServer[params.selectedServerId] ?? "";
+  const view = params.viewByServer[params.selectedServerId] ?? (selectedTopic ? "info" : "topics");
+  const openedTopicTabs = params.openedTopicTabsByServer[params.selectedServerId] ?? [];
+  const topicDetail = params.topicDetailByServer[params.selectedServerId] ?? null;
+  const consumeStates = params.consumeStatesByServer[params.selectedServerId] ?? {};
+  const selectedDefaultConsumeState = params.getDefaultConsumeState();
+  const visibleSplitPane = params.splitPane?.serverId === params.selectedServerId ? params.splitPane : null;
+  const selectedProduceDraft = params.getProduceDraft(params.selectedServerId, selectedTopic);
+  const splitProduceDraft = visibleSplitPane
+    ? params.getProduceDraft(visibleSplitPane.serverId, visibleSplitPane.topic)
+    : emptyProduceDraft;
+
+  return {
+    selectedTopic,
+    view,
+    openedTopicTabs,
+    topicDetail,
+    consumeStates,
+    selectedDefaultConsumeState,
+    visibleSplitPane,
+    selectedProduceDraft,
+    splitProduceDraft
+  };
+}

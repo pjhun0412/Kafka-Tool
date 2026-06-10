@@ -8,7 +8,15 @@ It is built for developers and operators who need to register Kafka clusters, br
 
 ## Version
 
-Current release: `2.0.0`
+Current release: `2.0.1`
+
+## 2.0.1 Patch Notes
+
+- Added Key/Value payload format selectors for Consume results and exports.
+- Replaced the JSON-only viewer with a Message Viewer that supports `Raw`, `Tree`, and `Preview`.
+- Added `Text`, `JSON`, `Hex`, and `Base64` preview/export flows with UTF-8 and EUC-KR decoding support.
+- Limited retained raw payload bytes to reduce memory pressure during large consumes.
+- Improved Live Record writes so long-running streams apply file write backpressure instead of growing memory buffers.
 
 ## Documentation
 
@@ -17,6 +25,7 @@ Current release: `2.0.0`
 - [macOS internal install](docs/macos-install.md)
 - [Consume filters](docs/consume-filters.md)
 - [Avro](docs/avro.md)
+- [Project structure](PROJECT_STRUCTURE.md)
 
 ## Highlights
 
@@ -24,6 +33,7 @@ Current release: `2.0.0`
 - [x] `Broker`, `Topic`, and `Consumer Group` browsing
 - [x] Topic detail, settings, creation, clear messages, and delete actions
 - [x] `Offset`, `Time`, and `Live` Consume modes
+- [x] Key/Value payload display as `Text`, `JSON`, `Hex`, or `Base64`
 - [x] Live message recording to `JSONL` files
 - [x] Produce messages with key, headers, and value
 - [x] Avro decoding with Schema Registry or manually registered topic schemas
@@ -45,6 +55,10 @@ Consume supports three modes:
 Live mode starts from the latest topic offsets for the current session, so old committed group offsets do not flood the UI or Live Record output.
 
 Large offset queries are paged automatically when the requested limit is greater than `10,000`. The current page can be exported, and the full captured offset range can also be exported.
+
+Key and Value can be viewed and exported as text, JSON, hex, or base64. Kafka Tool keeps raw payload bytes only up to a fixed per-message limit to protect memory during large consumes. Larger payloads still display as text when KafkaJS can decode them, but raw-only views such as hex/base64 show an explicit retained-bytes warning.
+
+Live Record writes messages directly to a `JSONL` file stream. It is intended for long-running captures and avoids keeping the full captured dataset in renderer memory.
 
 Message filtering supports plain text, field filters, regex, and JSON path comparisons.
 See [Consume filters](docs/consume-filters.md) for more examples.

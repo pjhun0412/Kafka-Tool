@@ -21,6 +21,11 @@ type SplitProduceCallbackParams = Pick<
 >;
 
 export function createSplitConsumeCallbacks(params: SplitConsumeCallbackParams) {
+  const payloadOptions = {
+    keyFormat: params.consumeState.keyFormat,
+    valueFormat: params.consumeState.valueFormat,
+    payloadEncoding: params.consumeState.payloadEncoding
+  };
   return {
     updateConsume: (patch: Partial<TopicConsumeState>) => {
       if (params.pane) params.updateConsumeStateFor(params.pane.serverId, params.pane.topic, patch, "split");
@@ -41,7 +46,7 @@ export function createSplitConsumeCallbacks(params: SplitConsumeCallbackParams) 
       if (params.pane) params.sendMessageToProduce(params.pane.serverId, params.pane.topic, message, "split");
     },
     exportMessages: (format: MessageExportFormat, messages: ConsumedMessage[]) => {
-      if (params.pane) void params.exportConsumedMessages(format, messages, params.pane.topic, "split", params.pane.serverId);
+      if (params.pane) void params.exportConsumedMessages(format, messages, params.pane.topic, "split", params.pane.serverId, payloadOptions);
     },
     exportAll: (format: MessageExportFormat) => {
       if (params.pane) void params.exportOffsetConditionMessages(format, params.pane.serverId, params.pane.topic, params.consumeState, "split");

@@ -1,6 +1,6 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
-import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
+import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import { createSplitConsumeCallbacks, createSplitProduceCallbacks } from "./splitPaneCallbackGroups";
 
@@ -35,7 +35,7 @@ export type SplitPaneCallbacksParams = {
   startConsumeFor: (serverId: string, topic: string, state: TopicConsumeState, pane: WorkspacePaneId) => Promise<void>;
   stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
   sendMessageToProduce: (serverId: string, topic: string, message: ConsumedMessage, pane?: WorkspacePaneId) => void;
-  exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string) => Promise<void>;
+  exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string, payloadOptions?: MessageExportPayloadOptions) => Promise<void>;
   exportOffsetConditionMessages: (format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) => Promise<void>;
   updateProduceDraftFor: (serverId: string, topic: string, patch: ProduceDraftPatch) => void;
   produceFor: (serverId: string, topic: string, pane?: WorkspacePaneId) => Promise<void>;

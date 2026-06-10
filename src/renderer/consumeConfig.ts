@@ -60,6 +60,9 @@ export function toConsumeDefaultPatch(patch: Partial<TopicConsumeState>): Consum
     filterField: patch.filterField,
     autoScroll: patch.autoScroll,
     maxMessages: patch.maxMessages,
-    offsetOrder: patch.offsetOrder
+    offsetOrder: patch.offsetOrder,
+    keyFormat: patch.keyFormat,
+    valueFormat: patch.valueFormat,
+    payloadEncoding: patch.payloadEncoding
   };
 }

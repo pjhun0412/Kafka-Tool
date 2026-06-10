@@ -126,6 +126,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           filterText={props.consumeState.filterText}
           filterField={props.consumeState.filterField}
           filterMode={props.consumeState.filterMode}
+          inspectorMode={props.consumeState.inspectorMode}
           inspectorCollapsed={props.consumeState.inspectorCollapsed}
           isQuerying={props.isQuerying}
           autoScroll={props.consumeState.autoScroll}
@@ -133,6 +134,9 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           liveRecordEnabled={props.consumeState.liveRecordEnabled}
           liveRecordPath={props.consumeState.liveRecordPath}
           liveRecordCount={props.consumeState.liveRecordCount}
+          keyFormat={props.consumeState.keyFormat}
+          valueFormat={props.consumeState.valueFormat}
+          payloadEncoding={props.consumeState.payloadEncoding}
           offsetPagination={props.consumeState.offsetPagination}
           messagePaneHeight={props.messagePaneHeight}
           onMode={(mode) => props.onUpdateConsume({
@@ -149,12 +153,16 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onFilterText={(filterText) => props.onUpdateConsume({ filterText })}
           onFilterField={(filterField) => props.onUpdateConsume({ filterField })}
           onFilterMode={(filterMode) => props.onUpdateConsume({ filterMode })}
+          onInspectorMode={(inspectorMode) => props.onUpdateConsume({ inspectorMode })}
           onInspectorCollapsed={(inspectorCollapsed) => props.onUpdateConsume({ inspectorCollapsed })}
           onClearFilter={() => props.onUpdateConsume({ filterText: "", filterField: "all", filterMode: "hide" })}
           onApplyFilter={(filterText) => props.onUpdateConsume({ filterText, filterField: "all" })}
           onAutoScroll={(autoScroll) => props.onUpdateConsume({ autoScroll })}
           onMaxMessages={(maxMessages) => props.onUpdateConsume({ maxMessages })}
           onLiveRecordEnabled={(liveRecordEnabled) => props.onUpdateConsume({ liveRecordEnabled })}
+          onKeyFormat={(keyFormat) => props.onUpdateConsume({ keyFormat })}
+          onValueFormat={(valueFormat) => props.onUpdateConsume({ valueFormat })}
+          onPayloadEncoding={(payloadEncoding) => props.onUpdateConsume({ payloadEncoding })}
           onPagePrev={() => props.onOffsetPage("prev")}
           onPageNext={() => props.onOffsetPage("next")}
           onSelectMessage={(selectedMessage) => props.onUpdateConsume({ selectedMessage })}

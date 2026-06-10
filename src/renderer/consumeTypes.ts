@@ -4,7 +4,11 @@ export type ConsumeMode = "offset" | "timeRange" | "live";
 export type ConsumeFilterField = "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
 export type ConsumeFilterMode = "hide" | "highlight";
 export type OffsetOrder = "asc" | "desc";
-export type JsonInspectorMode = "raw" | "tree";
+export type MessageInspectorMode = "raw" | "tree" | "preview";
+export type MessagePayloadTarget = "key" | "value" | "headers" | "message";
+export type MessagePayloadFormat = "json" | "text" | "hex" | "base64";
+export type MessagePreviewMode = MessagePayloadFormat | "metadata";
+export type MessagePreviewEncoding = "utf-8" | "euc-kr";
 export type ConsumeDefaultPatch = AppPreferences["consumeDefaultsByServer"][string];
 
 export type TopicConsumeState = {
@@ -20,12 +24,16 @@ export type TopicConsumeState = {
   filterText: string;
   filterField: ConsumeFilterField;
   filterMode: ConsumeFilterMode;
+  inspectorMode: MessageInspectorMode;
   inspectorCollapsed: boolean;
   autoScroll: boolean;
   maxMessages: number;
   liveRecordEnabled: boolean;
   liveRecordPath: string;
   liveRecordCount: number;
+  keyFormat: Extract<MessagePayloadFormat, "text" | "hex" | "base64">;
+  valueFormat: MessagePayloadFormat;
+  payloadEncoding: MessagePreviewEncoding;
   messagePaneHeight: number;
   offsetPagination: {
     totalLimit: number;
@@ -52,12 +60,16 @@ export const emptyConsumeState: TopicConsumeState = {
   filterText: "",
   filterField: "all",
   filterMode: "hide",
+  inspectorMode: "raw",
   inspectorCollapsed: false,
   autoScroll: true,
   maxMessages: 1000,
   liveRecordEnabled: false,
   liveRecordPath: "",
   liveRecordCount: 0,
+  keyFormat: "text",
+  valueFormat: "json",
+  payloadEncoding: "utf-8",
   messagePaneHeight: 230,
   offsetPagination: null
 };

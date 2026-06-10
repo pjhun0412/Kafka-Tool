@@ -3,7 +3,7 @@ import { CircleDot, Play, RefreshCw, Square } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
-import type { ConsumeFilterMode, ConsumeMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
+import type { ConsumeFilterMode, ConsumeMode, MessagePayloadFormat, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { Button } from "../../ui";
 import { ConsumeExportMenu } from "./ConsumeExportMenu";
 import { ConsumePagingBar } from "./ConsumePagingBar";
@@ -24,6 +24,9 @@ type ConsumeToolbarProps = {
   liveRecordEnabled: boolean;
   liveRecordPath: string;
   liveRecordCount: number;
+  keyFormat: TopicConsumeState["keyFormat"];
+  valueFormat: TopicConsumeState["valueFormat"];
+  payloadEncoding: TopicConsumeState["payloadEncoding"];
   filterMode: ConsumeFilterMode;
   hasActiveMessageFilter: boolean;
   filteredMessages: ConsumedMessage[];
@@ -43,6 +46,9 @@ type ConsumeToolbarProps = {
   onAutoScroll: (value: boolean) => void;
   onMaxMessages: (value: number) => void;
   onLiveRecordEnabled: (value: boolean) => void;
+  onKeyFormat: (value: TopicConsumeState["keyFormat"]) => void;
+  onValueFormat: (value: TopicConsumeState["valueFormat"]) => void;
+  onPayloadEncoding: (value: TopicConsumeState["payloadEncoding"]) => void;
   onPagePrev: () => void;
   onPageNext: () => void;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
@@ -85,17 +91,6 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
             </select>
           </>
         )}
-        {props.isConsuming ? (
-          <Button variant="danger" onClick={props.onStop} disabled={props.isQuerying}>
-            {isStoppingLive ? <RefreshCw size={16} className="spin" /> : <Square size={16} />}
-            {isStoppingLive ? t(language, "label.stopping") : t(language, "label.pause")}
-          </Button>
-        ) : (
-          <Button variant="primary" onClick={props.onStart} disabled={props.isQuerying}>
-            {isStartingLive ? <RefreshCw size={16} className="spin" /> : <Play size={16} />}
-            {isStartingLive ? t(language, "label.starting") : props.mode === "live" ? t(language, "label.start") : "Consume"}
-          </Button>
-        )}
         {props.mode === "live" && (
           <label className="auto-scroll-toggle">
             <input type="checkbox" checked={props.autoScroll} onChange={(event) => props.onAutoScroll(event.target.checked)} />
@@ -136,6 +131,43 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
             <CircleDot size={13} />
             {t(language, "label.recording")} {props.liveRecordCount.toLocaleString()}
           </span>
+        )}
+        <label className="payload-format-control">
+          {t(language, "label.key")}
+          <select value={props.keyFormat} onChange={(event) => props.onKeyFormat(event.target.value as TopicConsumeState["keyFormat"])}>
+            <option value="text">{t(language, "label.previewText")}</option>
+            <option value="hex">{t(language, "label.previewHex")}</option>
+            <option value="base64">{t(language, "label.previewBase64")}</option>
+          </select>
+        </label>
+        <label className="payload-format-control">
+          {t(language, "label.value")}
+          <select value={props.valueFormat} onChange={(event) => props.onValueFormat(event.target.value as MessagePayloadFormat)}>
+            <option value="text">{t(language, "label.previewText")}</option>
+            <option value="json">{t(language, "label.previewJson")}</option>
+            <option value="hex">{t(language, "label.previewHex")}</option>
+            <option value="base64">{t(language, "label.previewBase64")}</option>
+          </select>
+        </label>
+        {(props.keyFormat === "text" || props.valueFormat === "text") && (
+          <label className="payload-format-control payload-format-encoding">
+            {t(language, "label.encoding")}
+            <select value={props.payloadEncoding} onChange={(event) => props.onPayloadEncoding(event.target.value as TopicConsumeState["payloadEncoding"])}>
+              <option value="utf-8">UTF-8</option>
+              <option value="euc-kr">EUC-KR</option>
+            </select>
+          </label>
+        )}
+        {props.isConsuming ? (
+          <Button variant="danger" onClick={props.onStop} disabled={props.isQuerying}>
+            {isStoppingLive ? <RefreshCw size={16} className="spin" /> : <Square size={16} />}
+            {isStoppingLive ? t(language, "label.stopping") : t(language, "label.pause")}
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={props.onStart} disabled={props.isQuerying}>
+            {isStartingLive ? <RefreshCw size={16} className="spin" /> : <Play size={16} />}
+            {isStartingLive ? t(language, "label.starting") : props.mode === "live" ? t(language, "label.start") : "Consume"}
+          </Button>
         )}
         <ConsumeExportMenu
           filteredMessages={props.filteredMessages}

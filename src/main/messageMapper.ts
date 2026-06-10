@@ -1,5 +1,5 @@
 import type { KafkaMessage } from "kafkajs";
-import type { ConsumedMessage, ManualAvroSchema, ServerProfile } from "../shared/types.js";
+import { RAW_PAYLOAD_BASE64_LIMIT_BYTES, type ConsumedMessage, type ManualAvroSchema, type ServerProfile } from "../shared/types.js";
 import { decodeConfluentAvro } from "./avroDecoder.js";
 
 function mapHeaders(message: KafkaMessage) {
@@ -14,7 +14,18 @@ function mapHeaders(message: KafkaMessage) {
   return headers;
 }
 
+function getRawPayload(value?: Buffer | null) {
+  const bytes = value?.length ?? 0;
+  return {
+    base64: value && bytes <= RAW_PAYLOAD_BASE64_LIMIT_BYTES ? value.toString("base64") : "",
+    bytes,
+    truncated: bytes > RAW_PAYLOAD_BASE64_LIMIT_BYTES
+  };
+}
+
 export async function toConsumedMessage(profile: ServerProfile, topic: string, partition: number, message: KafkaMessage, manualSchema?: ManualAvroSchema): Promise<ConsumedMessage> {
+  const rawKey = getRawPayload(message.key);
+  const rawValue = getRawPayload(message.value);
   return {
     serverId: profile.id,
     topic,
@@ -23,6 +34,12 @@ export async function toConsumedMessage(profile: ServerProfile, topic: string, p
     timestamp: new Date(Number(message.timestamp)).toISOString(),
     key: message.key?.toString("utf8") ?? "",
     value: message.value?.toString("utf8") ?? "",
+    rawKeyBase64: rawKey.base64,
+    rawValueBase64: rawValue.base64,
+    rawKeyBytes: rawKey.bytes,
+    rawValueBytes: rawValue.bytes,
+    rawKeyTruncated: rawKey.truncated,
+    rawValueTruncated: rawValue.truncated,
     headers: mapHeaders(message),
     decoded: await decodeConfluentAvro(profile, topic, message.value, manualSchema)
   };

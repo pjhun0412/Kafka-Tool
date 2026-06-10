@@ -1,9 +1,10 @@
-﻿import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ConsumedMessage } from "../../../../shared/types";
-import type { ConsumeFilterMode } from "../../../uiTypes";
+import type { ConsumeFilterMode, MessagePayloadFormat, MessagePreviewEncoding } from "../../../uiTypes";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
+import { getGridPayloadPreview } from "../../../messagePreview";
 import { formatHeaders, formatTimestamp, previewHeaders, previewValue } from "../../../utils";
 import { DataGrid } from "../../DataGrid";
 
@@ -28,9 +29,17 @@ export function getMessageRowKey(message: ConsumedMessage) {
   return `${message.partition}-${message.offset}-${message.timestamp}`;
 }
 
-export function createMessageGridRow(message: ConsumedMessage): MessageGridRow {
+export function createMessageGridRow(
+  message: ConsumedMessage,
+  formats: {
+    keyFormat: Extract<MessagePayloadFormat, "text" | "hex" | "base64">;
+    valueFormat: MessagePayloadFormat;
+    payloadEncoding: MessagePreviewEncoding;
+  }
+): MessageGridRow {
   const hasDecodedValue = message.decoded?.value !== undefined;
-  const valueText = hasDecodedValue ? JSON.stringify(message.decoded?.value) : message.value;
+  const keyText = getGridPayloadPreview(message, "key", formats.keyFormat, formats.payloadEncoding) || "-";
+  const valueText = getGridPayloadPreview(message, "value", formats.valueFormat, formats.payloadEncoding);
   const decodedError = message.decoded?.error ?? "";
   return {
     message,
@@ -39,7 +48,7 @@ export function createMessageGridRow(message: ConsumedMessage): MessageGridRow {
     offset: message.offset,
     timestampRaw: message.timestamp,
     timestampLabel: formatTimestamp(message.timestamp),
-    keyText: message.key || "-",
+    keyText,
     headersText: formatHeaders(message.headers),
     headersPreview: previewHeaders(message.headers),
     valueText,
@@ -56,8 +65,22 @@ export function useMessageGridRows(params: {
   filterMode: ConsumeFilterMode;
   hasActiveMessageFilter: boolean;
   selectedMessage: ConsumedMessage | null;
+  keyFormat: Extract<MessagePayloadFormat, "text" | "hex" | "base64">;
+  valueFormat: MessagePayloadFormat;
+  payloadEncoding: MessagePreviewEncoding;
 }) {
-  const messageRows = useMemo(() => params.messages.map(createMessageGridRow), [params.messages]);
+  const formats = useMemo(
+    () => ({
+      keyFormat: params.keyFormat,
+      valueFormat: params.valueFormat,
+      payloadEncoding: params.payloadEncoding
+    }),
+    [params.keyFormat, params.payloadEncoding, params.valueFormat]
+  );
+  const messageRows = useMemo(
+    () => params.messages.map((message) => createMessageGridRow(message, formats)),
+    [formats, params.messages]
+  );
   const messageRowsByKey = useMemo(
     () => new Map(messageRows.map((row) => [row.rowKey, row])),
     [messageRows]
@@ -68,8 +91,8 @@ export function useMessageGridRows(params: {
   );
   const rows = useMemo(() => {
     if (params.filterMode === "highlight" && params.hasActiveMessageFilter) return messageRows;
-    return params.filteredMessages.map((message) => messageRowsByKey.get(getMessageRowKey(message)) ?? createMessageGridRow(message));
-  }, [messageRows, messageRowsByKey, params.filterMode, params.filteredMessages, params.hasActiveMessageFilter]);
+    return params.filteredMessages.map((message) => messageRowsByKey.get(getMessageRowKey(message)) ?? createMessageGridRow(message, formats));
+  }, [formats, messageRows, messageRowsByKey, params.filterMode, params.filteredMessages, params.hasActiveMessageFilter]);
   const selectedMessageKey = params.selectedMessage ? getMessageRowKey(params.selectedMessage) : "";
 
   return {

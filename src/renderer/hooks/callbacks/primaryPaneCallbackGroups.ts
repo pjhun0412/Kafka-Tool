@@ -28,6 +28,11 @@ type PrimaryProduceCallbackParams = Pick<
 };
 
 export function createPrimaryConsumeCallbacks(params: PrimaryConsumeCallbackParams) {
+  const payloadOptions = {
+    keyFormat: params.selectedConsumeState.keyFormat,
+    valueFormat: params.selectedConsumeState.valueFormat,
+    payloadEncoding: params.selectedConsumeState.payloadEncoding
+  };
   return {
     updateConsume: (patch: Partial<TopicConsumeState>) => {
       params.updateSelectedConsumeState(patch);
@@ -46,7 +51,7 @@ export function createPrimaryConsumeCallbacks(params: PrimaryConsumeCallbackPara
       params.sendMessageToProduce(params.selectedServerId, params.selectedTopic, message, "primary");
     },
     exportMessages: (format: MessageExportFormat, messages: ConsumedMessage[]) => {
-      void params.exportConsumedMessages(format, messages, params.selectedTopic, params.paneId, params.selectedServerId);
+      void params.exportConsumedMessages(format, messages, params.selectedTopic, params.paneId, params.selectedServerId, payloadOptions);
     },
     exportAll: (format: MessageExportFormat) => {
       void params.exportOffsetConditionMessages(format, params.selectedServerId, params.selectedTopic, params.selectedConsumeState, params.paneId);
