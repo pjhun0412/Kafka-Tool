@@ -16,6 +16,7 @@ import {
   useTopicOperationActions,
   useWorkspaceChromeCompositions,
   useWorkspaceContextMenuActions,
+  useWorkspaceDerivedState,
   useWorkspaceDragComposition,
   useWorkspaceLayoutComposition,
   useWorkspaceMenuDismissals,
@@ -23,8 +24,7 @@ import {
   useWorkspaceNavigationComposition,
   useWorkspacePaneCompositions,
   useWorkspaceResourceComposition
-} from "./hooks/app";
-import { emptyProduceDraft } from "./hooks/state";
+} from ".";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
   const appState = useAppStateComposition();
@@ -343,13 +343,27 @@ export function useWorkspaceAppController() {
   });
   const { refreshBrokers, refreshBrokersForServer } = brokerActions;
   const { refreshTopicsForServer, refreshTopics, loadTopicDetail, loadTopicDetailSilent } = topicActions;
-  const view = viewByServer[selectedServerId] ?? (selectedTopic ? "info" : "topics");
-  const openedTopicTabs = openedTopicTabsByServer[selectedServerId] ?? [];
-  const topicDetail = topicDetailByServer[selectedServerId] ?? null;
-  const consumeStates = consumeStatesByServer[selectedServerId] ?? {};
-  const selectedDefaultConsumeState = getDefaultConsumeState();
+  const {
+    view,
+    openedTopicTabs,
+    topicDetail,
+    consumeStates,
+    selectedDefaultConsumeState,
+    visibleSplitPane,
+    selectedProduceDraft,
+    splitProduceDraft
+  } = useWorkspaceDerivedState({
+    selectedServerId,
+    selectedTopicByServer,
+    viewByServer,
+    openedTopicTabsByServer,
+    topicDetailByServer,
+    consumeStatesByServer,
+    splitPane,
+    getDefaultConsumeState,
+    getProduceDraft
+  });
   const contextTopic = topicContextMenu?.topic ?? "";
-  const visibleSplitPane = splitPane?.serverId === selectedServerId ? splitPane : null;
   const {
     primaryModel,
     splitModel,
@@ -400,8 +414,6 @@ export function useWorkspaceAppController() {
       setTopicGridSortingByServer
     }
   });
-  const selectedProduceDraft = getProduceDraft(selectedServerId, selectedTopic);
-  const splitProduceDraft = visibleSplitPane ? getProduceDraft(visibleSplitPane.serverId, visibleSplitPane.topic) : emptyProduceDraft;
   const {
     openServerContextMenu,
     openTopicContextMenu

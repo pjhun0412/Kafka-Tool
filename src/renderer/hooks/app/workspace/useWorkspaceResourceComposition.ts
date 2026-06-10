@@ -1,4 +1,4 @@
-import { useSelectedServerResourceSetters, useTopicDetailCache } from "../workspace";
+import { useSelectedServerResourceSetters, useTopicDetailCache } from "../../workspace";
 
 type WorkspaceResourceCompositionParams = {
   topicDetailCache: Parameters<typeof useTopicDetailCache>[0];

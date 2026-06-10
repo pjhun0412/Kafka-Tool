@@ -1,4 +1,4 @@
-import { useQuickSearchState, useServerSearchState, useTopicSearchState } from "../search";
+import { useQuickSearchState, useServerSearchState, useTopicSearchState } from "../../search";
 
 type AppSearchCompositionParams = {
   servers: Parameters<typeof useServerSearchState>[0]["servers"];

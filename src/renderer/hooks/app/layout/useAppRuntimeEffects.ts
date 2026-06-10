@@ -1,6 +1,6 @@
-import { useElectronMenuEvents, usePersistedPreferences } from "../preferences";
-import { useServerBootstrap, useServerHealthMonitor } from "../ui";
-import { useKafkaConsumeEvents, useSelectedServerResources } from "../workspace";
+import { useElectronMenuEvents, usePersistedPreferences } from "../../preferences";
+import { useServerBootstrap, useServerHealthMonitor } from "../../ui";
+import { useKafkaConsumeEvents, useSelectedServerResources } from "../../workspace";
 
 type AppRuntimeEffectsParams = {
   serverBootstrap: Parameters<typeof useServerBootstrap>[0];

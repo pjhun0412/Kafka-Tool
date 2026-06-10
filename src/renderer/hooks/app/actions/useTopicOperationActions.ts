@@ -1,4 +1,4 @@
-import { useTopicMutationActions } from "../actions";
+import { useTopicMutationActions } from "../../actions";
 
 type TopicOperationActionsParams = Parameters<typeof useTopicMutationActions>[0];
 

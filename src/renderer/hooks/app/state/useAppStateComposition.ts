@@ -1,5 +1,5 @@
 import { useShallow } from "zustand/react/shallow";
-import { usePreferenceNavigation } from "../preferences";
+import { usePreferenceNavigation } from "../../preferences";
 import {
   useConsumeStateStore,
   useFeedbackState,
@@ -8,10 +8,10 @@ import {
   useServerClusterState,
   useSidebarInteractionState,
   useWorkspacePaneState
-} from "../state";
-import { useLiveConsumeRouting, useWorkspaceTasks } from "../workspace";
-import { useServerFormStore } from "../../stores/ui/serverFormStore";
-import { useTopicCreateStore } from "../../stores/ui/topicCreateStore";
+} from "../../state";
+import { useLiveConsumeRouting, useWorkspaceTasks } from "../../workspace";
+import { useServerFormStore } from "../../../stores/ui/serverFormStore";
+import { useTopicCreateStore } from "../../../stores/ui/topicCreateStore";
 import { useAppResourceState } from "./useAppResourceState";
 
 export function useAppStateComposition() {

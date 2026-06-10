@@ -1,5 +1,5 @@
-import { useQuickSearchActions } from "../search";
-import { useAppKeyboardShortcuts } from "../ui";
+import { useQuickSearchActions } from "../../search";
+import { useAppKeyboardShortcuts } from "../../ui";
 
 type QuickSearchAppActionsParams = {
   actions: Parameters<typeof useQuickSearchActions>[0];

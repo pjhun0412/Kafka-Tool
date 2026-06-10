@@ -1,4 +1,4 @@
-import { useWorkspaceDragDrop, useWorkspaceDragPayloads } from "../workspace";
+import { useWorkspaceDragDrop, useWorkspaceDragPayloads } from "../../workspace";
 
 type WorkspaceDragCompositionParams = {
   payloads: Parameters<typeof useWorkspaceDragPayloads>[0];

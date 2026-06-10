@@ -1,4 +1,4 @@
-import { useSidebarContextMenus } from "../search";
+import { useSidebarContextMenus } from "../../search";
 
 type WorkspaceContextMenuActionsParams = Parameters<typeof useSidebarContextMenus>[0];
 

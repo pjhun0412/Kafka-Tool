@@ -1,4 +1,4 @@
-import { useDismissOnWindowInteraction } from "../ui";
+import { useDismissOnWindowInteraction } from "../../ui";
 
 type WorkspaceMenuDismissalsParams = {
   serverContextMenuOpen: boolean;

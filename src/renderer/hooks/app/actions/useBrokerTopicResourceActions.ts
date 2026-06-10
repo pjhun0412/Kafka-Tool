@@ -1,4 +1,4 @@
-import { useBrokerActions, useTopicResourceActions } from "../actions";
+import { useBrokerActions, useTopicResourceActions } from "../../actions";
 
 type BrokerTopicResourceActionsParams = {
   brokers: Parameters<typeof useBrokerActions>[0];

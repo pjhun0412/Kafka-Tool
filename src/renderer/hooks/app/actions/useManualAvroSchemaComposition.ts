@@ -1,4 +1,4 @@
-import { useManualAvroSchemaSummary } from "../preferences";
+import { useManualAvroSchemaSummary } from "../../preferences";
 
 type ManualAvroSchemaCompositionParams = {
   manualAvroSchemasByServer: Parameters<typeof useManualAvroSchemaSummary>[0];

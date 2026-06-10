@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { WorkspaceAppLayout } from "../../components/workspace/WorkspaceAppLayout";
+import { WorkspaceAppLayout } from "../../../components/workspace/WorkspaceAppLayout";
 
 type WorkspaceLayoutCompositionParams = ComponentProps<typeof WorkspaceAppLayout>;
 

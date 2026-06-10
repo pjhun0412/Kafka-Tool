@@ -1,4 +1,4 @@
-import { useTopicFavorites, useTopicRowSelectionActions } from "../actions";
+import { useTopicFavorites, useTopicRowSelectionActions } from "../../actions";
 
 type TopicListActionsParams = {
   favorites: Parameters<typeof useTopicFavorites>[0];

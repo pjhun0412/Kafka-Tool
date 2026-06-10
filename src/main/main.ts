@@ -101,38 +101,37 @@ const menuText = {
     helpOk: "확인",
     helpShortcutsTitle: "단축키",
     helpShortcutsMessage: [
-      "Ctrl+P 또는 Ctrl+K: 빠른 검색을 엽니다.",
+      "Ctrl+P 또는 Ctrl+K: Quick Search를 엽니다.",
       "Ctrl+O: 설정 파일을 가져옵니다.",
       "Ctrl+S: 설정 파일을 내보냅니다.",
       "Ctrl+,: 환경설정을 엽니다.",
-      "Topic/Consumer/Broker 목록에서는 행을 클릭해 상세 화면으로 이동합니다."
+      "Topic, Consumer, Broker 목록에서 행을 클릭하면 상세 화면으로 이동합니다."
     ].join("\n"),
     helpSplitTitle: "탭 분할",
     helpSplitMessage: [
-      "클러스터 탭이나 Topic 탭을 드래그해 화면을 분할할 수 있습니다.",
-      "분할 영역의 닫기 드롭존으로 탭을 끌면 분할 패널을 닫습니다.",
-      "각 서버의 분할 상태는 서버별로 유지됩니다.",
-      "Consume 화면의 메시지 목록과 JSON Viewer 사이 경계선을 드래그해 높이를 조절할 수 있습니다."
+      "Cluster 탭이나 Topic 탭을 드래그해 작업 영역을 분할할 수 있습니다.",
+      "분할 닫기 영역으로 탭을 놓으면 분할 패널을 닫습니다.",
+      "분할 상태는 서버별로 유지됩니다.",
+      "Consume 화면에서는 메시지 목록과 JSON Viewer 사이 경계선을 드래그해 높이를 조절할 수 있습니다."
     ].join("\n"),
     helpSearchTitle: "검색과 필터",
     helpSearchMessage: [
-      "Topics 검색은 공백으로 AND 검색, -단어로 제외, /패턴/으로 정규식을 지원합니다.",
-      "빠른 검색에서 @\"Server Name\" topic 형식으로 특정 서버 안에서 찾을 수 있습니다.",
+      "Topics 검색은 공백 AND 검색, -단어 제외, /pattern/ 정규식을 지원합니다.",
+      "Quick Search에서 @\"Server Name\" topic 형식으로 특정 서버 안에서 찾을 수 있습니다.",
       "Consume 필터는 key:, value:, headers:, empty:, 정규식, JSON path 비교식을 지원합니다.",
-      "그리드 컬럼의 필터 아이콘으로 컬럼별 텍스트/범위 필터를 적용할 수 있습니다."
+      "Grid 컬럼의 필터 아이콘으로 컬럼별 텍스트 또는 범위 필터를 적용할 수 있습니다."
     ].join("\n"),
     helpKafkaTitle: "Kafka 작업 팁",
     helpKafkaMessage: [
-      "Topic 우클릭 메뉴에서 열기, 이름 복사, Avro Schema 등록, 비우기, 삭제를 실행할 수 있습니다.",
-      "Topic Settings에서는 Kafka가 수정 가능하다고 내려준 config만 편집합니다.",
-      "Consumer 상세는 Topic별로 접고 펼쳐 Lag와 offset을 확인할 수 있습니다.",
-      "대량 Consume 조회는 가상화 그리드로 렌더링되며, Offset 조회는 Prev/Next로 페이지 이동할 수 있습니다."
+      "Topic 우클릭 메뉴에서 열기, 이름 복사, Avro Schema 등록, 메시지 비우기, 삭제를 실행할 수 있습니다.",
+      "Topic Settings에서는 Kafka가 수정 가능하다고 알려준 config만 편집합니다.",
+      "Consumer 상세에서는 Topic별로 접고 펼쳐 Lag와 offset을 확인할 수 있습니다.",
+      "대량 Consume 조회는 가상화 Grid로 렌더링되며, Offset 조회는 Prev/Next로 페이지 이동할 수 있습니다."
     ].join("\n"),
     aboutTitle: "Kafka Tool 정보",
-    aboutMessage: "Kafka Tool 데스크톱 클라이언트\nTopic, Consumer, Broker, Produce/Consume 작업을 한 곳에서 관리합니다.",
+    aboutMessage: "Kafka Tool 데스크톱 클라이언트\nTopic, Consumer, Broker, Produce/Consume 작업을 한곳에서 관리합니다.",
     saveLiveRecord: "Live Record 저장"
-  },
-  en: {
+  },  en: {
     file: "File",
     importSettings: "Import Settings...",
     exportSettings: "Export Settings...",

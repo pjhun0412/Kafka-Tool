@@ -1,5 +1,5 @@
-import { useSelectedConsumeActions } from "../actions";
-import { useWorkspaceRefreshActions } from "../workspace";
+import { useSelectedConsumeActions } from "../../actions";
+import { useWorkspaceRefreshActions } from "../../workspace";
 
 type ConsumeRefreshActionsParams = {
   selectedConsume: Parameters<typeof useSelectedConsumeActions>[0];

@@ -1,5 +1,5 @@
-import { useServerLifecycleActions } from "../actions";
-import { useSidebarDragActions } from "../ui";
+import { useServerLifecycleActions } from "../../actions";
+import { useSidebarDragActions } from "../../ui";
 
 type ServerAppActionsParams = {
   lifecycle: Parameters<typeof useServerLifecycleActions>[0];

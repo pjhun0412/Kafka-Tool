@@ -1,7 +1,7 @@
 import {
   useWorkspaceOverlayProps,
   useWorkspaceSidebarProps
-} from "../callbacks";
+} from "../../callbacks";
 
 type SidebarPropsParams = Parameters<typeof useWorkspaceSidebarProps>[0];
 type OverlayPropsParams = Parameters<typeof useWorkspaceOverlayProps>[0];

@@ -1,9 +1,9 @@
-import { emptyConsumeState } from "../../uiTypes";
+import { emptyConsumeState } from "../../../uiTypes";
 import {
   usePaneToastRouting,
   useWorkspacePaneModels,
   useWorkspaceSelectors
-} from "../workspace";
+} from "../../workspace";
 
 type WorkspaceModelCompositionParams = {
   paneModels: Parameters<typeof useWorkspacePaneModels>[0];

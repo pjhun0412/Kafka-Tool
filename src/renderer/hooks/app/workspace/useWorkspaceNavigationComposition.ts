@@ -4,7 +4,7 @@ import {
   useSplitTopicActivation,
   useSplitTopicDetailActions,
   useTopicViewActions
-} from "../workspace";
+} from "../../workspace";
 
 type WorkspaceNavigationCompositionParams = {
   splitTopicDetail: Parameters<typeof useSplitTopicDetailActions>[0];

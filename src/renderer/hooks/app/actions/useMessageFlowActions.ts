@@ -1,4 +1,4 @@
-import { useConsumeActions, useMessageExportActions, useProduceActions } from "../actions";
+import { useConsumeActions, useMessageExportActions, useProduceActions } from "../../actions";
 
 type MessageFlowActionsParams = {
   consume: Parameters<typeof useConsumeActions>[0];

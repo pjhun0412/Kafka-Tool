@@ -5,7 +5,7 @@ import {
   useKafkaPreferenceResourceState,
   useKafkaStreamingResourceState,
   useKafkaTopicResourceState
-} from "../state";
+} from "../../state";
 
 export function useAppResourceState() {
   return {

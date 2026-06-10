@@ -1,4 +1,4 @@
-import { useManualAvroSchemaActions, useSettingsTransferActions } from "../actions";
+import { useManualAvroSchemaActions, useSettingsTransferActions } from "../../actions";
 
 type SettingsSchemaActionsParams = {
   manualAvroSchema: Parameters<typeof useManualAvroSchemaActions>[0];

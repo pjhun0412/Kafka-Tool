@@ -5,7 +5,7 @@ import {
   type PrimaryPaneCallbacksParams,
   useSplitPaneCallbacks,
   type SplitPaneCallbacksParams
-} from "../callbacks";
+} from "../../callbacks";
 
 type PrimaryPanePropsParams = Omit<Parameters<typeof createPrimaryWorkspacePaneProps>[0], "callbacks">;
 type SplitPanePropsParams = Omit<Parameters<typeof createSplitWorkspacePaneProps>[0], "callbacks">;

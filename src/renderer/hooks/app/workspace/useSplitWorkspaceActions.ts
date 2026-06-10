@@ -1,4 +1,4 @@
-import { useSplitPaneActions, useSplitPaneViewActions } from "../workspace";
+import { useSplitPaneActions, useSplitPaneViewActions } from "../../workspace";
 
 type SplitWorkspaceActionsParams = {
   view: Parameters<typeof useSplitPaneViewActions>[0];

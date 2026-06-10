@@ -1,4 +1,4 @@
-import { useConsumerGroupActions } from "../actions";
+import { useConsumerGroupActions } from "../../actions";
 
 type ConsumerGroupAppActionsParams = Parameters<typeof useConsumerGroupActions>[0];
 

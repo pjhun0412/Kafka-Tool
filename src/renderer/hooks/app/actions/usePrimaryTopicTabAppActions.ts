@@ -1,4 +1,4 @@
-import { usePrimaryTopicTabActions } from "../workspace";
+import { usePrimaryTopicTabActions } from "../../workspace";
 
 type PrimaryTopicTabAppActionsParams = Parameters<typeof usePrimaryTopicTabActions>[0];
 
