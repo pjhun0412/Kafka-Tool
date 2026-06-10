@@ -1,6 +1,5 @@
 import {
   useAppStateComposition,
-  useAppRuntimeEffects,
   useConsumerGroupAppActions,
   useConsumeRefreshActions,
   useManualAvroSchemaComposition,
@@ -18,6 +17,7 @@ import {
 } from "..";
 import { useWorkspaceControllerNavigation } from "./useWorkspaceControllerNavigation";
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
+import { useWorkspaceControllerRuntime } from "./useWorkspaceControllerRuntime";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
 import { useWorkspaceControllerSplit } from "./useWorkspaceControllerSplit";
@@ -802,7 +802,7 @@ export function useWorkspaceAppController() {
   const { updateSelectedConsumeState, updateConsumeDefaults } = selectedConsumeActions;
   const { refreshCurrentView, refreshSplitPaneView, refreshActiveWorkspaceView } = refreshActions;
 
-  useAppRuntimeEffects({
+  useWorkspaceControllerRuntime({
     serverBootstrap: {
       kafkaApi,
       setStatus,
