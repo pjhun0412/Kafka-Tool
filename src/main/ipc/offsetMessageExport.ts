@@ -1,0 +1,84 @@
+import { createWriteStream } from "node:fs";
+import type {
+  ConsumeOffsetRequest,
+  ConsumeOffsetResult,
+  OffsetMessageExportRequest
+} from "../../shared/types.js";
+import {
+  csvValue,
+  formatMessageLogLine
+} from "./messageExportFormatters.js";
+
+type WriteOffsetMessageExportParams = {
+  filePath: string;
+  request: OffsetMessageExportRequest;
+  consumeOffsetBatch: (request: ConsumeOffsetRequest) => Promise<ConsumeOffsetResult>;
+  nextOffset: (offset: string) => string;
+};
+
+export async function writeOffsetMessageExport({
+  filePath,
+  request,
+  consumeOffsetBatch,
+  nextOffset
+}: WriteOffsetMessageExportParams) {
+  const stream = createWriteStream(filePath, { encoding: "utf8" });
+  const write = (chunk: string) => new Promise<void>((resolve, reject) => {
+    stream.write(chunk, (error) => error ? reject(error) : resolve());
+  });
+  const totalLimit = Math.max(1, Number(request.limit) || 10);
+  const pageSize = 5000;
+  let remaining = totalLimit;
+  let cursor = request.offset;
+  let count = 0;
+  let jsonFirst = true;
+
+  try {
+    if (request.format === "csv") {
+      await write(["topic", "partition", "offset", "timestamp", "key", "value", "headers"].join(",") + "\n");
+    } else if (request.format === "json") {
+      await write(`{\n  "exportedAt": ${JSON.stringify(new Date().toISOString())},\n  "topic": ${JSON.stringify(request.topic)},\n  "messages": [\n`);
+    }
+
+    while (remaining > 0) {
+      const batchLimit = Math.min(pageSize, remaining);
+      const batch = await consumeOffsetBatch({ ...request, offset: cursor, limit: batchLimit });
+      const messages = request.order === "desc" ? [...batch.messages].reverse() : batch.messages;
+      if (messages.length === 0) break;
+
+      for (const message of messages) {
+        if (request.format === "csv") {
+          await write([
+            message.topic,
+            message.partition,
+            message.offset,
+            message.timestamp,
+            message.key,
+            message.value,
+            JSON.stringify(message.headers)
+          ].map(csvValue).join(",") + "\n");
+        } else if (request.format === "log") {
+          await write(formatMessageLogLine(message, request.template) + "\n");
+        } else {
+          await write(`${jsonFirst ? "" : ",\n"}    ${JSON.stringify(message)}`);
+          jsonFirst = false;
+        }
+      }
+
+      count += messages.length;
+      remaining -= messages.length;
+      if (messages.length < batchLimit) break;
+      cursor = request.order === "desc"
+        ? messages[messages.length - 1].offset
+        : nextOffset(messages[messages.length - 1].offset);
+    }
+
+    if (request.format === "json") {
+      await write(`\n  ],\n  "count": ${count}\n}\n`);
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      stream.end((error?: Error | null) => error ? reject(error) : resolve());
+    });
+  }
+}

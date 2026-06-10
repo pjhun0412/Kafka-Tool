@@ -1,181 +1,160 @@
 import { useConsumerGroupAppActions } from "../actions/useConsumerGroupAppActions";
-import { useConsumeRefreshActions } from "../actions/useConsumeRefreshActions";
-import { useManualAvroSchemaComposition } from "../actions/useManualAvroSchemaComposition";
 import { useMessageFlowActions } from "../actions/useMessageFlowActions";
-import { usePrimaryTopicTabAppActions } from "../actions/usePrimaryTopicTabAppActions";
-import { useQuickSearchAppActions } from "../actions/useQuickSearchAppActions";
 import { useSettingsSchemaActions } from "../actions/useSettingsSchemaActions";
 import { useWorkspaceContextMenuActions } from "../actions/useWorkspaceContextMenuActions";
 import { useWorkspaceChromeCompositions } from "../layout/useWorkspaceChromeCompositions";
 import { useWorkspaceLayoutComposition } from "../layout/useWorkspaceLayoutComposition";
 import { useWorkspaceMenuDismissals } from "../layout/useWorkspaceMenuDismissals";
-import { useAppStateComposition } from "../state/useAppStateComposition";
 import { useWorkspaceDerivedState } from "../state/useWorkspaceDerivedState";
 import { useWorkspaceModelComposition } from "../workspace/useWorkspaceModelComposition";
 import { useWorkspacePaneCompositions } from "../workspace/useWorkspacePaneCompositions";
 import { useWorkspaceControllerNavigation } from "./useWorkspaceControllerNavigation";
+import { useWorkspaceControllerInteractions } from "./useWorkspaceControllerInteractions";
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerRuntime } from "./useWorkspaceControllerRuntime";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
 import { useWorkspaceControllerSplit } from "./useWorkspaceControllerSplit";
+import { useWorkspaceControllerStateBindings } from "./useWorkspaceControllerStateBindings";
 import { useWorkspaceControllerTopicOperations } from "./useWorkspaceControllerTopicOperations";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
-  const appState = useAppStateComposition();
   const {
-    servers,
-    setServers,
-    connectedServerIds,
-    setConnectedServerIds,
-    failedServerIds,
-    setFailedServerIds,
-    setHealthFailuresByServer,
-    openClusterIds,
-    setOpenClusterIds,
-    selectedServerId,
-    setSelectedServerId
-  } = appState.serverCluster;
-  const { openNewServerForm, openEditServerForm } = appState.serverForms;
-  const { openTopicCreateForm, closeTopicCreateForm } = appState.topicCreateForms;
-  const resourceState = appState.resources;
-  const {
-    viewByServer,
-    setViewByServer,
-    topicViewByServer,
-    setTopicViewByServer,
-    selectedTopicByServer,
-    setSelectedTopicByServer,
-    openedTopicTabsByServer,
-    setOpenedTopicTabsByServer
-  } = resourceState.navigation;
-  const {
-    topicsByServer,
-    setTopicsByServer,
-    topicGridSortingByServer,
-    setTopicGridSortingByServer,
-    favoriteTopicsByServer,
-    setFavoriteTopicsByServer,
-    topicDetailByServer,
-    setTopicDetailByServer,
-    topicDetailCacheByServer,
-    setTopicDetailCacheByServer
-  } = resourceState.topics;
-  const {
+    activeConsumeTaskKeys,
+    activeDragPayload,
+    activeWorkspacePane,
     brokersByServer,
-    setBrokersByServer
-  } = resourceState.brokers;
-  const {
-    groupsByServer,
-    setGroupsByServer,
-    selectedGroupByServer,
-    setSelectedGroupByServer,
-    groupLagByServer,
-    setGroupLagByServer
-  } = resourceState.consumerGroups;
-  const {
-    consumeDefaultsByServer,
-    setConsumeDefaultsByServer,
-    manualAvroSchemasByServer,
-    setManualAvroSchemasByServer,
-    preferencesLoaded,
-    setPreferencesLoaded
-  } = resourceState.preferences;
-  const {
-    streamingTopicsByServer,
-    setStreamingTopicsByServer
-  } = resourceState.streaming;
-  const {
-    consumeStatesByServer,
-    setConsumeStatesByServer,
-    splitConsumeStatesByServer,
-    setSplitConsumeStatesByServer,
-    getDefaultConsumeState,
-    setConsumeStates,
-    mergeConsumeState,
-    moveConsumeStateBetweenPanes,
     clearConsumeStateForPane,
     clearConsumeStatesForPane,
-    updateConsumeStateFor
-  } = appState.consumeState;
-  const {
-    getProduceDraft,
-    updateProduceDraftFor,
-    resetProduceDrafts
-  } = appState.produceDrafts;
-  const {
-    getMessageTarget,
-    setStartedConsumer,
-    getStopConsumerId,
-    clearStoppedConsumer,
     clearMessageTarget,
-    retargetLiveTopic
-  } = appState.liveConsumeRouting;
-  const {
-    setStatus,
-    toast,
-    setToast,
-    paneToast,
-    setPaneToast,
-    loading,
-    setLoading,
-    activeConsumeTaskKeys,
-    setActiveConsumeTaskKeys,
-    setConnectionError
-  } = appState.feedback;
-  const {
-    runTask,
-    runPaneTask,
-    runWorkspaceTask,
-    showPaneToast
-  } = appState.workspaceTasks;
-  const {
-    sidebarWidth,
-    setSidebarWidth,
-    sidebarCollapsed,
-    setSidebarCollapsed,
-    serverPanelHeight,
-    setServerPanelHeight,
-    messagePaneHeight,
-    setMessagePaneHeight,
-    fontFamily,
-    setFontFamily,
-    fontSize,
-    setFontSize,
-    language,
-    setLanguage,
-    resolvedLanguage,
-    exportFormatTemplate,
-    setExportFormatTemplate,
-    startSidebarResize,
-    startServerPanelResize
-  } = appState.layout;
-  const {
-    openPreferences,
-    openPreferencesSection
-  } = appState.preferences;
-  const {
-    serverContextMenu,
-    setServerContextMenu,
-    topicContextMenu,
-    setTopicContextMenu,
-    isTopicSortMenuOpen,
-    setIsTopicSortMenuOpen,
-    pendingTopicAction,
-    setPendingTopicAction,
-    topicActionConfirmText,
-    setTopicActionConfirmText,
-    draggingServerId,
-    setDraggingServerId,
-    serverDropTarget,
-    setServerDropTarget,
-    draggingFavoriteTopic,
-    setDraggingFavoriteTopic,
-    favoriteDropTarget,
-    setFavoriteDropTarget,
+    clearStoppedConsumer,
     closeServerContextMenu,
-    closeTopicContextMenu
-  } = appState.sidebarInteraction;
+    closeTopicContextMenu,
+    closeTopicCreateForm,
+    connectedServerIds,
+    consumeDefaultsByServer,
+    consumeStatesByServer,
+    draggingFavoriteTopic,
+    draggingServerId,
+    exportFormatTemplate,
+    failedServerIds,
+    favoriteDropTarget,
+    favoriteTopicsByServer,
+    fontFamily,
+    fontSize,
+    getDefaultConsumeState,
+    getMessageTarget,
+    getProduceDraft,
+    getStopConsumerId,
+    groupLagByServer,
+    groupsByServer,
+    isTopicSortMenuOpen,
+    language,
+    loading,
+    manualAvroSchemasByServer,
+    mergeConsumeState,
+    messagePaneHeight,
+    moveConsumeStateBetweenPanes,
+    openClusterIds,
+    openEditServerForm,
+    openNewServerForm,
+    openPreferences,
+    openPreferencesSection,
+    openTopicCreateForm,
+    openedTopicTabsByServer,
+    paneToast,
+    pendingTopicAction,
+    preferencesLoaded,
+    resetProduceDrafts,
+    resolvedLanguage,
+    retargetLiveTopic,
+    runPaneTask,
+    runTask,
+    runWorkspaceTask,
+    selectedGroupByServer,
+    selectedServerId,
+    selectedTopicByServer,
+    serverContextMenu,
+    serverDropTarget,
+    serverPanelHeight,
+    servers,
+    setServers,
+    setActiveConsumeTaskKeys,
+    setActiveDragPayload,
+    setActiveWorkspacePane,
+    setBrokersByServer,
+    setConnectedServerIds,
+    setConnectionError,
+    setConsumeDefaultsByServer,
+    setConsumeStates,
+    setConsumeStatesByServer,
+    setDraggingFavoriteTopic,
+    setDraggingServerId,
+    setExportFormatTemplate,
+    setFailedServerIds,
+    setFavoriteDropTarget,
+    setFavoriteTopicsByServer,
+    setFontFamily,
+    setFontSize,
+    setGroupLagByServer,
+    setGroupsByServer,
+    setHealthFailuresByServer,
+    setIsTopicSortMenuOpen,
+    setLanguage,
+    setLoading,
+    setManualAvroSchemasByServer,
+    setMessagePaneHeight,
+    setOpenClusterIds,
+    setOpenedTopicTabsByServer,
+    setPaneToast,
+    setPendingTopicAction,
+    setPreferencesLoaded,
+    setSelectedGroupByServer,
+    setSelectedServerId,
+    setSelectedTopicByServer,
+    setServerContextMenu,
+    setServerDropTarget,
+    setServerPanelHeight,
+    setSidebarCollapsed,
+    setSidebarWidth,
+    setSplitConsumeStatesByServer,
+    setSplitDropSide,
+    splitPane,
+    setSplitPane,
+    setStartedConsumer,
+    setStatus,
+    setStreamingTopicsByServer,
+    setToast,
+    setTopicActionConfirmText,
+    setTopicContextMenu,
+    setTopicDetailByServer,
+    setTopicDetailCacheByServer,
+    setTopicGridSortingByServer,
+    setTopicsByServer,
+    setTopicViewByServer,
+    setViewByServer,
+    showPaneToast,
+    sidebarCollapsed,
+    sidebarWidth,
+    splitConsumeStatesByServer,
+    splitDropSide,
+    splitPrimaryPercent,
+    startServerPanelResize,
+    startSidebarResize,
+    startWorkspaceSplitResize,
+    streamingTopicsByServer,
+    toast,
+    topicActionConfirmText,
+    topicContextMenu,
+    topicDetailByServer,
+    topicDetailCacheByServer,
+    topicGridSortingByServer,
+    topicsByServer,
+    topicViewByServer,
+    updateConsumeStateFor,
+    updateProduceDraftFor,
+    viewByServer
+  } = useWorkspaceControllerStateBindings();
   useWorkspaceMenuDismissals({
     serverContextMenuOpen: Boolean(serverContextMenu),
     topicContextMenuOpen: Boolean(topicContextMenu),
@@ -205,18 +184,6 @@ export function useWorkspaceAppController() {
     deleteManualAvroSchemaFor
   } = manualAvroSchemaActions;
   const { applyImportedSettings } = settingsTransferActions;
-  const {
-    splitPane,
-    setSplitPane,
-    splitDropSide,
-    setSplitDropSide,
-    splitPrimaryPercent,
-    activeWorkspacePane,
-    setActiveWorkspacePane,
-    activeDragPayload,
-    setActiveDragPayload,
-    startWorkspaceSplitResize
-  } = appState.workspacePane;
   const controllerSearch = useWorkspaceControllerSearch({
     appSearch: {
       servers,
@@ -717,84 +684,107 @@ export function useWorkspaceAppController() {
     }
   });
 
-  const { executeQuickSearch } = useQuickSearchAppActions({
-    actions: {
-      quickSearchResults,
-      quickSearchIndex,
-      selectedServerId,
-      selectedTopic,
-      groupsByServer,
-      ensureServerConnected,
-      getWorkspaceTargetForServer,
-      openTopicInWorkspace,
-      openManualAvroSchema,
-      openPreferences,
-      refreshTopics,
-      refreshGroups,
-      refreshGroupsForServer,
-      loadConsumerGroupLagFor,
-      requestTopicAction,
-      requestTopicActionFor,
-      rememberQuickSearch,
-      closeQuickSearch,
-      setSelectedServerId,
-      setView,
-      setViewByServer
-    },
-    shortcuts: {
-      isQuickSearchOpen,
-      quickSearchResultCount: quickSearchResults.length,
-      openQuickSearch,
-      closeQuickSearch,
-      openPreferences,
-      setSidebarCollapsed,
-      setQuickSearchIndex
-    }
-  });
-
-  const { manualAvroTopicNames, manualAvroSchemaRows } = useManualAvroSchemaComposition({
-    manualAvroSchemasByServer,
-    servers,
-    selectedServerId
-  });
   const selectedConsumeState = consumeStates[selectedTopic] ?? selectedDefaultConsumeState;
-  const { selectedConsumeActions, refreshActions } = useConsumeRefreshActions({
-    selectedConsume: {
-      selectedServerId,
-      selectedTopic,
-      selectedDefaultConsumeState,
-      setConsumeStates,
-      setConsumeDefaultsByServer
+  const {
+    closeTopicTab,
+    executeQuickSearch,
+    manualAvroSchemaRows,
+    manualAvroTopicNames,
+    refreshActions,
+    selectedConsumeActions
+  } = useWorkspaceControllerInteractions({
+    quickSearch: {
+      actions: {
+        quickSearchResults,
+        quickSearchIndex,
+        selectedServerId,
+        selectedTopic,
+        groupsByServer,
+        ensureServerConnected,
+        getWorkspaceTargetForServer,
+        openTopicInWorkspace,
+        openManualAvroSchema,
+        openPreferences,
+        refreshTopics,
+        refreshGroups,
+        refreshGroupsForServer,
+        loadConsumerGroupLagFor,
+        requestTopicAction,
+        requestTopicActionFor,
+        rememberQuickSearch,
+        closeQuickSearch,
+        setSelectedServerId,
+        setView,
+        setViewByServer
+      },
+      shortcuts: {
+        isQuickSearchOpen,
+        quickSearchResultCount: quickSearchResults.length,
+        openQuickSearch,
+        closeQuickSearch,
+        openPreferences,
+        setSidebarCollapsed,
+        setQuickSearchIndex
+      }
     },
-    workspaceRefresh: {
-      activeWorkspacePane,
+    manualAvroSchemas: {
+      manualAvroSchemasByServer,
+      servers,
+      selectedServerId
+    },
+    consumeRefresh: {
+      selectedConsume: {
+        selectedServerId,
+        selectedTopic,
+        selectedDefaultConsumeState,
+        setConsumeStates,
+        setConsumeDefaultsByServer
+      },
+      workspaceRefresh: {
+        activeWorkspacePane,
+        selectedServerId,
+        selectedTopic,
+        view,
+        visibleSplitPane,
+        selectedConsumeState,
+        splitConsumeState,
+        selectedDefaultConsumeState,
+        refreshBrokers,
+        refreshBrokersForServer,
+        refreshTopics,
+        refreshTopicsForServer,
+        refreshGroups,
+        refreshGroupsForServer,
+        loadTopicDetail,
+        loadTopicDetailSilent,
+        loadSplitTopicDetailSilent,
+        isTopicStreaming,
+        stopConsume,
+        getDefaultConsumeState,
+        updateConsumeStateFor,
+        updateProduceDraftFor,
+        runPaneTask,
+        showPaneToast,
+        setGroups,
+        setSelectedGroupByServer,
+        setGroupLagByServer,
+        setStatus
+      }
+    },
+    primaryTopicTab: {
       selectedServerId,
       selectedTopic,
-      view,
-      visibleSplitPane,
-      selectedConsumeState,
-      splitConsumeState,
-      selectedDefaultConsumeState,
-      refreshBrokers,
-      refreshBrokersForServer,
-      refreshTopics,
-      refreshTopicsForServer,
-      refreshGroups,
-      refreshGroupsForServer,
-      loadTopicDetail,
-      loadTopicDetailSilent,
-      loadSplitTopicDetailSilent,
+      openedTopicTabs,
+      splitPane,
       isTopicStreaming,
       stopConsume,
-      getDefaultConsumeState,
-      updateConsumeStateFor,
-      updateProduceDraftFor,
-      runPaneTask,
-      showPaneToast,
-      setGroups,
-      setSelectedGroupByServer,
-      setGroupLagByServer,
-      setStatus
+      clearConsumeStateForPane,
+      promoteSplitPaneToPrimary,
+      selectPrimaryTopic,
+      setOpenedTopicTabs,
+      setSelectedTopic,
+      setTopicDetail,
+      setViewByServer
     }
   });
   const { updateSelectedConsumeState, updateConsumeDefaults } = selectedConsumeActions;
@@ -883,21 +873,6 @@ export function useWorkspaceAppController() {
     }
   });
 
-  const { closeTopicTab } = usePrimaryTopicTabAppActions({
-    selectedServerId,
-    selectedTopic,
-    openedTopicTabs,
-    splitPane,
-    isTopicStreaming,
-    stopConsume,
-    clearConsumeStateForPane,
-    promoteSplitPaneToPrimary,
-    selectPrimaryTopic,
-    setOpenedTopicTabs,
-    setSelectedTopic,
-    setTopicDetail,
-    setViewByServer
-  });
   const activeWorkspaceView = getActiveWorkspaceView();
   const { sidebarProps, overlayProps } = useWorkspaceChromeCompositions({
     sidebar: {
