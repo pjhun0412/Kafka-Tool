@@ -1,21 +1,9 @@
-import { BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow } from "electron";
 import type { Consumer } from "kafkajs";
-import {
-  consumeOffsetBatch,
-  consumeTimeRange
-} from "./consumeQueries.js";
-import { startLiveConsume } from "./liveConsume.js";
+import { consumeOffsetBatch } from "./consumeQueries.js";
+import { registerConsumeHandlers } from "./consumeHandlers.js";
 import { createLiveRecorderRegistry } from "./liveRecorder.js";
-import { produceMessages } from "./produceMessages.js";
-import type {
-  ConsumeOffsetRequest,
-  ConsumeOffsetResult,
-  ConsumeTimeRangeRequest,
-  ProduceRequest,
-  ProducedMessage,
-  StartConsumeRequest,
-  StopConsumeRequest
-} from "../../shared/types.js";
+import type { StopConsumeRequest } from "../../shared/types.js";
 import {
   consumeKey,
   nextOffset,
@@ -68,32 +56,12 @@ export function createConsumeProduceService(params: ConsumeProduceServiceParams)
   }
 
   function registerIpcHandlers() {
-    ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise<ProducedMessage[]> => {
-      return produceMessages(request);
-    });
-
-    ipcMain.handle("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> => {
-      return consumeOffsetBatch(request);
-    });
-
-    ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRangeRequest) => {
-      return consumeTimeRange(request);
-    });
-
-    ipcMain.handle("kafka:consume-stop", async (_event, request?: StopConsumeRequest) => {
-      await stopActiveConsumer(request);
-    });
-
-    ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
-      const consumerId = request.consumerId ?? "default";
-      await stopActiveConsumer({ serverId: request.serverId, topic: request.topic, consumerId });
-      return startLiveConsume({
-        request,
-        activeConsumers,
-        liveRecorders,
-        getWindow: params.getWindow,
-        sendConsumeError
-      });
+    registerConsumeHandlers({
+      activeConsumers,
+      getWindow: params.getWindow,
+      liveRecorders,
+      sendConsumeError,
+      stopActiveConsumer
     });
   }
 

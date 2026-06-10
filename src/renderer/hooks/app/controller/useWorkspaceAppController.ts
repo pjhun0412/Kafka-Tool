@@ -1,24 +1,24 @@
 import { useConsumerGroupAppActions } from "../actions/useConsumerGroupAppActions";
 import { useMessageFlowActions } from "../actions/useMessageFlowActions";
-import { useSettingsSchemaActions } from "../actions/useSettingsSchemaActions";
 import { useWorkspaceContextMenuActions } from "../actions/useWorkspaceContextMenuActions";
-import { useWorkspaceChromeCompositions } from "../layout/useWorkspaceChromeCompositions";
-import { useWorkspaceLayoutComposition } from "../layout/useWorkspaceLayoutComposition";
-import { useWorkspaceMenuDismissals } from "../layout/useWorkspaceMenuDismissals";
 import { useWorkspaceDerivedState } from "../state/useWorkspaceDerivedState";
 import { useWorkspaceModelComposition } from "../workspace/useWorkspaceModelComposition";
 import { useWorkspacePaneCompositions } from "../workspace/useWorkspacePaneCompositions";
+import { useWorkspaceControllerChrome } from "./useWorkspaceControllerChrome";
+import { useWorkspaceControllerLayout } from "./useWorkspaceControllerLayout";
 import { useWorkspaceControllerNavigation } from "./useWorkspaceControllerNavigation";
 import { useWorkspaceControllerInteractions } from "./useWorkspaceControllerInteractions";
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerRuntime } from "./useWorkspaceControllerRuntime";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
+import { useWorkspaceControllerSetup } from "./useWorkspaceControllerSetup";
 import { useWorkspaceControllerSplit } from "./useWorkspaceControllerSplit";
 import { useWorkspaceControllerStateBindings } from "./useWorkspaceControllerStateBindings";
 import { useWorkspaceControllerTopicOperations } from "./useWorkspaceControllerTopicOperations";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
+  const controllerState = useWorkspaceControllerStateBindings();
   const {
     activeConsumeTaskKeys,
     activeDragPayload,
@@ -154,26 +154,28 @@ export function useWorkspaceAppController() {
     updateConsumeStateFor,
     updateProduceDraftFor,
     viewByServer
-  } = useWorkspaceControllerStateBindings();
-  useWorkspaceMenuDismissals({
-    serverContextMenuOpen: Boolean(serverContextMenu),
-    topicContextMenuOpen: Boolean(topicContextMenu),
-    topicSortMenuOpen: isTopicSortMenuOpen,
-    closeServerContextMenu,
-    closeTopicContextMenu,
-    closeTopicSortMenu: () => setIsTopicSortMenuOpen(false)
-  });
-  const { manualAvroSchemaActions, settingsTransferActions } = useSettingsSchemaActions({
-    manualAvroSchema: {
-      manualAvroSchemasByServer,
-      setManualAvroSchemasByServer,
-      setToast
+  } = controllerState;
+  const { manualAvroSchemaActions, settingsTransferActions } = useWorkspaceControllerSetup({
+    menuDismissals: {
+      serverContextMenuOpen: Boolean(serverContextMenu),
+      topicContextMenuOpen: Boolean(topicContextMenu),
+      topicSortMenuOpen: isTopicSortMenuOpen,
+      closeServerContextMenu,
+      closeTopicContextMenu,
+      closeTopicSortMenu: () => setIsTopicSortMenuOpen(false)
     },
-    settingsTransfer: {
-      kafkaApi,
-      setLoading,
-      setStatus,
-      setToast
+    settingsSchema: {
+      manualAvroSchema: {
+        manualAvroSchemasByServer,
+        setManualAvroSchemasByServer,
+        setToast
+      },
+      settingsTransfer: {
+        kafkaApi,
+        setLoading,
+        setStatus,
+        setToast
+      }
     }
   });
   const {
@@ -874,107 +876,45 @@ export function useWorkspaceAppController() {
   });
 
   const activeWorkspaceView = getActiveWorkspaceView();
-  const { sidebarProps, overlayProps } = useWorkspaceChromeCompositions({
+  const { sidebarProps, overlayProps } = useWorkspaceControllerChrome({
+    state: controllerState,
+    search: controllerSearch,
+    manualAvroSchemaRows,
+    manualAvroTopicNames,
+    contextTopic,
+    contextServer,
     sidebar: {
-      serverPanelHeight,
-      serverQuery,
-      servers,
-      filteredServers,
-      selectedServerId,
-      draggingServerId,
-      serverDropTarget,
-      connectedServerIds,
-      failedServerIds,
-      topics,
-      filteredTopics,
-      favoriteTopics,
-      nonFavoriteFilteredTopics,
-      favoriteTopicNames,
-      manualAvroTopicNames,
-      selectedTopic,
-      topicQuery,
-      topicSearchHistory,
-      topicSearchError,
-      topicFilter,
-      topicSort,
-      isTopicSortMenuOpen,
-      isSelectedServerConnected,
-      loading,
-      draggingFavoriteTopic,
-      favoriteDropTarget,
-      onNewServer: openNewServerForm,
-      onServerQuery: setServerQuery,
-      onServerSelect: setSelectedServerId,
       onServerContextMenu: openServerContextMenu,
       openCluster,
-      onServerDragStart: setDraggingServerId,
-      onServerDropTarget: setServerDropTarget,
       onServerDrop: handleServerDrop,
       onServerDragEnd: handleServerDragEnd,
-      onServerPanelResize: startServerPanelResize,
-      onTopicSortMenuOpen: setIsTopicSortMenuOpen,
-      onTopicSort: setTopicSort,
       refreshTopics,
-      onTopicQuery: setTopicQuery,
       onCommitTopicSearch: commitTopicSearch,
       onRemoveTopicSearchHistory: removeTopicSearchHistory,
-      onTopicFilter: setTopicFilter,
       selectTopicInWorkspace,
       openTopicTab,
       onTopicFavorite: toggleFavoriteTopic,
       onTopicContextMenu: openTopicContextMenu,
       getWorkspaceTargetForTopic: getWorkspaceTargetForServer,
-      onFavoriteDragStart: setDraggingFavoriteTopic,
-      onFavoriteDropTarget: setFavoriteDropTarget,
       onFavoriteDrop: handleFavoriteDrop,
       onFavoriteDragEnd: handleFavoriteDragEnd
     },
     overlay: {
-      loading,
       onSaveServer: saveServer,
-      isQuickSearchOpen,
-      quickSearchQuery,
-      quickSearchResults,
-      quickSearchIndex,
-      connectedServerIds,
-      quickSearchScope,
-      onQuickSearchQuery: setQuickSearchQuery,
-      onQuickSearchIndex: setQuickSearchIndex,
-      onCloseQuickSearch: closeQuickSearch,
       onExecuteQuickSearch: (result) => void executeQuickSearch(result),
-      fontFamily,
-      fontSize,
-      language,
-      resolvedLanguage,
-      exportFormatTemplate,
-      manualAvroSchemaRows,
-      onFontFamily: setFontFamily,
-      onFontSize: setFontSize,
-      onLanguage: setLanguage,
-      onExportFormatTemplate: setExportFormatTemplate,
       onOpenManualAvroSchema: openManualAvroSchema,
       onDeleteManualAvroSchemaFor: deleteManualAvroSchemaFor,
-      servers,
-      manualAvroSchemasByServer,
       onReadSchemaFile: readSchemaFile,
       onDeleteManualAvroSchema: deleteManualAvroSchema,
       onSaveManualAvroSchema: saveManualAvroSchema,
       onCreateTopic: submitTopicCreate,
       confirmTopicAction,
-      topicContextMenu,
-      serverContextMenu,
-      contextTopic,
-      contextServer,
-      selectedServerId,
-      onCloseTopicMenu: closeTopicContextMenu,
       openTopicTab,
       copySelectedTopicNames,
       onRegisterAvroSchema: openManualAvroSchema,
       onTopicAction: requestTopicAction,
-      onCloseServerMenu: closeServerContextMenu,
       connectServer,
       disconnectServer,
-      onEditServer: openEditServerForm,
       deleteServer
     }
   });
@@ -1119,16 +1059,10 @@ export function useWorkspaceAppController() {
       language: resolvedLanguage
     } : null
   });
-  const workspaceLayoutProps = useWorkspaceLayoutComposition({
-    sidebarCollapsed,
-    sidebarWidth,
-    splitMode: Boolean(visibleSplitPane),
-    splitPrimaryPercent,
-    splitDropSide,
-    onSidebarResize: startSidebarResize,
-    onWorkspaceSplitResize: startWorkspaceSplitResize,
+  const workspaceLayoutProps = useWorkspaceControllerLayout({
+    state: controllerState,
+    visibleSplitPane,
     onWorkspaceDragOver: handleWorkspaceDragOver,
-    onWorkspaceDragLeave: () => setSplitDropSide(null),
     onWorkspaceDrop: (event) => void handleWorkspaceDrop(event),
     sidebarProps,
     primaryPaneProps,
