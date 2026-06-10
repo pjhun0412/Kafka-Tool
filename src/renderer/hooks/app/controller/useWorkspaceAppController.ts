@@ -7,7 +7,6 @@ import {
   useMessageFlowActions,
   usePrimaryTopicTabAppActions,
   useQuickSearchAppActions,
-  useServerAppActions,
   useSettingsSchemaActions,
   useSplitWorkspaceActions,
   useTopicOperationActions,
@@ -23,6 +22,7 @@ import {
 } from "..";
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
+import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
   const appState = useAppStateComposition();
@@ -565,7 +565,19 @@ export function useWorkspaceAppController() {
   const { startConsume, moveOffsetPageFor, startConsumeFor, stopConsume } = consumeActions;
   const { exportConsumedMessages, exportOffsetConditionMessages } = exportActions;
   const { produce, produceFor, sendMessageToProduce } = produceActions;
-  const { lifecycleActions, sidebarDragActions } = useServerAppActions({
+  const {
+    saveServer,
+    deleteServer,
+    connectServer,
+    openCluster,
+    ensureServerConnected,
+    disconnectServer,
+    closeClusterTab,
+    handleServerDrop,
+    handleServerDragEnd,
+    handleFavoriteDrop,
+    handleFavoriteDragEnd
+  } = useWorkspaceControllerServer({
     lifecycle: {
       kafkaApi,
       servers,
@@ -609,21 +621,6 @@ export function useWorkspaceAppController() {
       setFavoriteDropTarget
     }
   });
-  const {
-    saveServer,
-    deleteServer,
-    connectServer,
-    openCluster,
-    ensureServerConnected,
-    disconnectServer,
-    closeClusterTab
-  } = lifecycleActions;
-  const {
-    handleServerDrop,
-    handleServerDragEnd,
-    handleFavoriteDrop,
-    handleFavoriteDragEnd
-  } = sidebarDragActions;
   const { viewActions: splitViewActions, paneActions: splitPaneActions } = useSplitWorkspaceActions({
     view: {
       splitPane,
@@ -699,7 +696,8 @@ export function useWorkspaceAppController() {
     }
   });
   const { startTopicDrag, startSplitPaneDrag, clearDragPayload } = payloadActions;
-  const { handleWorkspaceDragOver, handleWorkspaceDrop } = dropActions;  const {
+  const { handleWorkspaceDragOver, handleWorkspaceDrop } = dropActions;
+  const {
     createTopic,
     requestTopicAction,
     requestTopicActionFor,
