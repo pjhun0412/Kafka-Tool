@@ -1,5 +1,7 @@
 # Kafka Tool
 
+[English](README.md) | [한국어](README.ko.md)
+
 Kafka Tool is a lightweight Electron desktop client for Apache Kafka.
 
 It is built for developers and operators who need to register Kafka clusters, browse brokers/topics/consumer groups, consume and produce messages, inspect payloads, manage topic settings, and export data from one desktop app.
@@ -18,19 +20,19 @@ Current release: `2.0.0`
 
 ## Highlights
 
-- Multi-cluster server profile management
-- Broker, Topic, and Consumer Group browsing
-- Topic detail, settings, creation, clear messages, and delete actions
-- Offset, Time Range, and Live Consume modes
-- Live message recording to JSONL files
-- Produce messages with key, headers, and value
-- Avro decoding with Schema Registry or manually registered topic schemas
-- Split workspace panes for side-by-side Topic workflows
-- Fast global search with `Ctrl+P` / `Ctrl+K`
-- Virtualized grids for large result sets
-- Korean/English UI language support
-- Local font support with Inter and Noto Sans KR
-- GitHub Releases based auto update for packaged builds
+- [x] Multi-cluster server profile management
+- [x] `Broker`, `Topic`, and `Consumer Group` browsing
+- [x] Topic detail, settings, creation, clear messages, and delete actions
+- [x] `Offset`, `Time`, and `Live` Consume modes
+- [x] Live message recording to `JSONL` files
+- [x] Produce messages with key, headers, and value
+- [x] Avro decoding with Schema Registry or manually registered topic schemas
+- [x] Split workspace panes for side-by-side Topic workflows
+- [x] Fast global search with `Ctrl+P` / `Ctrl+K`
+- [x] Virtualized grids for large result sets
+- [x] Korean/English UI language support
+- [x] Local font support with `Inter` and `Noto Sans KR`
+- [x] GitHub Releases based auto update for packaged builds
 
 ## Consume
 
@@ -126,7 +128,8 @@ Kafka Tool supports:
 - SSL/TLS
 - SASL/OAUTHBEARER
 
-Server profiles are stored on the user's PC. Client secrets are saved in the local settings file, so exported settings files should be handled carefully.
+> [!WARNING]
+> Server profiles are stored on the user's PC. Client secrets are saved in the local settings file, so exported settings files should be handled carefully.
 
 ## Development
 
