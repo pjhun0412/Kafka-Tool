@@ -15,7 +15,7 @@ export function useWorkspaceControllerSearch({
 }: {
   appSearch: AppSearchParams;
   favorites: TopicListActionsParams["favorites"];
-  rowSelection: Omit<TopicListActionsParams["rowSelection"], "selectedTopicRows">;
+  rowSelection: Omit<TopicListActionsParams["rowSelection"], "selectedTopicRows" | "setSelectedTopicRows">;
   selectedTopicByServer: Record<string, string>;
   selectedServerId: string;
 }) {
@@ -72,7 +72,8 @@ export function useWorkspaceControllerSearch({
     favorites,
     rowSelection: {
       ...rowSelection,
-      selectedTopicRows
+      selectedTopicRows,
+      setSelectedTopicRows
     }
   });
 

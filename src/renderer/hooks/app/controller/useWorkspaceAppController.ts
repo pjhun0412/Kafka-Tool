@@ -237,7 +237,6 @@ export function useWorkspaceAppController() {
       setFavoriteTopicsByServer
     },
     rowSelection: {
-      setSelectedTopicRows,
       setToast
     },
     selectedTopicByServer,
