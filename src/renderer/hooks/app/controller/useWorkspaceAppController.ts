@@ -8,12 +8,10 @@ import {
   usePrimaryTopicTabAppActions,
   useQuickSearchAppActions,
   useSettingsSchemaActions,
-  useSplitWorkspaceActions,
   useTopicOperationActions,
   useWorkspaceChromeCompositions,
   useWorkspaceContextMenuActions,
   useWorkspaceDerivedState,
-  useWorkspaceDragComposition,
   useWorkspaceLayoutComposition,
   useWorkspaceMenuDismissals,
   useWorkspaceModelComposition,
@@ -23,6 +21,7 @@ import {
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
+import { useWorkspaceControllerSplit } from "./useWorkspaceControllerSplit";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
   const appState = useAppStateComposition();
@@ -621,82 +620,73 @@ export function useWorkspaceAppController() {
       setFavoriteDropTarget
     }
   });
-  const { viewActions: splitViewActions, paneActions: splitPaneActions } = useSplitWorkspaceActions({
-    view: {
-      splitPane,
-      setSplitPane,
-      brokersByServer,
-      topicsByServer,
-      groupsByServer,
-      setTopicViewFor,
-      loadSplitTopicDetailSilent,
-      refreshBrokersForServer,
-      refreshTopicsForServer,
-      refreshGroupsForServer
-    },
-    pane: {
-      kafkaApi,
-      selectedServerId,
-      selectedTopic,
-      openedTopicTabs,
-      splitPane,
-      splitConsumeStatesByServer,
-      topicDetailByServer,
-      getTopicViewFor,
-      getCachedTopicDetail,
-      setTopicDetailForServer,
-      isTopicStreaming,
-      stopConsume,
-      moveConsumeStateBetweenPanes,
-      retargetLiveTopic,
-      clearConsumeStatesForPane,
-      clearConsumeStateForPane,
-      loadSplitTopicDetailSilent,
-      selectPrimaryTopic,
-      setOpenedTopicTabs,
-      setSelectedTopic,
-      setTopicDetail,
-      setSplitPane,
-      setActiveWorkspacePane,
-      setSelectedServerId,
-      setOpenedTopicTabsByServer,
-      setSelectedTopicByServer,
-      setViewByServer,
-      setTopicViewByServer,
-      setConsumeStatesByServer,
-      setSplitConsumeStatesByServer
-    }
-  });
-  const { showSplitView } = splitViewActions;
   const {
-    openSplitForTopic,
-    moveSplitTopicToPrimary,
-    removePrimaryTopicTabAfterSplit,
+    showSplitView,
     closeSplitPane,
     closeSplitTopicTab,
-    promoteSplitPaneToPrimary
-  } = splitPaneActions;
-  const { payloadActions, dropActions } = useWorkspaceDragComposition({
-    payloads: {
+    promoteSplitPaneToPrimary,
+    startTopicDrag,
+    startSplitPaneDrag,
+    clearDragPayload,
+    handleWorkspaceDragOver,
+    handleWorkspaceDrop
+  } = useWorkspaceControllerSplit({
+    split: {
+      view: {
+        splitPane,
+        setSplitPane,
+        brokersByServer,
+        topicsByServer,
+        groupsByServer,
+        setTopicViewFor,
+        loadSplitTopicDetailSilent,
+        refreshBrokersForServer,
+        refreshTopicsForServer,
+        refreshGroupsForServer
+      },
+      pane: {
+        kafkaApi,
+        selectedServerId,
+        selectedTopic,
+        openedTopicTabs,
+        splitPane,
+        splitConsumeStatesByServer,
+        topicDetailByServer,
+        getTopicViewFor,
+        getCachedTopicDetail,
+        setTopicDetailForServer,
+        isTopicStreaming,
+        stopConsume,
+        moveConsumeStateBetweenPanes,
+        retargetLiveTopic,
+        clearConsumeStatesForPane,
+        clearConsumeStateForPane,
+        loadSplitTopicDetailSilent,
+        selectPrimaryTopic,
+        setOpenedTopicTabs,
+        setSelectedTopic,
+        setTopicDetail,
+        setSplitPane,
+        setActiveWorkspacePane,
+        setSelectedServerId,
+        setOpenedTopicTabsByServer,
+        setSelectedTopicByServer,
+        setViewByServer,
+        setTopicViewByServer,
+        setConsumeStatesByServer,
+        setSplitConsumeStatesByServer
+      }
+    },
+    dragPayloads: {
       setActiveDragPayload,
       setSplitDropSide
     },
-    drop: {
+    dragDrop: {
       activeDragPayload,
       setActiveDragPayload,
-      setSplitDropSide,
-      onCloseSplitPane: closeSplitPane,
-      onOpenSplitFromPrimary: async (payload) => {
-        await openSplitForTopic(payload.serverId, payload.topic);
-        await removePrimaryTopicTabAfterSplit(payload.topic);
-      },
-      onMoveSplitToPrimary: async (payload) => {
-        await moveSplitTopicToPrimary(payload.topic);
-      }
+      setSplitDropSide
     }
   });
-  const { startTopicDrag, startSplitPaneDrag, clearDragPayload } = payloadActions;
-  const { handleWorkspaceDragOver, handleWorkspaceDrop } = dropActions;
   const {
     createTopic,
     requestTopicAction,
