@@ -1,5 +1,4 @@
 import {
-  useAppSearchComposition,
   useAppStateComposition,
   useAppRuntimeEffects,
   useBrokerTopicResourceActions,
@@ -12,7 +11,6 @@ import {
   useServerAppActions,
   useSettingsSchemaActions,
   useSplitWorkspaceActions,
-  useTopicListActions,
   useTopicOperationActions,
   useWorkspaceChromeCompositions,
   useWorkspaceContextMenuActions,
@@ -25,6 +23,7 @@ import {
   useWorkspacePaneCompositions,
   useWorkspaceResourceComposition
 } from "..";
+import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
   const appState = useAppStateComposition();
@@ -222,16 +221,28 @@ export function useWorkspaceAppController() {
     setActiveDragPayload,
     startWorkspaceSplitResize
   } = appState.workspacePane;
-  const appSearch = useAppSearchComposition({
-    servers,
-    selectedServerId,
-    contextServerId: serverContextMenu?.serverId,
-    topicsByServer,
-    openedTopicTabsByServer,
-    manualAvroSchemasByServer,
-    groupsByServer,
-    connectedServerIds,
-    favoriteTopicsByServer
+  const controllerSearch = useWorkspaceControllerSearch({
+    appSearch: {
+      servers,
+      selectedServerId,
+      contextServerId: serverContextMenu?.serverId,
+      topicsByServer,
+      openedTopicTabsByServer,
+      manualAvroSchemasByServer,
+      groupsByServer,
+      connectedServerIds,
+      favoriteTopicsByServer
+    },
+    favorites: {
+      selectedServerId,
+      setFavoriteTopicsByServer
+    },
+    rowSelection: {
+      setSelectedTopicRows,
+      setToast
+    },
+    selectedTopicByServer,
+    selectedServerId
   });
   const {
     serverQuery,
@@ -239,7 +250,7 @@ export function useWorkspaceAppController() {
     selectedServer,
     contextServer,
     filteredServers
-  } = appSearch.serverSearch;
+  } = controllerSearch.serverSearch;
   const {
     isQuickSearchOpen,
     quickSearchQuery,
@@ -251,12 +262,12 @@ export function useWorkspaceAppController() {
     openQuickSearch,
     closeQuickSearch,
     rememberQuickSearch
-  } = appSearch.quickSearch;
+  } = controllerSearch.quickSearch;
   const {
     isSelectedServerConnected,
     topics,
     favoriteTopicNames
-  } = appSearch;
+  } = controllerSearch;
   const {
     topicQuery,
     topicSearchHistory,
@@ -273,25 +284,14 @@ export function useWorkspaceAppController() {
     removeTopicSearchHistory,
     setTopicFilter,
     setTopicSort,
-    setSelectedTopicRows,
     clearTopicQueryForServer,
     keepSelectedTopicRowsForServer,
     removeSelectedTopicRowsForServer
-  } = appSearch.topicSearch;
-  const { favoriteActions, rowSelectionActions } = useTopicListActions({
-    favorites: {
-      selectedServerId,
-      setFavoriteTopicsByServer
-    },
-    rowSelection: {
-      selectedTopicRows,
-      setSelectedTopicRows,
-      setToast
-    }
-  });
+  } = controllerSearch.topicSearch;
+  const { favoriteActions, rowSelectionActions } = controllerSearch;
   const { toggleFavoriteTopic, reorderFavoriteTopic } = favoriteActions;
   const { toggleTopicRow, toggleAllTopicRows, copySelectedTopicNames } = rowSelectionActions;
-  const selectedTopic = selectedTopicByServer[selectedServerId] ?? "";
+  const selectedTopic = controllerSearch.selectedTopic;
   const { topicDetailCacheActions, selectedServerResourceSetters } = useWorkspaceResourceComposition({
     topicDetailCache: {
       topicDetailCacheByServer,
