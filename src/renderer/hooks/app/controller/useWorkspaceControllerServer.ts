@@ -1,4 +1,4 @@
-import { useServerAppActions } from "..";
+import { useServerAppActions } from "../actions/useServerAppActions";
 
 type ServerAppActionsParams = Parameters<typeof useServerAppActions>[0];
 

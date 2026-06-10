@@ -1,7 +1,5 @@
-import {
-  useBrokerTopicResourceActions,
-  useWorkspaceResourceComposition
-} from "..";
+import { useBrokerTopicResourceActions } from "../actions/useBrokerTopicResourceActions";
+import { useWorkspaceResourceComposition } from "../workspace/useWorkspaceResourceComposition";
 
 type WorkspaceResourceCompositionParams = Parameters<typeof useWorkspaceResourceComposition>[0];
 type BrokerTopicResourceActionsParams = Parameters<typeof useBrokerTopicResourceActions>[0];

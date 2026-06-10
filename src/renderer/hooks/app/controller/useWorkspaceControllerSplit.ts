@@ -1,7 +1,5 @@
-import {
-  useSplitWorkspaceActions,
-  useWorkspaceDragComposition
-} from "..";
+import { useSplitWorkspaceActions } from "../workspace/useSplitWorkspaceActions";
+import { useWorkspaceDragComposition } from "../workspace/useWorkspaceDragComposition";
 
 type SplitWorkspaceActionsParams = Parameters<typeof useSplitWorkspaceActions>[0];
 type WorkspaceDragCompositionParams = Parameters<typeof useWorkspaceDragComposition>[0];

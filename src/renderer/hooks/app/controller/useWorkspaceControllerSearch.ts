@@ -1,7 +1,5 @@
-import {
-  useAppSearchComposition,
-  useTopicListActions
-} from "..";
+import { useTopicListActions } from "../actions/useTopicListActions";
+import { useAppSearchComposition } from "../state/useAppSearchComposition";
 
 type AppSearchParams = Parameters<typeof useAppSearchComposition>[0];
 type TopicListActionsParams = Parameters<typeof useTopicListActions>[0];
