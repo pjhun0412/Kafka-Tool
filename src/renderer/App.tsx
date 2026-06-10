@@ -16,6 +16,7 @@ import {
   useTopicResourceActions,
   useTopicRowSelectionActions
 } from "./hooks/actions";
+import { useAppResourceState } from "./hooks/app";
 import {
   createPrimaryWorkspacePaneProps,
   createSplitWorkspacePaneProps,
@@ -41,7 +42,6 @@ import {
   emptyProduceDraft,
   useConsumeStateStore,
   useFeedbackState,
-  useKafkaResourceState,
   useLayoutPreferences,
   useProduceDraftStore,
   useServerClusterState,
@@ -102,42 +102,53 @@ export function App() {
     openTopicCreateForm: state.openTopicCreateForm,
     closeTopicCreateForm: state.closeTopicCreateForm
   })));
+  const resourceState = useAppResourceState();
   const {
     viewByServer,
     setViewByServer,
     topicViewByServer,
     setTopicViewByServer,
+    selectedTopicByServer,
+    setSelectedTopicByServer,
+    openedTopicTabsByServer,
+    setOpenedTopicTabsByServer
+  } = resourceState.navigation;
+  const {
     topicsByServer,
     setTopicsByServer,
     topicGridSortingByServer,
     setTopicGridSortingByServer,
     favoriteTopicsByServer,
     setFavoriteTopicsByServer,
-    consumeDefaultsByServer,
-    setConsumeDefaultsByServer,
-    manualAvroSchemasByServer,
-    setManualAvroSchemasByServer,
-    preferencesLoaded,
-    setPreferencesLoaded,
-    selectedTopicByServer,
-    setSelectedTopicByServer,
-    openedTopicTabsByServer,
-    setOpenedTopicTabsByServer,
     topicDetailByServer,
     setTopicDetailByServer,
     topicDetailCacheByServer,
-    setTopicDetailCacheByServer,
+    setTopicDetailCacheByServer
+  } = resourceState.topics;
+  const {
     brokersByServer,
-    setBrokersByServer,
+    setBrokersByServer
+  } = resourceState.brokers;
+  const {
     groupsByServer,
     setGroupsByServer,
     selectedGroupByServer,
     setSelectedGroupByServer,
     groupLagByServer,
-    setGroupLagByServer,
+    setGroupLagByServer
+  } = resourceState.consumerGroups;
+  const {
+    consumeDefaultsByServer,
+    setConsumeDefaultsByServer,
+    manualAvroSchemasByServer,
+    setManualAvroSchemasByServer,
+    preferencesLoaded,
+    setPreferencesLoaded
+  } = resourceState.preferences;
+  const {
     streamingTopicsByServer,
     setStreamingTopicsByServer
-  } = useKafkaResourceState();
+  } = resourceState.streaming;
   const {
     consumeStatesByServer,
     setConsumeStatesByServer,
@@ -370,8 +381,7 @@ export function App() {
     setSelectedTopicRows,
     clearTopicQueryForServer,
     keepSelectedTopicRowsForServer,
-    removeSelectedTopicRowsForServer,
-    resetTopicSearchState
+    removeSelectedTopicRowsForServer
   } = useTopicSearchState({ selectedServerId, topics, favoriteTopicNames });
   const {
     toggleTopicRow,
@@ -388,38 +398,7 @@ export function App() {
     kafkaApi,
     setLoading,
     setStatus,
-    setToast,
-    setServers,
-    setFavoriteTopicsByServer,
-    setConsumeDefaultsByServer,
-    setManualAvroSchemasByServer,
-    setSidebarWidth,
-    setServerPanelHeight,
-    setMessagePaneHeight,
-    setFontFamily,
-    setFontSize,
-    setExportFormatTemplate,
-    setConnectedServerIds,
-    setFailedServerIds,
-    setOpenClusterIds,
-    setSelectedServerId,
-    setTopicsByServer,
-    resetTopicSearchState,
-    setSelectedTopicByServer,
-    setOpenedTopicTabsByServer,
-    setTopicGridSortingByServer,
-    setTopicDetailByServer,
-    setTopicDetailCacheByServer,
-    setBrokersByServer,
-    setGroupsByServer,
-    setViewByServer,
-    setTopicViewByServer,
-    setSelectedGroupByServer,
-    setGroupLagByServer,
-    setConsumeStatesByServer,
-    setSplitConsumeStatesByServer,
-    resetProduceDrafts,
-    setStreamingTopicsByServer
+    setToast
   });
   useElectronMenuEvents({
     kafkaApi,

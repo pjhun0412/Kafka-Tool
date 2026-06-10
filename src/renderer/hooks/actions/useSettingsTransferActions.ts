@@ -1,130 +1,114 @@
-﻿import type { Dispatch, SetStateAction } from "react";
-import type { SortingState } from "@tanstack/react-table";
+import type { Dispatch, SetStateAction } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type {
-  AppPreferences,
-  BrokerSummary,
-  ConsumerGroupLagDetail,
-  ConsumerGroupSummary,
   ImportSettingsResult,
-  KafkaApi,
-  ManualAvroSchema,
-  ServerProfile,
-  TopicDetail,
-  TopicSummary
+  KafkaApi
 } from "../../../shared/types";
-import type { ToastState, TopicConsumeState, TopicWorkView, View } from "../../uiTypes";
-import { applyImportedPreferences, resetWorkspaceAfterSettingsImport } from "./settingsTransferUtils";
+import type { ToastState } from "../../uiTypes";
+import { useConsumeStateZustandStore } from "../../stores/domain/consumeStateStore";
+import { useBrokerResourceStore } from "../../stores/domain/brokerResourceStore";
+import { useConsumerGroupResourceStore } from "../../stores/domain/consumerGroupResourceStore";
+import { useKafkaNavigationStore } from "../../stores/domain/kafkaNavigationStore";
+import { useKafkaPreferenceStore } from "../../stores/domain/kafkaPreferenceStore";
+import { useKafkaStreamingStore } from "../../stores/domain/kafkaStreamingStore";
+import { useProduceDraftZustandStore } from "../../stores/domain/produceDraftStore";
+import { useServerClusterStore } from "../../stores/domain/serverClusterStore";
+import { useTopicResourceStore } from "../../stores/domain/topicResourceStore";
+import { useLayoutStore } from "../../stores/ui/layoutStore";
+import { useSearchStore } from "../../stores/ui/searchStore";
+import {
+  applyImportedPreferences,
+  resetWorkspaceAfterSettingsImport
+} from "./settingsTransferUtils";
 
 type SettingsTransferActionParams = {
   kafkaApi: KafkaApi | undefined;
   setLoading: Dispatch<SetStateAction<boolean>>;
   setStatus: (status: string) => void;
   setToast: Dispatch<SetStateAction<ToastState>>;
-  setServers: Dispatch<SetStateAction<ServerProfile[]>>;
-  setFavoriteTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
-  setConsumeDefaultsByServer: Dispatch<SetStateAction<AppPreferences["consumeDefaultsByServer"]>>;
-  setManualAvroSchemasByServer: Dispatch<SetStateAction<Record<string, Record<string, ManualAvroSchema>>>>;
-  setSidebarWidth: Dispatch<SetStateAction<number>>;
-  setServerPanelHeight: Dispatch<SetStateAction<number>>;
-  setMessagePaneHeight: Dispatch<SetStateAction<number>>;
-  setFontFamily: Dispatch<SetStateAction<string>>;
-  setFontSize: Dispatch<SetStateAction<number>>;
-  setExportFormatTemplate: Dispatch<SetStateAction<string>>;
-  setConnectedServerIds: Dispatch<SetStateAction<string[]>>;
-  setFailedServerIds: Dispatch<SetStateAction<string[]>>;
-  setOpenClusterIds: Dispatch<SetStateAction<string[]>>;
-  setSelectedServerId: Dispatch<SetStateAction<string>>;
-  setTopicsByServer: Dispatch<SetStateAction<Record<string, TopicSummary[]>>>;
-  resetTopicSearchState: () => void;
-  setSelectedTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
-  setOpenedTopicTabsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
-  setTopicGridSortingByServer: Dispatch<SetStateAction<Record<string, SortingState>>>;
-  setTopicDetailByServer: Dispatch<SetStateAction<Record<string, TopicDetail | null>>>;
-  setTopicDetailCacheByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicDetail>>>>;
-  setBrokersByServer: Dispatch<SetStateAction<Record<string, BrokerSummary[]>>>;
-  setGroupsByServer: Dispatch<SetStateAction<Record<string, ConsumerGroupSummary[]>>>;
-  setViewByServer: Dispatch<SetStateAction<Record<string, View>>>;
-  setTopicViewByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicWorkView>>>>;
-  setSelectedGroupByServer: Dispatch<SetStateAction<Record<string, string>>>;
-  setGroupLagByServer: Dispatch<SetStateAction<Record<string, Record<string, ConsumerGroupLagDetail>>>>;
-  setConsumeStatesByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicConsumeState>>>>;
-  setSplitConsumeStatesByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicConsumeState>>>>;
-  resetProduceDrafts: () => void;
-  setStreamingTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
 };
 
 export function useSettingsTransferActions({
   kafkaApi,
   setLoading,
   setStatus,
-  setToast,
-  setServers,
-  setFavoriteTopicsByServer,
-  setConsumeDefaultsByServer,
-  setManualAvroSchemasByServer,
-  setSidebarWidth,
-  setServerPanelHeight,
-  setMessagePaneHeight,
-  setFontFamily,
-  setFontSize,
-  setExportFormatTemplate,
-  setConnectedServerIds,
-  setFailedServerIds,
-  setOpenClusterIds,
-  setSelectedServerId,
-  setTopicsByServer,
-  resetTopicSearchState,
-  setSelectedTopicByServer,
-  setOpenedTopicTabsByServer,
-  setTopicGridSortingByServer,
-  setTopicDetailByServer,
-  setTopicDetailCacheByServer,
-  setBrokersByServer,
-  setGroupsByServer,
-  setViewByServer,
-  setTopicViewByServer,
-  setSelectedGroupByServer,
-  setGroupLagByServer,
-  setConsumeStatesByServer,
-  setSplitConsumeStatesByServer,
-  resetProduceDrafts,
-  setStreamingTopicsByServer
+  setToast
 }: SettingsTransferActionParams) {
+  const serverResetSetters = useServerClusterStore(useShallow((state) => ({
+    setServers: state.setServers,
+    setConnectedServerIds: state.setConnectedServerIds,
+    setFailedServerIds: state.setFailedServerIds,
+    setOpenClusterIds: state.setOpenClusterIds,
+    setSelectedServerId: state.setSelectedServerId
+  })));
+  const kafkaNavigationSetters = useKafkaNavigationStore(useShallow((state) => ({
+    setSelectedTopicByServer: state.setSelectedTopicByServer,
+    setOpenedTopicTabsByServer: state.setOpenedTopicTabsByServer,
+    setViewByServer: state.setViewByServer,
+    setTopicViewByServer: state.setTopicViewByServer
+  })));
+  const topicResourceSetters = useTopicResourceStore(useShallow((state) => ({
+    setFavoriteTopicsByServer: state.setFavoriteTopicsByServer,
+    setTopicsByServer: state.setTopicsByServer,
+    setTopicGridSortingByServer: state.setTopicGridSortingByServer,
+    setTopicDetailByServer: state.setTopicDetailByServer,
+    setTopicDetailCacheByServer: state.setTopicDetailCacheByServer
+  })));
+  const kafkaPreferenceSetters = useKafkaPreferenceStore(useShallow((state) => ({
+    setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
+    setManualAvroSchemasByServer: state.setManualAvroSchemasByServer
+  })));
+  const brokerResourceSetters = useBrokerResourceStore(useShallow((state) => ({
+    setBrokersByServer: state.setBrokersByServer,
+  })));
+  const consumerGroupResourceSetters = useConsumerGroupResourceStore(useShallow((state) => ({
+    setGroupsByServer: state.setGroupsByServer,
+    setSelectedGroupByServer: state.setSelectedGroupByServer,
+    setGroupLagByServer: state.setGroupLagByServer
+  })));
+  const kafkaStreamingSetters = useKafkaStreamingStore(useShallow((state) => ({
+    setStreamingTopicsByServer: state.setStreamingTopicsByServer
+  })));
+  const layoutPreferenceSetters = useLayoutStore(useShallow((state) => ({
+    setSidebarWidth: state.setSidebarWidth,
+    setServerPanelHeight: state.setServerPanelHeight,
+    setMessagePaneHeight: state.setMessagePaneHeight,
+    setFontFamily: state.setFontFamily,
+    setFontSize: state.setFontSize,
+    setExportFormatTemplate: state.setExportFormatTemplate
+  })));
+  const consumeResetSetters = useConsumeStateZustandStore(useShallow((state) => ({
+    setConsumeStatesByServer: state.setConsumeStatesByServer,
+    setSplitConsumeStatesByServer: state.setSplitConsumeStatesByServer
+  })));
+  const resetTopicSearchState = useSearchStore((state) => state.resetTopicSearchState);
+  const resetProduceDrafts = useProduceDraftZustandStore((state) => state.resetProduceDrafts);
+
   function applyImportedSettings(result: ImportSettingsResult) {
     applyImportedPreferences(result.preferences, {
-      setFavoriteTopicsByServer,
-      setConsumeDefaultsByServer,
-      setManualAvroSchemasByServer,
-      setSidebarWidth,
-      setServerPanelHeight,
-      setMessagePaneHeight,
-      setFontFamily,
-      setFontSize,
-      setExportFormatTemplate
+      setFavoriteTopicsByServer: topicResourceSetters.setFavoriteTopicsByServer,
+      setConsumeDefaultsByServer: kafkaPreferenceSetters.setConsumeDefaultsByServer,
+      setManualAvroSchemasByServer: kafkaPreferenceSetters.setManualAvroSchemasByServer,
+      ...layoutPreferenceSetters
     });
     resetWorkspaceAfterSettingsImport(result, {
-      setServers,
-      setConnectedServerIds,
-      setFailedServerIds,
-      setOpenClusterIds,
-      setSelectedServerId,
-      setTopicsByServer,
+      ...serverResetSetters,
+      setTopicsByServer: topicResourceSetters.setTopicsByServer,
       resetTopicSearchState,
-      setSelectedTopicByServer,
-      setOpenedTopicTabsByServer,
-      setTopicGridSortingByServer,
-      setTopicDetailByServer,
-      setTopicDetailCacheByServer,
-      setBrokersByServer,
-      setGroupsByServer,
-      setViewByServer,
-      setTopicViewByServer,
-      setSelectedGroupByServer,
-      setGroupLagByServer,
-      setConsumeStatesByServer,
-      setSplitConsumeStatesByServer,
+      setSelectedTopicByServer: kafkaNavigationSetters.setSelectedTopicByServer,
+      setOpenedTopicTabsByServer: kafkaNavigationSetters.setOpenedTopicTabsByServer,
+      setTopicGridSortingByServer: topicResourceSetters.setTopicGridSortingByServer,
+      setTopicDetailByServer: topicResourceSetters.setTopicDetailByServer,
+      setTopicDetailCacheByServer: topicResourceSetters.setTopicDetailCacheByServer,
+      setBrokersByServer: brokerResourceSetters.setBrokersByServer,
+      setGroupsByServer: consumerGroupResourceSetters.setGroupsByServer,
+      setViewByServer: kafkaNavigationSetters.setViewByServer,
+      setTopicViewByServer: kafkaNavigationSetters.setTopicViewByServer,
+      setSelectedGroupByServer: consumerGroupResourceSetters.setSelectedGroupByServer,
+      setGroupLagByServer: consumerGroupResourceSetters.setGroupLagByServer,
+      ...consumeResetSetters,
       resetProduceDrafts,
-      setStreamingTopicsByServer
+      setStreamingTopicsByServer: kafkaStreamingSetters.setStreamingTopicsByServer
     });
   }
 
