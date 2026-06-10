@@ -17,6 +17,7 @@ Current release: `2.0.0`
 - [macOS internal install](docs/macos-install.md)
 - [Consume filters](docs/consume-filters.md)
 - [Avro](docs/avro.md)
+- [Project structure](PROJECT_STRUCTURE.md)
 
 ## Highlights
 

@@ -1,0 +1,166 @@
+import type { OnChangeFn, SortingState } from "@tanstack/react-table";
+import type { WorkspaceControllerPanesParams } from "../workspaceControllerPaneTypes";
+
+export function createPrimaryPaneComposition(params: WorkspaceControllerPanesParams) {
+  const {
+    activeWorkspacePane,
+    activeWorkspaceView,
+    isSelectedServerConnected,
+    language,
+    messagePaneHeight,
+    openClusterIds,
+    selectedServer,
+    selectedServerId,
+    selectedTopic,
+    setSelectedServerId,
+    sidebarCollapsed,
+    view,
+    visibleSplitPane
+  } = params.context;
+  const {
+    connectedServerIds,
+    failedServerIds,
+    favoriteTopicNames,
+    groupLagByServer,
+    loading,
+    manualAvroSchemasByServer,
+    manualAvroTopicNames,
+    openedTopicTabs,
+    selectedTopicRows,
+    servers,
+    sortedTopics,
+    topicDetail,
+    topicGridSortingByServer,
+    updateTopicGridSortingForServer
+  } = params.resources;
+  const {
+    primaryModel,
+    primaryPaneToast
+  } = params.models;
+  const {
+    exportConsumedMessages,
+    exportOffsetConditionMessages,
+    isConsumeTaskActive,
+    isTopicStreaming,
+    moveOffsetPageFor,
+    selectedConsumeState,
+    sendMessageToProduce,
+    startConsume,
+    stopConsume,
+    updateConsumeDefaults,
+    updateSelectedConsumeState
+  } = params.consume;
+  const {
+    produce,
+    selectedProduceDraft,
+    updateProduceDraftFor
+  } = params.produce;
+  const {
+    clearDragPayload,
+    closeClusterTab,
+    closeTopicTab,
+    copySelectedTopicNames,
+    deleteConsumerGroupsFor,
+    loadConsumerGroupLag,
+    openManualAvroSchema,
+    openTopicCreateForm,
+    openTopicTab,
+    refreshActiveWorkspaceView,
+    refreshCurrentView,
+    refreshGroupsForServer,
+    requestTopicAction,
+    selectTopicInWorkspace,
+    setActiveWorkspacePane,
+    setSelectedGroupByServer,
+    setSidebarCollapsed,
+    setView,
+    showServerViewInActivePane,
+    startTopicDrag,
+    toggleAllTopicRows,
+    toggleFavoriteTopic,
+    toggleTopicRow
+  } = params.callbacks;
+
+  return {
+    primaryCallbacks: {
+      selectedServerId,
+      selectedTopic,
+      selectedConsumeState,
+      selectedGroupId: primaryModel.selectedGroupId,
+      visibleSplitPane,
+      setActiveWorkspacePane,
+      setSidebarCollapsed,
+      closeClusterTab,
+      showServerViewInActivePane,
+      refreshActiveWorkspaceView,
+      selectTopicInWorkspace,
+      closeTopicTab,
+      startTopicDrag,
+      clearDragPayload,
+      setView,
+      openManualAvroSchema,
+      refreshCurrentView,
+      openTopicTab,
+      toggleTopicRow,
+      toggleAllTopicRows,
+      copySelectedTopicNames,
+      openTopicCreateForm,
+      requestTopicAction,
+      toggleFavoriteTopic,
+      loadConsumerGroupLag,
+      deleteConsumerGroupsFor,
+      setSelectedGroupByServer,
+      refreshGroupsForServer,
+      updateSelectedConsumeState,
+      updateConsumeDefaults,
+      moveOffsetPageFor,
+      startConsume,
+      stopConsume,
+      sendMessageToProduce,
+      exportConsumedMessages,
+      exportOffsetConditionMessages,
+      updateProduceDraftFor,
+      produce
+    },
+    primaryPane: {
+      server: selectedServer,
+      sidebarCollapsed,
+      openClusterIds,
+      servers,
+      selectedServerId,
+      connectedServerIds,
+      failedServerIds,
+      activeWorkspaceView,
+      loading,
+      isSelectedServerConnected,
+      active: activeWorkspacePane === "primary",
+      topicTabs: openedTopicTabs,
+      selectedTopic,
+      view,
+      detail: topicDetail,
+      topics: sortedTopics,
+      brokers: primaryModel.brokers,
+      groups: primaryModel.groups,
+      favoriteTopicNames,
+      selectedTopics: selectedTopicRows,
+      topicSorting: topicGridSortingByServer[selectedServerId] ?? [],
+      onTopicSortingChange: (updater: Parameters<OnChangeFn<SortingState>>[0]) =>
+        updateTopicGridSortingForServer(selectedServerId, updater),
+      selectedGroupId: primaryModel.selectedGroupId,
+      selectedGroupLag: primaryModel.selectedGroupLag,
+      groupDetailsById: groupLagByServer[selectedServerId] ?? {},
+      consumeState: selectedConsumeState,
+      isConsuming: isTopicStreaming(selectedServerId, selectedTopic, "primary"),
+      isQuerying: isConsumeTaskActive("primary", selectedServerId, selectedTopic),
+      messagePaneHeight: selectedConsumeState.messagePaneHeight ?? messagePaneHeight,
+      manualAvroSchemas: manualAvroSchemasByServer[selectedServerId] ?? {},
+      produceKey: selectedProduceDraft.key,
+      produceHeaders: selectedProduceDraft.headers,
+      produceValue: selectedProduceDraft.value,
+      paneToast: primaryPaneToast,
+      language,
+      hasAvroSchema: (topic: string) => manualAvroTopicNames.has(topic),
+      onSelectCluster: setSelectedServerId
+    }
+  };
+}

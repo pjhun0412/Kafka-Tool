@@ -8,23 +8,94 @@ type ManualAvroSchemaParams = Parameters<typeof useManualAvroSchemaComposition>[
 type ConsumeRefreshActionsParams = Parameters<typeof useConsumeRefreshActions>[0];
 type PrimaryTopicTabActionsParams = Parameters<typeof usePrimaryTopicTabAppActions>[0];
 
-type WorkspaceControllerInteractionsParams = {
-  quickSearch: QuickSearchActionsParams;
-  manualAvroSchemas: ManualAvroSchemaParams;
-  consumeRefresh: ConsumeRefreshActionsParams;
-  primaryTopicTab: PrimaryTopicTabActionsParams;
+export type WorkspaceControllerInteractionsParams = {
+  consume: ConsumeRefreshActionsParams["selectedConsume"] & ConsumeRefreshActionsParams["workspaceRefresh"];
+  manualAvro: ManualAvroSchemaParams;
+  quickSearch: QuickSearchActionsParams["actions"] & QuickSearchActionsParams["shortcuts"];
+  topicTabs: PrimaryTopicTabActionsParams;
 };
 
 export function useWorkspaceControllerInteractions({
+  consume,
+  manualAvro,
   quickSearch,
-  manualAvroSchemas,
-  consumeRefresh,
-  primaryTopicTab
+  topicTabs
 }: WorkspaceControllerInteractionsParams) {
-  const { executeQuickSearch } = useQuickSearchAppActions(quickSearch);
-  const { manualAvroTopicNames, manualAvroSchemaRows } = useManualAvroSchemaComposition(manualAvroSchemas);
-  const { selectedConsumeActions, refreshActions } = useConsumeRefreshActions(consumeRefresh);
-  const { closeTopicTab } = usePrimaryTopicTabAppActions(primaryTopicTab);
+  const { executeQuickSearch } = useQuickSearchAppActions({
+    actions: {
+      quickSearchResults: quickSearch.quickSearchResults,
+      quickSearchIndex: quickSearch.quickSearchIndex,
+      selectedServerId: quickSearch.selectedServerId,
+      selectedTopic: quickSearch.selectedTopic,
+      groupsByServer: quickSearch.groupsByServer,
+      ensureServerConnected: quickSearch.ensureServerConnected,
+      getWorkspaceTargetForServer: quickSearch.getWorkspaceTargetForServer,
+      openTopicInWorkspace: quickSearch.openTopicInWorkspace,
+      openManualAvroSchema: quickSearch.openManualAvroSchema,
+      openPreferences: quickSearch.openPreferences,
+      refreshTopics: quickSearch.refreshTopics,
+      refreshGroups: quickSearch.refreshGroups,
+      refreshGroupsForServer: quickSearch.refreshGroupsForServer,
+      loadConsumerGroupLagFor: quickSearch.loadConsumerGroupLagFor,
+      requestTopicAction: quickSearch.requestTopicAction,
+      requestTopicActionFor: quickSearch.requestTopicActionFor,
+      rememberQuickSearch: quickSearch.rememberQuickSearch,
+      closeQuickSearch: quickSearch.closeQuickSearch,
+      setSelectedServerId: quickSearch.setSelectedServerId,
+      setView: quickSearch.setView,
+      setViewByServer: quickSearch.setViewByServer
+    },
+    shortcuts: {
+      isQuickSearchOpen: quickSearch.isQuickSearchOpen,
+      quickSearchResultCount: quickSearch.quickSearchResultCount,
+      openQuickSearch: quickSearch.openQuickSearch,
+      closeQuickSearch: quickSearch.closeQuickSearch,
+      openPreferences: quickSearch.openPreferences,
+      setSidebarCollapsed: quickSearch.setSidebarCollapsed,
+      setQuickSearchIndex: quickSearch.setQuickSearchIndex
+    }
+  });
+  const { manualAvroTopicNames, manualAvroSchemaRows } = useManualAvroSchemaComposition(manualAvro);
+  const { selectedConsumeActions, refreshActions } = useConsumeRefreshActions({
+    selectedConsume: {
+      selectedServerId: consume.selectedServerId,
+      selectedTopic: consume.selectedTopic,
+      selectedDefaultConsumeState: consume.selectedDefaultConsumeState,
+      setConsumeStates: consume.setConsumeStates,
+      setConsumeDefaultsByServer: consume.setConsumeDefaultsByServer
+    },
+    workspaceRefresh: {
+      activeWorkspacePane: consume.activeWorkspacePane,
+      selectedServerId: consume.selectedServerId,
+      selectedTopic: consume.selectedTopic,
+      view: consume.view,
+      visibleSplitPane: consume.visibleSplitPane,
+      selectedConsumeState: consume.selectedConsumeState,
+      splitConsumeState: consume.splitConsumeState,
+      selectedDefaultConsumeState: consume.selectedDefaultConsumeState,
+      refreshBrokers: consume.refreshBrokers,
+      refreshBrokersForServer: consume.refreshBrokersForServer,
+      refreshTopics: consume.refreshTopics,
+      refreshTopicsForServer: consume.refreshTopicsForServer,
+      refreshGroups: consume.refreshGroups,
+      refreshGroupsForServer: consume.refreshGroupsForServer,
+      loadTopicDetail: consume.loadTopicDetail,
+      loadTopicDetailSilent: consume.loadTopicDetailSilent,
+      loadSplitTopicDetailSilent: consume.loadSplitTopicDetailSilent,
+      isTopicStreaming: consume.isTopicStreaming,
+      stopConsume: consume.stopConsume,
+      getDefaultConsumeState: consume.getDefaultConsumeState,
+      updateConsumeStateFor: consume.updateConsumeStateFor,
+      updateProduceDraftFor: consume.updateProduceDraftFor,
+      runPaneTask: consume.runPaneTask,
+      showPaneToast: consume.showPaneToast,
+      setGroups: consume.setGroups,
+      setSelectedGroupByServer: consume.setSelectedGroupByServer,
+      setGroupLagByServer: consume.setGroupLagByServer,
+      setStatus: consume.setStatus
+    }
+  });
+  const { closeTopicTab } = usePrimaryTopicTabAppActions(topicTabs);
 
   return {
     closeTopicTab,

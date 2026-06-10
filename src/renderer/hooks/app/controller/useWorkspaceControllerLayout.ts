@@ -11,7 +11,7 @@ type ControllerLayoutState = Pick<
   setSplitDropSide: (value: LayoutPropsParams["splitDropSide"]) => void;
 };
 
-type WorkspaceControllerLayoutParams = {
+export type WorkspaceControllerLayoutParams = {
   state: ControllerLayoutState;
   visibleSplitPane: unknown;
   sidebarProps: LayoutPropsParams["sidebarProps"];

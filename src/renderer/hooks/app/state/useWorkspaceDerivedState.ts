@@ -1,15 +1,18 @@
 import { emptyProduceDraft } from "../../state";
+import type { TopicDetail } from "../../../../shared/types";
+import type { SplitPaneState, TopicConsumeState, View } from "../../../uiTypes";
+import type { ProduceDraft } from "../../state/useProduceDraftStore";
 
-type WorkspaceDerivedStateParams = {
+export type WorkspaceDerivedStateParams = {
   selectedServerId: string;
   selectedTopicByServer: Record<string, string>;
-  viewByServer: Record<string, string>;
+  viewByServer: Record<string, View>;
   openedTopicTabsByServer: Record<string, string[]>;
-  topicDetailByServer: Record<string, unknown>;
-  consumeStatesByServer: Record<string, Record<string, unknown>>;
-  splitPane: { serverId: string; topic: string } | null;
-  getDefaultConsumeState: () => unknown;
-  getProduceDraft: (serverId: string, topic: string) => typeof emptyProduceDraft;
+  topicDetailByServer: Record<string, TopicDetail | null>;
+  consumeStatesByServer: Record<string, Record<string, TopicConsumeState>>;
+  splitPane: SplitPaneState | null;
+  getDefaultConsumeState: () => TopicConsumeState;
+  getProduceDraft: (serverId: string, topic: string) => ProduceDraft;
 };
 
 export function useWorkspaceDerivedState(params: WorkspaceDerivedStateParams) {

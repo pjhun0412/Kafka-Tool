@@ -1,8 +1,8 @@
 import { useWorkspaceNavigationComposition } from "../workspace/useWorkspaceNavigationComposition";
 
-type WorkspaceNavigationCompositionParams = Parameters<typeof useWorkspaceNavigationComposition>[0];
+export type WorkspaceControllerNavigationParams = Parameters<typeof useWorkspaceNavigationComposition>[0];
 
-export function useWorkspaceControllerNavigation(params: WorkspaceNavigationCompositionParams) {
+export function useWorkspaceControllerNavigation(params: WorkspaceControllerNavigationParams) {
   const {
     splitTopicDetailActions,
     topicViewActions,

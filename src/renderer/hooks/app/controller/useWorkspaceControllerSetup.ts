@@ -3,7 +3,7 @@ import { useWorkspaceMenuDismissals } from "../layout/useWorkspaceMenuDismissals
 
 type SettingsSchemaActionsParams = Parameters<typeof useSettingsSchemaActions>[0];
 
-type WorkspaceControllerSetupParams = {
+export type WorkspaceControllerSetupParams = {
   menuDismissals: {
     serverContextMenuOpen: boolean;
     topicContextMenuOpen: boolean;

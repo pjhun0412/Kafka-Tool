@@ -4,19 +4,21 @@ import { useAppSearchComposition } from "../state/useAppSearchComposition";
 type AppSearchParams = Parameters<typeof useAppSearchComposition>[0];
 type TopicListActionsParams = Parameters<typeof useTopicListActions>[0];
 
+export type WorkspaceControllerSearchParams = {
+  appSearch: AppSearchParams;
+  favorites: TopicListActionsParams["favorites"];
+  rowSelection: Omit<TopicListActionsParams["rowSelection"], "selectedTopicRows" | "setSelectedTopicRows">;
+  selectedTopicByServer: Record<string, string>;
+  selectedServerId: string;
+};
+
 export function useWorkspaceControllerSearch({
   appSearch: appSearchParams,
   favorites,
   rowSelection,
   selectedTopicByServer,
   selectedServerId
-}: {
-  appSearch: AppSearchParams;
-  favorites: TopicListActionsParams["favorites"];
-  rowSelection: Omit<TopicListActionsParams["rowSelection"], "selectedTopicRows" | "setSelectedTopicRows">;
-  selectedTopicByServer: Record<string, string>;
-  selectedServerId: string;
-}) {
+}: WorkspaceControllerSearchParams) {
   const appSearch = useAppSearchComposition(appSearchParams);
   const {
     serverQuery,

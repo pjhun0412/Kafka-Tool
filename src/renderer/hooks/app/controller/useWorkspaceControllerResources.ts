@@ -9,17 +9,19 @@ type TopicResourceParams = Omit<
   "getCachedTopicDetail" | "setTopicDetailForServer"
 >;
 
+export type WorkspaceControllerResourcesParams = {
+  topicDetailCache: WorkspaceResourceCompositionParams["topicDetailCache"];
+  selectedServerResources: WorkspaceResourceCompositionParams["selectedServerResources"];
+  brokers: BrokerTopicResourceActionsParams["brokers"];
+  topics: TopicResourceParams;
+};
+
 export function useWorkspaceControllerResources({
   topicDetailCache,
   selectedServerResources,
   brokers,
   topics
-}: {
-  topicDetailCache: WorkspaceResourceCompositionParams["topicDetailCache"];
-  selectedServerResources: WorkspaceResourceCompositionParams["selectedServerResources"];
-  brokers: BrokerTopicResourceActionsParams["brokers"];
-  topics: TopicResourceParams;
-}) {
+}: WorkspaceControllerResourcesParams) {
   const {
     topicDetailCacheActions,
     selectedServerResourceSetters
@@ -43,8 +45,8 @@ export function useWorkspaceControllerResources({
   return {
     getCachedTopicDetail,
     setTopicDetailForServer,
-    selectedServerResourceSetters,
-    brokerActions,
-    topicActions
+    ...selectedServerResourceSetters,
+    ...brokerActions,
+    ...topicActions
   };
 }
