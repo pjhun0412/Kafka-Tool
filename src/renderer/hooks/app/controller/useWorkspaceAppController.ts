@@ -14,9 +14,9 @@ import {
   useWorkspaceLayoutComposition,
   useWorkspaceMenuDismissals,
   useWorkspaceModelComposition,
-  useWorkspaceNavigationComposition,
   useWorkspacePaneCompositions
 } from "..";
+import { useWorkspaceControllerNavigation } from "./useWorkspaceControllerNavigation";
 import { useWorkspaceControllerResources } from "./useWorkspaceControllerResources";
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
@@ -438,12 +438,21 @@ export function useWorkspaceAppController() {
     setGroupLagByServer
   });
   const {
-    splitTopicDetailActions,
-    topicViewActions,
-    splitTopicActivationActions,
-    serverViewActions,
-    primaryTopicNavigationActions
-  } = useWorkspaceNavigationComposition({
+    setView,
+    setTopicViewFor,
+    getTopicViewFor,
+    getTopicView,
+    activateTopicView,
+    activateSelectedTopicView,
+    activateSplitSelectedTopicView,
+    loadSplitTopicDetailSilent,
+    activateSplitTopic,
+    showServerViewInActivePane,
+    selectPrimaryTopic,
+    selectTopicInWorkspace,
+    openTopicInWorkspace,
+    openTopicTab
+  } = useWorkspaceControllerNavigation({
     splitTopicDetail: {
       kafkaApi,
       getCachedTopicDetail,
@@ -499,24 +508,6 @@ export function useWorkspaceAppController() {
       setTopicViewByServer
     }
   });
-  const {
-    setView,
-    setTopicViewFor,
-    getTopicViewFor,
-    getTopicView,
-    activateTopicView,
-    activateSelectedTopicView,
-    activateSplitSelectedTopicView
-  } = topicViewActions;
-  const { loadSplitTopicDetailSilent } = splitTopicDetailActions;
-  const { activateSplitTopic } = splitTopicActivationActions;
-  const { showServerViewInActivePane } = serverViewActions;
-  const {
-    selectPrimaryTopic,
-    selectTopicInWorkspace,
-    openTopicInWorkspace,
-    openTopicTab
-  } = primaryTopicNavigationActions;
   const { consumeActions, exportActions, produceActions } = useMessageFlowActions({
     consume: {
       kafkaApi,
