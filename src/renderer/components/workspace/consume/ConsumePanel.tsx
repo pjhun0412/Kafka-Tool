@@ -3,9 +3,9 @@ import { ChevronUp, RefreshCw } from "lucide-react";
 import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
 import type { AppLanguage } from "../../../i18n";
 import { t } from "../../../i18n";
-import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, JsonInspectorMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
+import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspectorMode, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
-import { JsonInspector } from "./JsonInspector";
+import { MessageInspector } from "./MessageInspector";
 import { MessageFilterBar } from "./MessageFilterBar";
 import { MessageGrid } from "./MessageGrid";
 import { useConsumePanelMessages } from "./useConsumePanelMessages";
@@ -27,6 +27,7 @@ export function ConsumePanel(props: {
   filterText: string;
   filterField: ConsumeFilterField;
   filterMode: ConsumeFilterMode;
+  inspectorMode: MessageInspectorMode;
   inspectorCollapsed: boolean;
   isQuerying: boolean;
   autoScroll: boolean;
@@ -34,6 +35,9 @@ export function ConsumePanel(props: {
   liveRecordEnabled: boolean;
   liveRecordPath: string;
   liveRecordCount: number;
+  keyFormat: TopicConsumeState["keyFormat"];
+  valueFormat: TopicConsumeState["valueFormat"];
+  payloadEncoding: TopicConsumeState["payloadEncoding"];
   offsetPagination: TopicConsumeState["offsetPagination"];
   messagePaneHeight: number;
   onMode: (value: ConsumeMode) => void;
@@ -46,12 +50,16 @@ export function ConsumePanel(props: {
   onFilterText: (value: string) => void;
   onFilterField: (value: ConsumeFilterField) => void;
   onFilterMode: (value: ConsumeFilterMode) => void;
+  onInspectorMode: (value: MessageInspectorMode) => void;
   onInspectorCollapsed: (value: boolean) => void;
   onClearFilter: () => void;
   onApplyFilter: (value: string) => void;
   onAutoScroll: (value: boolean) => void;
   onMaxMessages: (value: number) => void;
   onLiveRecordEnabled: (value: boolean) => void;
+  onKeyFormat: (value: TopicConsumeState["keyFormat"]) => void;
+  onValueFormat: (value: TopicConsumeState["valueFormat"]) => void;
+  onPayloadEncoding: (value: TopicConsumeState["payloadEncoding"]) => void;
   onPagePrev: () => void;
   onPageNext: () => void;
   onSelectMessage: (message: ConsumedMessage) => void;
@@ -62,7 +70,9 @@ export function ConsumePanel(props: {
   onStart: () => void;
   onStop: () => void;
 }) {
-  const [inspectorMode, setInspectorMode] = useState<JsonInspectorMode>("raw");
+  const [previewTarget, setPreviewTarget] = useState<MessagePayloadTarget>("value");
+  const [previewMode, setPreviewMode] = useState<MessagePreviewMode>(props.valueFormat);
+  const [previewEncoding, setPreviewEncoding] = useState<MessagePreviewEncoding>(props.payloadEncoding);
   const [inspectorSearch, setInspectorSearch] = useState("");
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [filterDraft, setFilterDraft] = useState(props.filterText);
@@ -94,7 +104,10 @@ export function ConsumePanel(props: {
     filterText: props.filterText,
     filterField: props.filterField,
     filterMode: props.filterMode,
-    offsetPagination: props.offsetPagination
+    offsetPagination: props.offsetPagination,
+    keyFormat: props.keyFormat,
+    valueFormat: props.valueFormat,
+    payloadEncoding: props.payloadEncoding
   });
 
   useEffect(() => {
@@ -121,9 +134,28 @@ export function ConsumePanel(props: {
     scrollTarget?.scrollTo({ top: 0 });
   }, [props.autoScroll, props.messages.length, props.mode]);
 
+  useEffect(() => {
+    if (previewTarget === "key") setPreviewMode(props.keyFormat);
+    if (previewTarget === "value") setPreviewMode(props.valueFormat);
+  }, [previewTarget, props.keyFormat, props.valueFormat]);
+
+  useEffect(() => {
+    setPreviewEncoding(props.payloadEncoding);
+  }, [props.payloadEncoding]);
+
   function clearMessageFilter() {
     setFilterDraft("");
     props.onClearFilter();
+  }
+
+  function selectMessage(message: ConsumedMessage) {
+    props.onSelectMessage(message);
+    if (previewTarget === "key") {
+      setPreviewMode(props.keyFormat);
+    } else if (previewTarget === "value") {
+      setPreviewMode(props.valueFormat);
+    }
+    setPreviewEncoding(props.payloadEncoding);
   }
 
   const queryMessage = props.mode === "live"
@@ -160,6 +192,9 @@ export function ConsumePanel(props: {
         liveRecordEnabled={props.liveRecordEnabled}
         liveRecordPath={props.liveRecordPath}
         liveRecordCount={props.liveRecordCount}
+        keyFormat={props.keyFormat}
+        valueFormat={props.valueFormat}
+        payloadEncoding={props.payloadEncoding}
         filterMode={props.filterMode}
         hasActiveMessageFilter={hasActiveMessageFilter}
         filteredMessages={filteredMessages}
@@ -179,6 +214,9 @@ export function ConsumePanel(props: {
         onAutoScroll={props.onAutoScroll}
         onMaxMessages={props.onMaxMessages}
         onLiveRecordEnabled={props.onLiveRecordEnabled}
+        onKeyFormat={props.onKeyFormat}
+        onValueFormat={props.onValueFormat}
+        onPayloadEncoding={props.onPayloadEncoding}
         onPagePrev={props.onPagePrev}
         onPageNext={props.onPageNext}
         onExport={props.onExport}
@@ -208,7 +246,7 @@ export function ConsumePanel(props: {
               filterMode={props.filterMode}
               hasActiveMessageFilter={hasActiveMessageFilter}
               highlightedMessageKeys={highlightedMessageKeys}
-              onSelectMessage={props.onSelectMessage}
+              onSelectMessage={selectMessage}
             />
           ) : (
             <div className="message-table tanstack-message-table table-warmup">
@@ -217,22 +255,29 @@ export function ConsumePanel(props: {
           )}
         </div>
         {props.inspectorCollapsed ? (
-          <button className="json-inspector-collapsed" onClick={() => props.onInspectorCollapsed(false)}>
+          <button className="message-inspector-collapsed" onClick={() => props.onInspectorCollapsed(false)}>
             <ChevronUp size={15} />
-            JSON Viewer
+            Message Viewer
             <span>{props.selectedMessage ? `${props.selectedMessage.topic}@${props.selectedMessage.offset}` : "No message selected"}</span>
           </button>
         ) : (
           <>
-            <div className="consume-split-resizer" onPointerDown={startInspectorResize} title={t(props.language, "title.resizeMessageJsonPanels")} />
-            <JsonInspector
-              mode={inspectorMode}
+            <div className="consume-split-resizer" onPointerDown={startInspectorResize} title={t(props.language, "title.resizeMessageViewerPanels")} />
+            <MessageInspector
+              mode={props.inspectorMode}
+              previewTarget={previewTarget}
+              previewMode={previewMode}
+              valueFormat={props.valueFormat}
+              previewEncoding={previewEncoding}
               search={inspectorSearch}
               payload={selectedPayload}
               rawText={selectedJson}
               valueText={props.selectedMessage?.value ?? ""}
               selectedMessage={props.selectedMessage}
-              onMode={setInspectorMode}
+              onMode={props.onInspectorMode}
+              onPreviewTarget={setPreviewTarget}
+              onPreviewMode={setPreviewMode}
+              onPreviewEncoding={setPreviewEncoding}
               onSearch={setInspectorSearch}
               onApplyFilter={props.onApplyFilter}
               onSendToProduce={props.onSendToProduce}

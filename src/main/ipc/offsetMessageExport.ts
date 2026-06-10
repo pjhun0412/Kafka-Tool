@@ -6,6 +6,7 @@ import type {
 } from "../../shared/types.js";
 import {
   csvValue,
+  formatExportMessage,
   formatMessageLogLine
 } from "./messageExportFormatters.js";
 
@@ -47,20 +48,21 @@ export async function writeOffsetMessageExport({
       if (messages.length === 0) break;
 
       for (const message of messages) {
+        const exportMessage = formatExportMessage(message, request.payloadOptions);
         if (request.format === "csv") {
           await write([
-            message.topic,
-            message.partition,
-            message.offset,
-            message.timestamp,
-            message.key,
-            message.value,
-            JSON.stringify(message.headers)
+            exportMessage.topic,
+            exportMessage.partition,
+            exportMessage.offset,
+            exportMessage.timestamp,
+            exportMessage.key,
+            exportMessage.value,
+            JSON.stringify(exportMessage.headers)
           ].map(csvValue).join(",") + "\n");
         } else if (request.format === "log") {
-          await write(formatMessageLogLine(message, request.template) + "\n");
+          await write(formatMessageLogLine(message, request.template, request.payloadOptions) + "\n");
         } else {
-          await write(`${jsonFirst ? "" : ",\n"}    ${JSON.stringify(message)}`);
+          await write(`${jsonFirst ? "" : ",\n"}    ${JSON.stringify(exportMessage)}`);
           jsonFirst = false;
         }
       }

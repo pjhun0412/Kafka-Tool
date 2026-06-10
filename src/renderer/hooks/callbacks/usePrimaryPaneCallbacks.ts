@@ -1,6 +1,6 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
-import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
+import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import type { ConsumeDefaultPatch } from "../../uiTypes";
 import { createPrimaryConsumeCallbacks, createPrimaryProduceCallbacks } from "./primaryPaneCallbackGroups";
@@ -40,7 +40,7 @@ export type PrimaryPaneCallbacksParams = {
   startConsume: () => Promise<void>;
   stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
   sendMessageToProduce: (serverId: string, topic: string, message: ConsumedMessage, pane?: WorkspacePaneId) => void;
-  exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string) => Promise<void>;
+  exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string, payloadOptions?: MessageExportPayloadOptions) => Promise<void>;
   exportOffsetConditionMessages: (format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) => Promise<void>;
   updateProduceDraftFor: (serverId: string, topic: string, patch: { key?: string; headers?: string; value?: string }) => void;
   produce: (pane?: WorkspacePaneId) => Promise<void>;

@@ -12,6 +12,7 @@ type LiveRecorder = {
   stream: WriteStream;
   path: string;
   count: number;
+  pending: Promise<void>;
 };
 
 type LiveRecorderRegistryParams = {
@@ -39,7 +40,9 @@ export function createLiveRecorderRegistry(params: LiveRecorderRegistryParams) {
     const recorder = activeLiveRecorders.get(key);
     if (!recorder) return;
     activeLiveRecorders.delete(key);
-    recorder.stream.end();
+    void recorder.pending.finally(() => {
+      recorder.stream.end();
+    });
   }
 
   function closeAll() {
@@ -71,18 +74,30 @@ export function createLiveRecorderRegistry(params: LiveRecorderRegistryParams) {
     const recorder = {
       path: result.filePath,
       stream: createWriteStream(result.filePath, { encoding: "utf8", flags: "a" }),
-      count: 0
+      count: 0,
+      pending: Promise.resolve()
     };
     recorder.stream.on("error", params.onError);
     activeLiveRecorders.set(key, recorder);
     return recorder;
   }
 
-  function write(key: string, payload: ConsumedMessage) {
+  function writeRecord(recorder: LiveRecorder, payload: ConsumedMessage) {
+    return new Promise<void>((resolve, reject) => {
+      recorder.stream.write(`${JSON.stringify(payload)}\n`, (error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+  }
+
+  async function write(key: string, payload: ConsumedMessage) {
     const recorder = activeLiveRecorders.get(key);
     if (!recorder) return;
     recorder.count += 1;
-    recorder.stream.write(`${JSON.stringify(payload)}\n`);
+    const writeTask = recorder.pending.then(() => writeRecord(recorder, payload));
+    recorder.pending = writeTask.catch(() => undefined);
+    await writeTask;
   }
 
   return {

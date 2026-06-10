@@ -15,6 +15,9 @@ export function useConsumePanelMessages(params: {
   filterField: ConsumeFilterField;
   filterMode: ConsumeFilterMode;
   offsetPagination: TopicConsumeState["offsetPagination"];
+  keyFormat: TopicConsumeState["keyFormat"];
+  valueFormat: TopicConsumeState["valueFormat"];
+  payloadEncoding: TopicConsumeState["payloadEncoding"];
 }) {
   const selectedPayload = useMemo(
     () => (params.selectedMessage ? formatMessagePayload(params.selectedMessage) : null),
@@ -38,7 +41,10 @@ export function useConsumePanelMessages(params: {
     filteredMessages,
     filterMode: params.filterMode,
     hasActiveMessageFilter,
-    selectedMessage: params.selectedMessage
+    selectedMessage: params.selectedMessage,
+    keyFormat: params.keyFormat,
+    valueFormat: params.valueFormat,
+    payloadEncoding: params.payloadEncoding
   });
   const isLargeOffsetRequest = params.mode === "offset" && params.limit > OFFSET_PAGING_THRESHOLD;
   const pagination = params.offsetPagination;

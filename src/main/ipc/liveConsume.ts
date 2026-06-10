@@ -64,7 +64,7 @@ export async function startLiveConsume({
           serverId: request.serverId,
           consumerId
         };
-        liveRecorders.write(key, payload);
+        await liveRecorders.write(key, payload);
         getWindow()?.webContents.send("kafka:consume-message", payload);
       }
     }).catch((error) => {

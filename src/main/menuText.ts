@@ -33,7 +33,7 @@ export const menuText = {
       "Cluster 탭이나 Topic 탭을 드래그해 작업 영역을 분할할 수 있습니다.",
       "분할 닫기 영역으로 탭을 놓으면 분할 패널을 닫습니다.",
       "분할 상태는 서버별로 유지됩니다.",
-      "Consume 화면에서는 메시지 목록과 JSON Viewer 사이 경계선을 드래그해 높이를 조절할 수 있습니다."
+      "Consume 화면에서는 메시지 목록과 Message Viewer 사이 경계선을 드래그해 높이를 조절할 수 있습니다."
     ].join("\n"),
     helpSearchTitle: "검색과 필터",
     helpSearchMessage: [
@@ -86,7 +86,7 @@ export const menuText = {
       "Drag cluster tabs or Topic tabs to split the workspace.",
       "Drop a tab onto the close split drop zone to close the split pane.",
       "Split pane state is kept per server.",
-      "Drag the divider between the Consume message grid and JSON Viewer to resize them."
+      "Drag the divider between the Consume message grid and Message Viewer to resize them."
     ].join("\n"),
     helpSearchTitle: "Search and filters",
     helpSearchMessage: [

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.1
+
+### Added
+
+- Added Key/Value payload format selectors for Consume results and exports.
+- Added a Message Viewer with `Raw`, `Tree`, and `Preview` modes.
+- Added `Text`, `JSON`, `Hex`, and `Base64` preview/export support with UTF-8 and EUC-KR decoding.
+
+### Improved
+
+- Limited retained raw payload bytes per message to reduce memory pressure during large consumes.
+- Improved Live Record file writing with sequential write backpressure for long-running captures.
+- Kept Message Viewer mode per topic pane, including split panes, when switching tabs.
+- Updated English and Korean README release notes for `2.0.1`.
+
+### Fixed
+
+- Fixed Value/Preview copy actions so they use the currently selected payload target and format.
+- Fixed viewer mode unexpectedly returning to `Raw` after navigating away from Consume.
+- Fixed large raw payload export behavior for Hex/Base64 by showing a retained-bytes warning instead of rebuilding bytes from fallback text.
+
 ## 2.0.0
 
 ### Added
@@ -29,4 +50,3 @@
 - Fixed Live Consume reading old committed group offsets into the UI or Record output.
 - Fixed Topic/Favorite row hit areas triggering unintended navigation.
 - Fixed several hard-coded UI strings through i18n cleanup.
-
