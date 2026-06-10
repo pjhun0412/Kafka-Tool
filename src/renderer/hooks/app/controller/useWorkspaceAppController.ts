@@ -8,7 +8,6 @@ import {
   usePrimaryTopicTabAppActions,
   useQuickSearchAppActions,
   useSettingsSchemaActions,
-  useTopicOperationActions,
   useWorkspaceChromeCompositions,
   useWorkspaceContextMenuActions,
   useWorkspaceDerivedState,
@@ -22,6 +21,7 @@ import { useWorkspaceControllerResources } from "./useWorkspaceControllerResourc
 import { useWorkspaceControllerSearch } from "./useWorkspaceControllerSearch";
 import { useWorkspaceControllerServer } from "./useWorkspaceControllerServer";
 import { useWorkspaceControllerSplit } from "./useWorkspaceControllerSplit";
+import { useWorkspaceControllerTopicOperations } from "./useWorkspaceControllerTopicOperations";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
   const appState = useAppStateComposition();
@@ -688,47 +688,45 @@ export function useWorkspaceAppController() {
     }
   });
   const {
-    createTopic,
     requestTopicAction,
     requestTopicActionFor,
-    confirmTopicAction
-  } = useTopicOperationActions({
-    kafkaApi,
-    selectedServerId,
-    selectedTopic,
-    selectedTopicRows,
-    selectedTopicByServer,
-    topicsByServer,
-    splitPane,
-    pendingTopicAction,
-    topicActionConfirmText,
-    runTask,
-    stopConsume,
-    refreshTopicsForServer,
-    loadTopicDetail,
-    selectPrimaryTopic,
-    removeSelectedTopicRowsForServer,
-    setSelectedServerId,
-    setPendingTopicAction,
-    setTopicActionConfirmText,
-    setOpenedTopicTabsByServer,
-    setFavoriteTopicsByServer,
-    setConsumeStatesByServer,
-    setSplitConsumeStatesByServer,
-    setTopicViewByServer,
-    setTopicDetailCacheByServer,
-    setManualAvroSchemasByServer,
-    setActiveWorkspacePane,
-    setSplitPane,
-    setSelectedTopicByServer,
-    setTopicDetailByServer,
-    setToast
+    confirmTopicAction,
+    submitTopicCreate
+  } = useWorkspaceControllerTopicOperations({
+    closeTopicCreateForm,
+    topicOperations: {
+      kafkaApi,
+      selectedServerId,
+      selectedTopic,
+      selectedTopicRows,
+      selectedTopicByServer,
+      topicsByServer,
+      splitPane,
+      pendingTopicAction,
+      topicActionConfirmText,
+      runTask,
+      stopConsume,
+      refreshTopicsForServer,
+      loadTopicDetail,
+      selectPrimaryTopic,
+      removeSelectedTopicRowsForServer,
+      setSelectedServerId,
+      setPendingTopicAction,
+      setTopicActionConfirmText,
+      setOpenedTopicTabsByServer,
+      setFavoriteTopicsByServer,
+      setConsumeStatesByServer,
+      setSplitConsumeStatesByServer,
+      setTopicViewByServer,
+      setTopicDetailCacheByServer,
+      setManualAvroSchemasByServer,
+      setActiveWorkspacePane,
+      setSplitPane,
+      setSelectedTopicByServer,
+      setTopicDetailByServer,
+      setToast
+    }
   });
-
-  async function submitTopicCreate(form: Parameters<typeof createTopic>[0]) {
-    await createTopic(form);
-    closeTopicCreateForm();
-  }
 
   const { executeQuickSearch } = useQuickSearchAppActions({
     actions: {
