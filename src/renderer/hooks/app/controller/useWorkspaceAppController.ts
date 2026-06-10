@@ -24,7 +24,7 @@ import {
   useWorkspaceNavigationComposition,
   useWorkspacePaneCompositions,
   useWorkspaceResourceComposition
-} from ".";
+} from "..";
 export function useWorkspaceAppController() {
   const kafkaApi = window.kafkaApi;
   const appState = useAppStateComposition();

@@ -1,5 +1,5 @@
 import { WorkspaceAppLayout } from "./components/workspace/WorkspaceAppLayout";
-import { useWorkspaceAppController } from "./hooks/app/useWorkspaceAppController";
+import { useWorkspaceAppController } from "./hooks/app/controller/useWorkspaceAppController";
 
 export function App() {
   const workspaceLayoutProps = useWorkspaceAppController();
