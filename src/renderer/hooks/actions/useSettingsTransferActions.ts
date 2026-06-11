@@ -75,7 +75,9 @@ export function useSettingsTransferActions({
     setMessagePaneHeight: state.setMessagePaneHeight,
     setFontFamily: state.setFontFamily,
     setFontSize: state.setFontSize,
-    setExportFormatTemplate: state.setExportFormatTemplate
+    setExportFormatTemplate: state.setExportFormatTemplate,
+    setKeyboardShortcuts: state.setKeyboardShortcuts,
+    setLastSeenReleaseVersion: state.setLastSeenReleaseVersion
   })));
   const consumeResetSetters = useConsumeStateZustandStore(useShallow((state) => ({
     setConsumeStatesByServer: state.setConsumeStatesByServer,

@@ -24,6 +24,8 @@ export type ControllerChromeState = Pick<
     | "language"
     | "resolvedLanguage"
     | "exportFormatTemplate"
+    | "keyboardShortcuts"
+    | "appVersion"
     | "manualAvroSchemasByServer"
     | "topicContextMenu"
     | "serverContextMenu"
@@ -40,6 +42,8 @@ export type ControllerChromeState = Pick<
     setFontSize: ChromeOverlayProps["onFontSize"];
     setIsTopicSortMenuOpen: ChromeSidebarProps["onTopicSortMenuOpen"];
     setLanguage: ChromeOverlayProps["onLanguage"];
+    setKeyboardShortcuts: ChromeOverlayProps["onKeyboardShortcuts"];
+    setLastSeenReleaseVersion: ChromeOverlayProps["onLastSeenReleaseVersion"];
     setSelectedServerId: ChromeSidebarProps["onServerSelect"];
     setServerDropTarget: ChromeSidebarProps["onServerDropTarget"];
     startServerPanelResize: ChromeSidebarProps["onServerPanelResize"];

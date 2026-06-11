@@ -10,6 +10,7 @@ const api: KafkaApi = {
   importSettings: () => ipcRenderer.invoke("settings:import"),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   installUpdate: () => ipcRenderer.invoke("updates:install"),
+  getAppVersion: () => ipcRenderer.invoke("app:version"),
   loadPreferences: () => ipcRenderer.invoke("preferences:load"),
   savePreferences: (preferences: AppPreferences) => ipcRenderer.invoke("preferences:save", preferences),
   setMenuLanguage: (language: AppMenuLanguage) => ipcRenderer.invoke("menu:set-language", language),
@@ -64,6 +65,11 @@ const api: KafkaApi = {
     const listener = (_event: Electron.IpcRendererEvent, section?: AppPreferenceSection) => callback(section);
     ipcRenderer.on("preferences:open", listener);
     return () => ipcRenderer.removeListener("preferences:open", listener);
+  },
+  onReleaseNotesOpen: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("release-notes:open", listener);
+    return () => ipcRenderer.removeListener("release-notes:open", listener);
   },
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status);

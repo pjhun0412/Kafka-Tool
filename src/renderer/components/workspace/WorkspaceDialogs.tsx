@@ -1,17 +1,20 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { ServerProfile, TopicCreateRequest } from "../../../shared/types";
+import type { AppKeyboardShortcutPreferences, ServerProfile, TopicCreateRequest } from "../../../shared/types";
 import type { AppLanguage, LanguagePreference } from "../../i18n";
+import type { KeyboardShortcutMap } from "../../keyboardShortcuts";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import { usePreferenceNavigation } from "../../hooks/preferences/usePreferenceNavigation";
 import { useFeedbackStore } from "../../stores/ui/feedbackStore";
 import { useManualAvroSchemaStore } from "../../stores/ui/manualAvroSchemaStore";
+import { useReleaseNotesStore } from "../../stores/ui/releaseNotesStore";
 import { useServerFormStore } from "../../stores/ui/serverFormStore";
 import { useSidebarInteractionStore } from "../../stores/ui/sidebarInteractionStore";
 import { useTopicCreateStore } from "../../stores/ui/topicCreateStore";
 import { ConnectionErrorDialog } from "../modals/ConnectionErrorDialog";
 import { ManualAvroSchemaDialog } from "../modals/ManualAvroSchemaDialog";
 import { PreferencesDialog } from "../modals/PreferencesDialog";
+import { ReleaseNotesDialog } from "../modals/ReleaseNotesDialog";
 import { ServerProfileDialog } from "../modals/ServerProfileDialog";
 import { TopicActionDialog } from "../modals/TopicActionDialog";
 import { TopicCreateDialog } from "../modals/TopicCreateDialog";
@@ -24,11 +27,15 @@ export function WorkspaceDialogs(props: {
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
+  keyboardShortcuts: KeyboardShortcutMap;
+  appVersion: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
+  onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
+  onLastSeenReleaseVersion: (version: string) => void;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchemaFor: (serverId: string, topic: string) => void;
   servers: ServerProfile[];
@@ -94,6 +101,15 @@ export function WorkspaceDialogs(props: {
     setTopicActionConfirmText: state.setTopicActionConfirmText
   })));
   const {
+    isReleaseNotesOpen,
+    releaseNotesVersion,
+    closeReleaseNotes
+  } = useReleaseNotesStore(useShallow((state) => ({
+    isReleaseNotesOpen: state.isReleaseNotesOpen,
+    releaseNotesVersion: state.releaseNotesVersion,
+    closeReleaseNotes: state.closeReleaseNotes
+  })));
+  const {
     isPreferencesOpen,
     setIsPreferencesOpen,
     activePreferencesPage,
@@ -130,6 +146,7 @@ export function WorkspaceDialogs(props: {
           language={props.language}
           resolvedLanguage={props.resolvedLanguage}
           exportFormatTemplate={props.exportFormatTemplate}
+          keyboardShortcuts={props.keyboardShortcuts}
           manualAvroSchemaRows={props.manualAvroSchemaRows}
           onActivePage={setActivePreferencesPage}
           onToggleGroup={togglePreferenceGroup}
@@ -138,12 +155,24 @@ export function WorkspaceDialogs(props: {
           onFontSize={props.onFontSize}
           onLanguage={props.onLanguage}
           onExportFormatTemplate={props.onExportFormatTemplate}
+          onKeyboardShortcuts={props.onKeyboardShortcuts}
           onOpenManualAvroSchema={(serverId, topic) => {
             setIsPreferencesOpen(false);
             props.onOpenManualAvroSchema(serverId, topic);
           }}
           onDeleteManualAvroSchema={props.onDeleteManualAvroSchemaFor}
           onClose={() => setIsPreferencesOpen(false)}
+        />
+      )}
+      {isReleaseNotesOpen && (
+        <ReleaseNotesDialog
+          version={releaseNotesVersion || props.appVersion}
+          language={props.resolvedLanguage}
+          onClose={() => {
+            const version = releaseNotesVersion || props.appVersion;
+            if (version) props.onLastSeenReleaseVersion(version);
+            closeReleaseNotes();
+          }}
         />
       )}
       {isManualAvroOpen && (

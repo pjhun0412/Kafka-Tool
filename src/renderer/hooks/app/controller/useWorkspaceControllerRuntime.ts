@@ -58,7 +58,13 @@ export function useWorkspaceControllerRuntime({
       language: state.language,
       setLanguage: state.setLanguage,
       exportFormatTemplate: state.exportFormatTemplate,
-      setExportFormatTemplate: state.setExportFormatTemplate
+      setExportFormatTemplate: state.setExportFormatTemplate,
+      keyboardShortcuts: state.keyboardShortcuts,
+      setKeyboardShortcuts: state.setKeyboardShortcuts,
+      appVersion: state.appVersion,
+      setAppVersion: state.setAppVersion,
+      lastSeenReleaseVersion: state.lastSeenReleaseVersion,
+      setLastSeenReleaseVersion: state.setLastSeenReleaseVersion
     },
     serverHealthMonitor: {
       kafkaApi,
@@ -75,6 +81,7 @@ export function useWorkspaceControllerRuntime({
     electronMenuEvents: {
       kafkaApi,
       language,
+      appVersion: state.appVersion,
       openPreferencesSection: state.openPreferencesSection,
       applyImportedSettings,
       setStatus: state.setStatus,

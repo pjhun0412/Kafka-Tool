@@ -2,11 +2,13 @@ import { useEffect } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { ImportSettingsResult, KafkaApi, UpdateStatus } from "../../../shared/types";
 import type { AppLanguage } from "../../i18n";
+import { useReleaseNotesStore } from "../../stores/ui/releaseNotesStore";
 import type { ToastState } from "../../uiTypes";
 
 type ElectronMenuEventParams = {
   kafkaApi: KafkaApi | undefined;
   language: AppLanguage;
+  appVersion: string;
   openPreferencesSection: (section: "editor" | "avro") => void;
   applyImportedSettings: (result: ImportSettingsResult) => void;
   setStatus: (status: string) => void;
@@ -28,11 +30,14 @@ function getUpdateToastKind(updateStatus: UpdateStatus): "loading" | "success" |
 export function useElectronMenuEvents({
   kafkaApi,
   language,
+  appVersion,
   openPreferencesSection,
   applyImportedSettings,
   setStatus,
   setToast
 }: ElectronMenuEventParams) {
+  const openReleaseNotes = useReleaseNotesStore((state) => state.openReleaseNotes);
+
   useEffect(() => {
     if (!kafkaApi) return;
     void kafkaApi.setMenuLanguage(language);
@@ -47,6 +52,16 @@ export function useElectronMenuEvents({
       offPreferencesOpen();
     };
   }, [kafkaApi, openPreferencesSection]);
+
+  useEffect(() => {
+    if (!kafkaApi) return;
+    const offReleaseNotesOpen = kafkaApi.onReleaseNotesOpen(() => {
+      openReleaseNotes(appVersion);
+    });
+    return () => {
+      offReleaseNotesOpen();
+    };
+  }, [appVersion, kafkaApi, openReleaseNotes]);
 
   useEffect(() => {
     if (!kafkaApi) return;

@@ -1,10 +1,13 @@
 import { create } from "zustand";
+import type { AppKeyboardShortcutPreferences } from "../../../shared/types";
 import { INTER_FONT_FAMILY } from "../../fontConfig";
 import type { LanguagePreference } from "../../i18n";
+import { defaultKeyboardShortcuts, normalizeKeyboardShortcutMap, type KeyboardShortcutMap } from "../../keyboardShortcuts";
 
 export const DEFAULT_FONT_FAMILY = INTER_FONT_FAMILY;
 export const DEFAULT_EXPORT_FORMAT_TEMPLATE = "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}";
 export const DEFAULT_LANGUAGE: LanguagePreference = "auto";
+export const DEFAULT_KEYBOARD_SHORTCUTS = defaultKeyboardShortcuts;
 
 type SetValue<T> = T | ((current: T) => T);
 
@@ -17,6 +20,9 @@ type LayoutStore = {
   fontSize: number;
   language: LanguagePreference;
   exportFormatTemplate: string;
+  keyboardShortcuts: KeyboardShortcutMap;
+  appVersion: string;
+  lastSeenReleaseVersion: string;
   setSidebarWidth: (value: SetValue<number>) => void;
   setSidebarCollapsed: (value: SetValue<boolean>) => void;
   setServerPanelHeight: (value: SetValue<number>) => void;
@@ -25,6 +31,9 @@ type LayoutStore = {
   setFontSize: (value: SetValue<number>) => void;
   setLanguage: (value: SetValue<LanguagePreference>) => void;
   setExportFormatTemplate: (value: SetValue<string>) => void;
+  setKeyboardShortcuts: (value: SetValue<AppKeyboardShortcutPreferences>) => void;
+  setAppVersion: (value: SetValue<string>) => void;
+  setLastSeenReleaseVersion: (value: SetValue<string>) => void;
 };
 
 function resolveValue<T>(value: SetValue<T>, current: T) {
@@ -40,6 +49,9 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   fontSize: 13,
   language: DEFAULT_LANGUAGE,
   exportFormatTemplate: DEFAULT_EXPORT_FORMAT_TEMPLATE,
+  keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
+  appVersion: "",
+  lastSeenReleaseVersion: "",
   setSidebarWidth: (sidebarWidth) => set((current) => ({ sidebarWidth: resolveValue(sidebarWidth, current.sidebarWidth) })),
   setSidebarCollapsed: (sidebarCollapsed) => set((current) => ({ sidebarCollapsed: resolveValue(sidebarCollapsed, current.sidebarCollapsed) })),
   setServerPanelHeight: (serverPanelHeight) => set((current) => ({ serverPanelHeight: resolveValue(serverPanelHeight, current.serverPanelHeight) })),
@@ -49,5 +61,14 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   setLanguage: (language) => set((current) => ({ language: resolveValue(language, current.language) })),
   setExportFormatTemplate: (exportFormatTemplate) => set((current) => ({
     exportFormatTemplate: resolveValue(exportFormatTemplate, current.exportFormatTemplate)
+  })),
+  setKeyboardShortcuts: (keyboardShortcuts) => set((current) => ({
+    keyboardShortcuts: normalizeKeyboardShortcutMap(resolveValue(keyboardShortcuts, current.keyboardShortcuts))
+  })),
+  setAppVersion: (appVersion) => set((current) => ({
+    appVersion: resolveValue(appVersion, current.appVersion)
+  })),
+  setLastSeenReleaseVersion: (lastSeenReleaseVersion) => set((current) => ({
+    lastSeenReleaseVersion: resolveValue(lastSeenReleaseVersion, current.lastSeenReleaseVersion)
   }))
 }));

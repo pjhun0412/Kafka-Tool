@@ -1,12 +1,15 @@
 ﻿import { X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
+import type { AppKeyboardShortcutPreferences } from "../../../shared/types";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import type { PreferenceGroup, PreferencePage, PreferenceSearchMatches } from "../../hooks/preferences/usePreferenceNavigation";
 import { t, type AppLanguage, type LanguagePreference } from "../../i18n";
+import type { KeyboardShortcutMap } from "../../keyboardShortcuts";
 import { DEFAULT_EXPORT_FORMAT_TEMPLATE, DEFAULT_FONT_FAMILY } from "../../stores/ui/layoutStore";
 import { AvroSchemasPreferences } from "./preferences/AvroSchemasPreferences";
 import { EditorFontPreferences } from "./preferences/EditorFontPreferences";
 import { ExportLogPreferences } from "./preferences/ExportLogPreferences";
+import { KeyboardShortcutsPreferences } from "./preferences/KeyboardShortcutsPreferences";
 import { LanguagePreferences } from "./preferences/LanguagePreferences";
 import { PreferencesNav } from "./preferences/PreferencesNav";
 
@@ -21,6 +24,7 @@ type PreferencesDialogProps = {
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
+  keyboardShortcuts: KeyboardShortcutMap;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onActivePage: (page: PreferencePage) => void;
   onToggleGroup: (group: PreferenceGroup) => void;
@@ -29,6 +33,7 @@ type PreferencesDialogProps = {
   onFontSize: (fontSize: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
+  onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchema: (serverId: string, topic: string) => void;
   onClose: () => void;
@@ -45,6 +50,7 @@ export function PreferencesDialog({
   language,
   resolvedLanguage,
   exportFormatTemplate,
+  keyboardShortcuts,
   manualAvroSchemaRows,
   onActivePage,
   onToggleGroup,
@@ -53,6 +59,7 @@ export function PreferencesDialog({
   onFontSize,
   onLanguage,
   onExportFormatTemplate,
+  onKeyboardShortcuts,
   onOpenManualAvroSchema,
   onDeleteManualAvroSchema,
   onClose
@@ -89,6 +96,12 @@ export function PreferencesDialog({
                 fontSize={fontSize}
                 onFontFamily={onFontFamily}
                 onFontSize={onFontSize}
+              />
+            )}
+            {activePage === "keyboard-shortcuts" && (
+              <KeyboardShortcutsPreferences
+                keyboardShortcuts={keyboardShortcuts}
+                onKeyboardShortcuts={onKeyboardShortcuts}
               />
             )}
             {activePage === "language" && (

@@ -16,11 +16,12 @@ export type PreferenceSearchMatches = {
   pages: Set<PreferencePage>;
 };
 
-const allPreferencePages = new Set<PreferencePage>(["language", "editor-font", "export-log", "avro-schemas"]);
+const allPreferencePages = new Set<PreferencePage>(["language", "editor-font", "keyboard-shortcuts", "export-log", "avro-schemas"]);
 
 const preferenceSearchEntries: Array<{ group: PreferenceGroup; page: PreferencePage; keywords: string }> = [
   { group: "application", page: "language", keywords: "application language locale korean english system auto" },
   { group: "editor", page: "editor-font", keywords: "editor font family size d2coding font" },
+  { group: "editor", page: "keyboard-shortcuts", keywords: "keyboard shortcut shortcuts hotkey split quick search command ctrl cmd" },
   { group: "export", page: "export-log", keywords: "export log format download csv json" },
   { group: "avro", page: "avro-schemas", keywords: "avro schema schemas registry raw confluent" }
 ];

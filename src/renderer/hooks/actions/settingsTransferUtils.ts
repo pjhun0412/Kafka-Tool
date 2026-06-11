@@ -23,6 +23,8 @@ export type ImportedPreferenceSetters = {
   setFontFamily: Dispatch<SetStateAction<string>>;
   setFontSize: Dispatch<SetStateAction<number>>;
   setExportFormatTemplate: Dispatch<SetStateAction<string>>;
+  setKeyboardShortcuts: Dispatch<SetStateAction<NonNullable<AppPreferences["keyboardShortcuts"]>>>;
+  setLastSeenReleaseVersion: Dispatch<SetStateAction<string>>;
 };
 
 export type WorkspaceResetSetters = {
@@ -60,6 +62,8 @@ export function applyImportedPreferences(preferences: AppPreferences, setters: I
   if (typeof preferences.appearance?.fontFamily === "string") setters.setFontFamily(preferences.appearance.fontFamily);
   if (typeof preferences.appearance?.fontSize === "number") setters.setFontSize(preferences.appearance.fontSize);
   if (typeof preferences.exportFormatTemplate === "string") setters.setExportFormatTemplate(preferences.exportFormatTemplate);
+  setters.setKeyboardShortcuts(preferences.keyboardShortcuts ?? {});
+  setters.setLastSeenReleaseVersion(preferences.releaseNotes?.lastSeenVersion ?? "");
 }
 
 export function resetWorkspaceAfterSettingsImport(result: ImportSettingsResult, setters: WorkspaceResetSetters) {

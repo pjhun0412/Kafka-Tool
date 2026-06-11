@@ -51,6 +51,12 @@ export function PreferencesNav(props: {
               <small>{t(language, "preferences.nav.fontHelp")}</small>
             </button>
           )}
+          {(!props.collapsedGroups.editor || props.normalizedQuery) && props.matches.pages.has("keyboard-shortcuts") && (
+            <button className={props.activePage === "keyboard-shortcuts" ? "active child" : "child"} onClick={() => props.onActivePage("keyboard-shortcuts")}>
+              <span>{t(language, "preferences.nav.shortcuts")}</span>
+              <small>{t(language, "preferences.nav.shortcutsHelp")}</small>
+            </button>
+          )}
         </div>
       )}
       {props.matches.export && (

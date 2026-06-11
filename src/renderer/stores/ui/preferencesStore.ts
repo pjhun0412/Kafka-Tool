@@ -1,6 +1,6 @@
 ﻿import { create } from "zustand";
 
-export type PreferencePage = "language" | "editor-font" | "export-log" | "avro-schemas";
+export type PreferencePage = "language" | "editor-font" | "keyboard-shortcuts" | "export-log" | "avro-schemas";
 export type PreferenceGroup = "application" | "editor" | "export" | "avro";
 
 type PreferencesStore = {

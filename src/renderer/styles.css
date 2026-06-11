@@ -1683,6 +1683,7 @@
 
   .message-inspector-toolbar {
     @apply flex min-h-8 min-w-0 flex-wrap items-center gap-2;
+    --message-inspector-control-height: 32px;
   }
 
   .message-inspector-options {
@@ -1690,7 +1691,9 @@
   }
 
   .message-inspector-search {
-    @apply min-h-[32px] min-w-[180px] flex-1 py-1.5 text-[12px];
+    @apply min-w-[180px] flex-1 py-0 text-[12px];
+    height: var(--message-inspector-control-height);
+    min-height: var(--message-inspector-control-height);
   }
 
   .message-inspector-actions {
@@ -1698,7 +1701,10 @@
   }
 
   .preview-mode-select {
-    @apply h-8 w-[128px] shrink-0 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-[12px] font-bold text-[#e6e6e6];
+    @apply w-[128px] shrink-0 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-0 text-[12px] font-bold text-[#e6e6e6];
+    height: var(--message-inspector-control-height);
+    min-height: var(--message-inspector-control-height);
+    line-height: var(--message-inspector-control-height);
     color-scheme: dark;
   }
 
@@ -1744,7 +1750,14 @@
   }
 
   .compact-segmented button {
-    @apply min-h-[30px] px-2.5;
+    @apply px-2.5;
+    height: var(--message-inspector-control-height);
+    min-height: var(--message-inspector-control-height);
+  }
+
+  .message-inspector-actions .compact {
+    height: var(--message-inspector-control-height);
+    min-height: var(--message-inspector-control-height);
   }
 
   .message-tree {
@@ -2677,6 +2690,63 @@
 
   .setting-card label > span {
     @apply text-[12px] font-bold leading-5 text-slate-400;
+  }
+
+  .shortcut-list {
+    @apply grid gap-2;
+  }
+
+  .shortcut-row {
+    @apply grid grid-cols-[minmax(0,1fr)_144px_34px] items-center gap-2 rounded border border-[#30363d] bg-[#252526] p-2.5;
+  }
+
+  .shortcut-copy {
+    @apply grid min-w-0 gap-0.5;
+  }
+
+  .shortcut-copy strong {
+    @apply text-[12px] font-extrabold text-slate-50;
+  }
+
+  .shortcut-copy span {
+    @apply text-[11px] font-bold leading-5 text-slate-400;
+  }
+
+  .shortcut-recorder,
+  .shortcut-reset {
+    @apply h-[30px] rounded border border-[#3c3c3c] bg-[#1e1e1e] text-slate-100;
+  }
+
+  .shortcut-recorder {
+    @apply justify-center font-mono text-[12px] font-extrabold;
+  }
+
+  .shortcut-recorder.recording {
+    @apply border-[#007acc] text-[#7cc7ff] ring-2 ring-[#007acc]/25;
+  }
+
+  .shortcut-reset {
+    @apply inline-flex items-center justify-center text-slate-400 hover:text-slate-100;
+  }
+
+  .release-notes-modal {
+    @apply max-w-[620px];
+  }
+
+  .release-notes-modal .eyebrow {
+    @apply inline-flex items-center gap-1;
+  }
+
+  .release-notes-body {
+    @apply rounded border border-[#30363d] bg-[#1b1b1b] p-4;
+  }
+
+  .release-notes-body ul {
+    @apply grid gap-2 pl-5;
+  }
+
+  .release-notes-body li {
+    @apply list-disc text-[13px] font-bold leading-6 text-slate-200;
   }
 
   .avro-schema-manager {

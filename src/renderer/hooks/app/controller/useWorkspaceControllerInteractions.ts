@@ -48,9 +48,16 @@ export function useWorkspaceControllerInteractions({
     shortcuts: {
       isQuickSearchOpen: quickSearch.isQuickSearchOpen,
       quickSearchResultCount: quickSearch.quickSearchResultCount,
+      selectedServerId: quickSearch.selectedServerId,
+      selectedTopic: quickSearch.selectedTopic,
+      splitPaneOpen: quickSearch.splitPaneOpen,
+      keyboardShortcuts: quickSearch.keyboardShortcuts,
       openQuickSearch: quickSearch.openQuickSearch,
       closeQuickSearch: quickSearch.closeQuickSearch,
+      closeSplitPane: quickSearch.closeSplitPane,
+      openSplitForTopic: quickSearch.openSplitForTopic,
       openPreferences: quickSearch.openPreferences,
+      setActiveWorkspacePane: quickSearch.setActiveWorkspacePane,
       setSidebarCollapsed: quickSearch.setSidebarCollapsed,
       setQuickSearchIndex: quickSearch.setQuickSearchIndex
     }

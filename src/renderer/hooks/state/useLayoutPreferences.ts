@@ -22,7 +22,13 @@ export function useLayoutPreferences() {
     language,
     setLanguage,
     exportFormatTemplate,
-    setExportFormatTemplate
+    setExportFormatTemplate,
+    keyboardShortcuts,
+    setKeyboardShortcuts,
+    appVersion,
+    setAppVersion,
+    lastSeenReleaseVersion,
+    setLastSeenReleaseVersion
   } = useLayoutStore(useShallow((state) => ({
     sidebarWidth: state.sidebarWidth,
     setSidebarWidth: state.setSidebarWidth,
@@ -39,7 +45,13 @@ export function useLayoutPreferences() {
     language: state.language,
     setLanguage: state.setLanguage,
     exportFormatTemplate: state.exportFormatTemplate,
-    setExportFormatTemplate: state.setExportFormatTemplate
+    setExportFormatTemplate: state.setExportFormatTemplate,
+    keyboardShortcuts: state.keyboardShortcuts,
+    setKeyboardShortcuts: state.setKeyboardShortcuts,
+    appVersion: state.appVersion,
+    setAppVersion: state.setAppVersion,
+    lastSeenReleaseVersion: state.lastSeenReleaseVersion,
+    setLastSeenReleaseVersion: state.setLastSeenReleaseVersion
   })));
   const resolvedLanguage = resolveLanguage(language);
 
@@ -101,6 +113,12 @@ export function useLayoutPreferences() {
     resolvedLanguage,
     exportFormatTemplate,
     setExportFormatTemplate,
+    keyboardShortcuts,
+    setKeyboardShortcuts,
+    appVersion,
+    setAppVersion,
+    lastSeenReleaseVersion,
+    setLastSeenReleaseVersion,
     startSidebarResize,
     startServerPanelResize
   };

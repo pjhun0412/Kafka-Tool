@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { AppPreferences, KafkaApi, ManualAvroSchema } from "../../../shared/types";
 import { INTER_FONT_FAMILY, LEGACY_DEFAULT_FONT_FAMILY, LEGACY_INTER_FONT_FAMILY } from "../../fontConfig";
 import { normalizeLanguagePreference, type LanguagePreference } from "../../i18n";
+import { useReleaseNotesStore } from "../../stores/ui/releaseNotesStore";
 
 type PersistedPreferenceParams = {
   kafkaApi: KafkaApi | undefined;
@@ -30,6 +31,12 @@ type PersistedPreferenceParams = {
   setLanguage: (language: LanguagePreference) => void;
   exportFormatTemplate: string;
   setExportFormatTemplate: (template: string) => void;
+  keyboardShortcuts: NonNullable<AppPreferences["keyboardShortcuts"]>;
+  setKeyboardShortcuts: (shortcuts: NonNullable<AppPreferences["keyboardShortcuts"]>) => void;
+  appVersion: string;
+  setAppVersion: (version: string) => void;
+  lastSeenReleaseVersion: string;
+  setLastSeenReleaseVersion: (version: string) => void;
 };
 
 function normalizeStoredFontFamily(fontFamily: string) {
@@ -64,13 +71,22 @@ export function usePersistedPreferences({
   language,
   setLanguage,
   exportFormatTemplate,
-  setExportFormatTemplate
+  setExportFormatTemplate,
+  keyboardShortcuts,
+  setKeyboardShortcuts,
+  appVersion,
+  setAppVersion,
+  lastSeenReleaseVersion,
+  setLastSeenReleaseVersion
 }: PersistedPreferenceParams) {
+  const openReleaseNotes = useReleaseNotesStore((state) => state.openReleaseNotes);
+
   useEffect(() => {
     if (!kafkaApi) {
       return;
     }
-    void kafkaApi.loadPreferences().then((preferences) => {
+    void Promise.all([kafkaApi.loadPreferences(), kafkaApi.getAppVersion()]).then(([preferences, version]) => {
+      setAppVersion(version);
       setFavoriteTopicsByServer(preferences.favoriteTopicsByServer ?? {});
       setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
       setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
@@ -96,6 +112,12 @@ export function usePersistedPreferences({
       if (typeof preferences.exportFormatTemplate === "string") {
         setExportFormatTemplate(preferences.exportFormatTemplate);
       }
+      setKeyboardShortcuts(preferences.keyboardShortcuts ?? {});
+      const seenVersion = preferences.releaseNotes?.lastSeenVersion ?? "";
+      setLastSeenReleaseVersion(seenVersion);
+      if (version && seenVersion !== version) {
+        openReleaseNotes(version);
+      }
       setPreferencesLoaded(true);
     }).catch((error) => {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -108,14 +130,18 @@ export function usePersistedPreferences({
     setFavoriteTopicsByServer,
     setFontFamily,
     setFontSize,
+    setAppVersion,
     setLanguage,
+    setKeyboardShortcuts,
+    setLastSeenReleaseVersion,
     setManualAvroSchemasByServer,
     setMessagePaneHeight,
     setPreferencesLoaded,
     setServerPanelHeight,
     setSidebarCollapsed,
     setSidebarWidth,
-    setStatus
+    setStatus,
+    openReleaseNotes
   ]);
 
   useEffect(() => {
@@ -137,6 +163,10 @@ export function usePersistedPreferences({
         fontSize,
         language
       },
+      keyboardShortcuts,
+      releaseNotes: {
+        lastSeenVersion: lastSeenReleaseVersion
+      },
       exportFormatTemplate
     }).catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
   }, [
@@ -152,6 +182,8 @@ export function usePersistedPreferences({
     fontFamily,
     fontSize,
     language,
+    keyboardShortcuts,
+    lastSeenReleaseVersion,
     exportFormatTemplate,
     setStatus
   ]);

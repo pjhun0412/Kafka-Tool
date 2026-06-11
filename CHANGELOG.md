@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.2
+
+### Added
+
+- Added editable in-app keyboard shortcuts in Preferences.
+- Added a What’s New dialog that appears once after an app version changes.
+- Added a Help menu entry for reopening Release Notes.
+
+### Improved
+
+- Improved shortcut handling for macOS and Windows/Linux by using Cmd/Ctrl-aware bindings.
+- Updated Help content for Shortcuts and Split tabs in English and Korean.
+- Persisted shortcut preferences and release-note acknowledgement in app preferences and settings export/import.
+
 ## 2.0.1
 
 ### Added

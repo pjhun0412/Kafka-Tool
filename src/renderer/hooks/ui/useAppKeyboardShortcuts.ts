@@ -1,22 +1,44 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
+import type { WorkspacePaneId } from "../../uiTypes";
+import { matchesShortcut, type KeyboardShortcutMap } from "../../keyboardShortcuts";
 import type { PreferencePage } from "../preferences/usePreferenceNavigation";
 
 type AppKeyboardShortcutParams = {
   isQuickSearchOpen: boolean;
   quickSearchResultCount: number;
+  selectedServerId: string;
+  selectedTopic: string;
+  splitPaneOpen: boolean;
+  keyboardShortcuts: KeyboardShortcutMap;
   openQuickSearch: () => void;
   closeQuickSearch: () => void;
+  closeSplitPane: () => Promise<void>;
+  openSplitForTopic: (serverId: string, topic: string) => Promise<void>;
   openPreferences: (page?: PreferencePage) => void;
+  setActiveWorkspacePane: (value: WorkspacePaneId) => void;
   setSidebarCollapsed: (action: boolean | ((current: boolean) => boolean)) => void;
   setQuickSearchIndex: (action: number | ((current: number) => number)) => void;
 };
 
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
+}
+
 export function useAppKeyboardShortcuts({
   isQuickSearchOpen,
   quickSearchResultCount,
+  selectedServerId,
+  selectedTopic,
+  splitPaneOpen,
+  keyboardShortcuts,
   openQuickSearch,
   closeQuickSearch,
+  closeSplitPane,
+  openSplitForTopic,
   openPreferences,
+  setActiveWorkspacePane,
   setSidebarCollapsed,
   setQuickSearchIndex
 }: AppKeyboardShortcutParams) {
@@ -27,23 +49,49 @@ export function useAppKeyboardShortcuts({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if ((event.ctrlKey || event.metaKey) && (key === "p" || key === "k")) {
+      const hasCommandModifier = event.ctrlKey || event.metaKey;
+      if (matchesShortcut(event, keyboardShortcuts.quickSearch)) {
         event.preventDefault();
         openQuickSearch();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === ",") {
+      if (matchesShortcut(event, keyboardShortcuts.preferences)) {
         event.preventDefault();
         closeQuickSearch();
         openPreferences("editor-font");
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && key === "b") {
+      if (matchesShortcut(event, keyboardShortcuts.toggleSidebar)) {
         event.preventDefault();
         closeQuickSearch();
         setSidebarCollapsed((current) => !current);
         return;
+      }
+      if (hasCommandModifier && !event.altKey && !isEditableShortcutTarget(event.target)) {
+        if (matchesShortcut(event, keyboardShortcuts.splitTopic)) {
+          event.preventDefault();
+          closeQuickSearch();
+          if (selectedServerId && selectedTopic) void openSplitForTopic(selectedServerId, selectedTopic);
+          return;
+        }
+        if (matchesShortcut(event, keyboardShortcuts.focusPrimaryPane)) {
+          event.preventDefault();
+          closeQuickSearch();
+          setActiveWorkspacePane("primary");
+          return;
+        }
+        if (matchesShortcut(event, keyboardShortcuts.focusSplitPane)) {
+          event.preventDefault();
+          closeQuickSearch();
+          if (splitPaneOpen) setActiveWorkspacePane("split");
+          return;
+        }
+        if (matchesShortcut(event, keyboardShortcuts.closeSplitPane) && splitPaneOpen) {
+          event.preventDefault();
+          closeQuickSearch();
+          void closeSplitPane();
+          return;
+        }
       }
       if (!isQuickSearchOpen) return;
       if (event.key === "Escape") {
@@ -56,9 +104,16 @@ export function useAppKeyboardShortcuts({
   }, [
     isQuickSearchOpen,
     quickSearchResultCount,
+    selectedServerId,
+    selectedTopic,
+    splitPaneOpen,
+    keyboardShortcuts,
     openQuickSearch,
     closeQuickSearch,
+    closeSplitPane,
+    openSplitForTopic,
     openPreferences,
+    setActiveWorkspacePane,
     setSidebarCollapsed,
     setQuickSearchIndex
   ]);

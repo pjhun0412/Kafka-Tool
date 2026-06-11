@@ -16,11 +16,13 @@ type InteractionDerived = Pick<
 type InteractionActions = Pick<
   WorkspaceControllerInteractionsParams["quickSearch"],
   | "closeQuickSearch"
+  | "closeSplitPane"
   | "ensureServerConnected"
   | "getWorkspaceTargetForServer"
   | "loadConsumerGroupLagFor"
   | "openManualAvroSchema"
   | "openQuickSearch"
+  | "openSplitForTopic"
   | "openTopicInWorkspace"
   | "refreshGroups"
   | "refreshGroupsForServer"
@@ -68,10 +70,13 @@ export function createWorkspaceInteractionParams({
       quickSearchResultCount: derived.quickSearchResults.length,
       selectedServerId: state.selectedServerId,
       selectedTopic: derived.selectedTopic,
+      splitPaneOpen: Boolean(derived.visibleSplitPane),
+      keyboardShortcuts: state.keyboardShortcuts,
       groupsByServer: state.groupsByServer,
       ensureServerConnected: actions.ensureServerConnected,
       getWorkspaceTargetForServer: actions.getWorkspaceTargetForServer,
       openTopicInWorkspace: actions.openTopicInWorkspace,
+      openSplitForTopic: actions.openSplitForTopic,
       openManualAvroSchema: actions.openManualAvroSchema,
       openPreferences: state.openPreferences,
       refreshTopics: actions.refreshTopics,
@@ -87,6 +92,8 @@ export function createWorkspaceInteractionParams({
       setViewByServer: state.setViewByServer,
       isQuickSearchOpen: derived.isQuickSearchOpen,
       openQuickSearch: actions.openQuickSearch,
+      closeSplitPane: actions.closeSplitPane,
+      setActiveWorkspacePane: state.setActiveWorkspacePane,
       setSidebarCollapsed: state.setSidebarCollapsed,
       setQuickSearchIndex: actions.setQuickSearchIndex
     },

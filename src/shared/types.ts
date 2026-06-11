@@ -166,6 +166,17 @@ export type ManualAvroSchema = {
   updatedAt: string;
 };
 
+export type AppKeyboardShortcutPreferences = Partial<Record<
+  | "quickSearch"
+  | "preferences"
+  | "toggleSidebar"
+  | "splitTopic"
+  | "focusPrimaryPane"
+  | "focusSplitPane"
+  | "closeSplitPane",
+  string
+>>;
+
 export type AppPreferences = {
   favoriteTopicsByServer: Record<string, string[]>;
   consumeDefaultsByServer: Record<string, Partial<{
@@ -191,6 +202,10 @@ export type AppPreferences = {
     fontFamily: string;
     fontSize: number;
     language: "auto" | "ko" | "en";
+  }>;
+  keyboardShortcuts?: AppKeyboardShortcutPreferences;
+  releaseNotes?: Partial<{
+    lastSeenVersion: string;
   }>;
   exportFormatTemplate?: string;
   windowBounds?: Partial<{
@@ -360,6 +375,7 @@ export type KafkaApi = {
   importSettings: () => Promise<ImportSettingsResult | null>;
   checkForUpdates: () => Promise<void>;
   installUpdate: () => Promise<void>;
+  getAppVersion: () => Promise<string>;
   loadPreferences: () => Promise<AppPreferences>;
   savePreferences: (preferences: AppPreferences) => Promise<AppPreferences>;
   setMenuLanguage: (language: AppMenuLanguage) => Promise<void>;
@@ -391,5 +407,6 @@ export type KafkaApi = {
   onSettingsExported: (callback: (filePath: string) => void) => () => void;
   onSettingsError: (callback: (error: string) => void) => () => void;
   onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => () => void;
+  onReleaseNotesOpen: (callback: () => void) => () => void;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 };

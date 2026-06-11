@@ -26,6 +26,8 @@ export const defaultPreferences: AppPreferences = {
     fontSize: 13,
     language: "auto"
   },
+  keyboardShortcuts: {},
+  releaseNotes: {},
   exportFormatTemplate: "[{timestamp}] {topic}[{partition}]@{offset} key={key} headers={headers} value={value}"
 };
 
@@ -64,6 +66,8 @@ export function normalizePreferences(preferences?: Partial<AppPreferences>): App
     manualAvroSchemasByServer: preferences?.manualAvroSchemasByServer ?? {},
     layout: preferences?.layout ?? {},
     appearance: preferences?.appearance ?? defaultPreferences.appearance,
+    keyboardShortcuts: preferences?.keyboardShortcuts ?? {},
+    releaseNotes: preferences?.releaseNotes ?? {},
     exportFormatTemplate: preferences?.exportFormatTemplate ?? defaultPreferences.exportFormatTemplate,
     windowBounds: preferences?.windowBounds
   };
@@ -83,6 +87,14 @@ export function mergePreferences(current: AppPreferences, next: AppPreferences):
     appearance: {
       ...(current.appearance ?? {}),
       ...(next.appearance ?? {})
+    },
+    keyboardShortcuts: {
+      ...(current.keyboardShortcuts ?? {}),
+      ...(next.keyboardShortcuts ?? {})
+    },
+    releaseNotes: {
+      ...(current.releaseNotes ?? {}),
+      ...(next.releaseNotes ?? {})
     },
     windowBounds: next.windowBounds ?? current.windowBounds
   };

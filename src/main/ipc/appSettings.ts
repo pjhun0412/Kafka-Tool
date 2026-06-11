@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { app, ipcMain } from "electron";
 import type { AppMenuLanguage, AppPreferences, ImportSettingsResult } from "../../shared/types.js";
 import { installUpdate } from "../autoUpdate.js";
 import { mergePreferences, readPreferences, writePreferences } from "../storage.js";
@@ -33,6 +33,8 @@ export function registerAppSettingsIpcHandlers({
   ipcMain.handle("updates:install", async () => {
     installUpdate();
   });
+
+  ipcMain.handle("app:version", async () => app.getVersion());
 
   ipcMain.handle("preferences:load", async () => readPreferences());
 

@@ -208,7 +208,7 @@ export function useWorkspaceAppController() {
     },
     stopConsume
   }));
-  const { promoteSplitPaneToPrimary } = splitActions;
+  const { closeSplitPane, openSplitForTopic, promoteSplitPaneToPrimary } = splitActions;
   const topicOperationActions = useWorkspaceControllerTopicOperations(createWorkspaceTopicOperationParams({
     state: controllerState,
     derived: {
@@ -244,6 +244,7 @@ export function useWorkspaceAppController() {
     },
     actions: {
       closeQuickSearch,
+      closeSplitPane,
       ensureServerConnected,
       getWorkspaceTargetForServer,
       isTopicStreaming,
@@ -253,6 +254,7 @@ export function useWorkspaceAppController() {
       loadTopicDetailSilent,
       openManualAvroSchema,
       openQuickSearch,
+      openSplitForTopic,
       openTopicInWorkspace,
       promoteSplitPaneToPrimary,
       refreshBrokers,

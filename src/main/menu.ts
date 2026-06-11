@@ -134,6 +134,18 @@ export function createApplicationMenu(options: {
           label: labels.kafkaTips,
           click: () => showHelpDialog(labels.helpKafkaTitle, labels.helpKafkaMessage)
         },
+        {
+          label: labels.viewerTips,
+          click: () => showHelpDialog(labels.helpViewerTitle, labels.helpViewerMessage)
+        },
+        {
+          label: labels.recordTips,
+          click: () => showHelpDialog(labels.helpRecordTitle, labels.helpRecordMessage)
+        },
+        {
+          label: labels.releaseNotes,
+          click: () => options.getWindow()?.webContents.send("release-notes:open")
+        },
         { type: "separator" },
         {
           label: labels.about,
