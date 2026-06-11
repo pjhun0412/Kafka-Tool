@@ -54,6 +54,7 @@ export function createUiStateBindings(appState: AppStateComposition) {
   const {
     splitPane,
     setSplitPane,
+    setSplitPaneForServer,
     splitDropSide,
     setSplitDropSide,
     splitPrimaryPercent,
@@ -110,6 +111,7 @@ export function createUiStateBindings(appState: AppStateComposition) {
     setSidebarWidth,
     setSplitDropSide,
     setSplitPane,
+    setSplitPaneForServer,
     setTopicActionConfirmText,
     setTopicContextMenu,
     sidebarCollapsed,

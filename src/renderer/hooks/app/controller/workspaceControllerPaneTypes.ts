@@ -44,6 +44,7 @@ export type WorkspacePaneResources = {
   manualAvroSchemasByServer: Record<string, PrimaryPane["manualAvroSchemas"]>;
   manualAvroTopicNames: Set<string>;
   openedTopicTabs: PrimaryPane["topicTabs"];
+  previewTopic: PrimaryPane["previewTopic"];
   selectedTopicRows: PrimaryPane["selectedTopics"];
   servers: PrimaryPane["servers"];
   sortedTopics: PrimaryPane["topics"];

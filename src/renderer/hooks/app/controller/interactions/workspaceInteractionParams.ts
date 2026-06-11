@@ -11,7 +11,7 @@ type InteractionDerived = Pick<
     WorkspaceControllerInteractionsParams["quickSearch"],
     "isQuickSearchOpen" | "quickSearchIndex" | "quickSearchResults"
   > &
-  Pick<WorkspaceControllerInteractionsParams["topicTabs"], "openedTopicTabs">;
+  Pick<WorkspaceControllerInteractionsParams["topicTabs"], "openedTopicTabs" | "previewTopic">;
 
 type InteractionActions = Pick<
   WorkspaceControllerInteractionsParams["quickSearch"],
@@ -138,6 +138,7 @@ export function createWorkspaceInteractionParams({
       selectedServerId: state.selectedServerId,
       selectedTopic: derived.selectedTopic,
       openedTopicTabs: derived.openedTopicTabs,
+      previewTopic: derived.previewTopic,
       splitPane: state.splitPane,
       isTopicStreaming: actions.isTopicStreaming,
       stopConsume: actions.stopConsume,
@@ -145,6 +146,7 @@ export function createWorkspaceInteractionParams({
       promoteSplitPaneToPrimary: actions.promoteSplitPaneToPrimary,
       selectPrimaryTopic: actions.selectPrimaryTopic,
       setOpenedTopicTabs: actions.setOpenedTopicTabs,
+      setPreviewTopicByServer: state.setPreviewTopicByServer,
       setSelectedTopic: actions.setSelectedTopic,
       setTopicDetail: actions.setTopicDetail,
       setViewByServer: state.setViewByServer

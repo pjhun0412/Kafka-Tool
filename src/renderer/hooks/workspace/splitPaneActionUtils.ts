@@ -35,7 +35,8 @@ export function mergeSplitTopicTabsByServer(
   pane: SplitPaneState
 ) {
   const existingTabs = current[pane.serverId] ?? [];
-  return { ...current, [pane.serverId]: mergeTopicTabs(existingTabs, pane.topicTabs) };
+  const pinnedSplitTabs = pane.previewTopic ? pane.topicTabs.filter((topic) => topic !== pane.previewTopic) : pane.topicTabs;
+  return { ...current, [pane.serverId]: mergeTopicTabs(existingTabs, pinnedSplitTabs) };
 }
 
 export function mergeSplitTopicViewsByServer(

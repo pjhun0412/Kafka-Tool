@@ -6,6 +6,7 @@ import type { ProduceDraft } from "../../state/useProduceDraftStore";
 export type WorkspaceDerivedStateParams = {
   selectedServerId: string;
   selectedTopicByServer: Record<string, string>;
+  previewTopicByServer: Record<string, string>;
   viewByServer: Record<string, View>;
   openedTopicTabsByServer: Record<string, string[]>;
   topicDetailByServer: Record<string, TopicDetail | null>;
@@ -17,8 +18,13 @@ export type WorkspaceDerivedStateParams = {
 
 export function useWorkspaceDerivedState(params: WorkspaceDerivedStateParams) {
   const selectedTopic = params.selectedTopicByServer[params.selectedServerId] ?? "";
+  const previewTopic = params.previewTopicByServer[params.selectedServerId] ?? "";
   const view = params.viewByServer[params.selectedServerId] ?? (selectedTopic ? "info" : "topics");
-  const openedTopicTabs = params.openedTopicTabsByServer[params.selectedServerId] ?? [];
+  const rawTopicTabs = params.openedTopicTabsByServer[params.selectedServerId] ?? [];
+  const pinnedTopicTabs = previewTopic ? rawTopicTabs.filter((topic) => topic !== previewTopic) : rawTopicTabs;
+  const openedTopicTabs = previewTopic && !pinnedTopicTabs.includes(previewTopic)
+    ? [...pinnedTopicTabs, previewTopic]
+    : pinnedTopicTabs;
   const topicDetail = params.topicDetailByServer[params.selectedServerId] ?? null;
   const consumeStates = params.consumeStatesByServer[params.selectedServerId] ?? {};
   const selectedDefaultConsumeState = params.getDefaultConsumeState();
@@ -32,6 +38,8 @@ export function useWorkspaceDerivedState(params: WorkspaceDerivedStateParams) {
     selectedTopic,
     view,
     openedTopicTabs,
+    pinnedTopicTabs,
+    previewTopic,
     topicDetail,
     consumeStates,
     selectedDefaultConsumeState,

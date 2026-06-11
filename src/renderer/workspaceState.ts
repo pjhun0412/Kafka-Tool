@@ -7,6 +7,13 @@ export function addTopicTab(tabs: string[], topic: string) {
   return tabs.includes(topic) ? tabs : [...tabs, topic];
 }
 
+export function setPreviewTopicTab(tabs: string[], topic: string, previousPreviewTopic = "") {
+  const withoutPreviousPreview = previousPreviewTopic && previousPreviewTopic !== topic
+    ? tabs.filter((item) => item !== previousPreviewTopic)
+    : tabs;
+  return withoutPreviousPreview.includes(topic) ? withoutPreviousPreview : [...withoutPreviousPreview, topic];
+}
+
 export function removeTopicTab(tabs: string[], topic: string) {
   return tabs.filter((item) => item !== topic);
 }
@@ -112,6 +119,7 @@ export function createSplitPaneForTopic(
     serverId,
     topic,
     topicTabs: addTopicTab(previousTabs, topic),
+    previewTopic: undefined,
     view,
     detail
   };
@@ -121,13 +129,25 @@ export function activateTopicInSplitPane(
   current: SplitPaneState | null,
   topic: string,
   view: SplitPaneState["view"],
-  shouldClearDetail: boolean
+  shouldClearDetail: boolean,
+  options: { addToTabs?: boolean; preservePreview?: boolean } = {}
 ) {
   if (!current) return current;
+  const addToTabs = options.addToTabs ?? true;
+  const preservePreview = options.preservePreview && Boolean(current.previewTopic);
+  const topicTabs = addToTabs
+    ? addTopicTab(
+        current.previewTopic && current.previewTopic !== topic && !preservePreview
+          ? current.topicTabs.filter((item) => item !== current.previewTopic)
+          : current.topicTabs,
+        topic
+      )
+    : setPreviewTopicTab(current.topicTabs, topic, current.previewTopic);
   return {
     ...current,
     topic,
-    topicTabs: addTopicTab(current.topicTabs, topic),
+    topicTabs,
+    previewTopic: preservePreview ? current.previewTopic : addToTabs ? undefined : topic,
     view,
     detail: shouldClearDetail ? null : current.detail
   };
@@ -156,6 +176,7 @@ export function closeTopicInSplitPane(
       ...current,
       topic: nextTopic,
       topicTabs: nextTabs,
+      previewTopic: current.previewTopic === topic ? undefined : current.previewTopic,
       view: nextView,
       detail: closedActiveTopic ? null : current.detail
     },

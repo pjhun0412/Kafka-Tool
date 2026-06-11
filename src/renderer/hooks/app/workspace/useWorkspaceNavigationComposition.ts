@@ -11,7 +11,7 @@ type WorkspaceNavigationCompositionParams = {
   topicView: Omit<Parameters<typeof useTopicViewActions>[0], "loadSplitTopicDetailSilent">;
   splitTopicActivation: Omit<
     Parameters<typeof useSplitTopicActivation>[0],
-    "getTopicViewFor" | "loadSplitTopicDetail"
+    "getTopicViewFor" | "loadSplitTopicDetail" | "loadSplitTopicDetailSilent"
   >;
   serverView: Omit<
     Parameters<typeof useServerViewNavigation>[0],
@@ -19,7 +19,7 @@ type WorkspaceNavigationCompositionParams = {
   >;
   primaryTopicNavigation: Omit<
     Parameters<typeof usePrimaryTopicNavigationActions>[0],
-    "getTopicViewFor" | "activateSplitTopic"
+    "getTopicViewFor" | "activateSplitTopic" | "previewSplitTopicDetailSilent"
   >;
 };
 
@@ -32,7 +32,8 @@ export function useWorkspaceNavigationComposition(params: WorkspaceNavigationCom
   const splitTopicActivationActions = useSplitTopicActivation({
     ...params.splitTopicActivation,
     getTopicViewFor: topicViewActions.getTopicViewFor,
-    loadSplitTopicDetail: splitTopicDetailActions.loadSplitTopicDetail
+    loadSplitTopicDetail: splitTopicDetailActions.loadSplitTopicDetail,
+    loadSplitTopicDetailSilent: splitTopicDetailActions.loadSplitTopicDetailSilent
   });
   const serverViewActions = useServerViewNavigation({
     ...params.serverView,
@@ -43,7 +44,8 @@ export function useWorkspaceNavigationComposition(params: WorkspaceNavigationCom
   const primaryTopicNavigationActions = usePrimaryTopicNavigationActions({
     ...params.primaryTopicNavigation,
     getTopicViewFor: topicViewActions.getTopicViewFor,
-    activateSplitTopic: splitTopicActivationActions.activateSplitTopic
+    activateSplitTopic: splitTopicActivationActions.activateSplitTopic,
+    previewSplitTopicDetailSilent: splitTopicDetailActions.previewSplitTopicDetailSilent
   });
 
   return {

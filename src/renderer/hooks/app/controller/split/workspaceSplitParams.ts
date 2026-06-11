@@ -9,6 +9,7 @@ type SplitDerived = Pick<
   | "getTopicViewFor"
   | "isTopicStreaming"
   | "openedTopicTabs"
+  | "previewTopic"
   | "selectedTopic"
   | "setOpenedTopicTabs"
   | "setSelectedTopic"

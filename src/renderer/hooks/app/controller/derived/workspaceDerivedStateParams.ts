@@ -7,6 +7,7 @@ export function createWorkspaceDerivedStateParams(state: ControllerState): Works
   return {
     selectedServerId: state.selectedServerId,
     selectedTopicByServer: state.selectedTopicByServer,
+    previewTopicByServer: state.previewTopicByServer,
     viewByServer: state.viewByServer,
     openedTopicTabsByServer: state.openedTopicTabsByServer,
     topicDetailByServer: state.topicDetailByServer,

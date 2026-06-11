@@ -11,6 +11,7 @@ type PaneDerived = Pick<
     WorkspaceControllerPanesParams["resources"],
     | "manualAvroTopicNames"
     | "openedTopicTabs"
+    | "previewTopic"
     | "selectedTopicRows"
     | "sortedTopics"
     | "topicDetail"
@@ -77,6 +78,7 @@ export function createWorkspacePaneParams({
       manualAvroSchemasByServer: state.manualAvroSchemasByServer,
       manualAvroTopicNames: derived.manualAvroTopicNames,
       openedTopicTabs: derived.openedTopicTabs,
+      previewTopic: derived.previewTopic,
       selectedTopicRows: derived.selectedTopicRows,
       servers: state.servers,
       sortedTopics: derived.sortedTopics,

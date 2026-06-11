@@ -15,6 +15,7 @@ export type SplitPaneState = {
   serverId: string;
   topic: string;
   topicTabs: string[];
+  previewTopic?: string;
   view: View;
   detail: TopicDetail | null;
 };

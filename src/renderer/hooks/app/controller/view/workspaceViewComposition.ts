@@ -145,6 +145,7 @@ export function useWorkspaceControllerViewComposition(params: {
       isSelectedServerConnected: search.isSelectedServerConnected,
       manualAvroTopicNames: interactions.manualAvroTopicNames,
       openedTopicTabs: derivedState.openedTopicTabs,
+      previewTopic: derivedState.previewTopic,
       primaryModel: models.primaryModel,
       primaryPaneToast: models.primaryPaneToast,
       selectedServer: search.serverSearch.selectedServer,

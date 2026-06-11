@@ -3884,6 +3884,19 @@
     @apply leading-none;
   }
 
+  .topic-tab.preview span:first-child {
+    @apply italic text-[#d4d4d4];
+  }
+
+  .topic-tab.preview:not(.active) span:first-child {
+    @apply text-[#9da5b4];
+  }
+
+  .primary-topic-pane.active-pane .topic-tab.preview.active span:first-child,
+  .split-pane.active-pane .topic-tab.preview.active span:first-child {
+    @apply text-[#ffffff];
+  }
+
   .cluster-tab.active svg,
   .topic-tab.active svg,
   .server-work-tabs button.active svg {
@@ -3894,6 +3907,12 @@
   .split-pane:not(.active-pane) .topic-tab.active,
   .inactive-pane .topic-tab.active {
     @apply border-[#333333] bg-[#252526] text-[#9da5b4];
+  }
+
+  .primary-topic-pane:not(.active-pane) .topic-tab.preview.active span:first-child,
+  .split-pane:not(.active-pane) .topic-tab.preview.active span:first-child,
+  .inactive-pane .topic-tab.preview.active span:first-child {
+    @apply text-[#9da5b4];
   }
 
   .primary-topic-pane:not(.active-pane) .topic-tab.active::before,

@@ -1,9 +1,27 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { BrokerSummary, ConsumerGroupSummary, KafkaApi, ServerProfile, TopicSummary } from "../../../shared/types";
+import type {
+  BrokerSummary,
+  ConsumerGroupLagDetail,
+  ConsumerGroupSummary,
+  KafkaApi,
+  ServerProfile,
+  TopicDetail,
+  TopicSummary
+} from "../../../shared/types";
 import { buildServerProfileInput } from "../../serverProfileForm";
 import { useServerFormStore } from "../../stores/ui/serverFormStore";
-import type { ToastState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget } from "../../uiTypes";
+import type {
+  DragPayload,
+  SplitDropSide,
+  SplitPaneState,
+  ToastState,
+  TopicConsumeState,
+  TopicWorkView,
+  View,
+  WorkspaceActionTarget,
+  WorkspacePaneId
+} from "../../uiTypes";
 import { readStreamingTopicKey } from "../../workspaceState";
 import { addIdOnce, removeId, removeServerRecord, reorderServers } from "./serverLifecycleUtils";
 
@@ -30,13 +48,27 @@ type ServerLifecycleActionsParams = {
   setHealthFailuresByServer: Dispatch<SetStateAction<Record<string, number>>>;
   setOpenClusterIds: Dispatch<SetStateAction<string[]>>;
   setOpenedTopicTabs: (tabs: string[]) => void;
+  setOpenedTopicTabsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setPreviewTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
   setSelectedTopic: (topic: string) => void;
+  setSelectedTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
   setTopicDetail: (detail: null) => void;
   setTopics: (topics: TopicSummary[]) => void;
+  setTopicsByServer: Dispatch<SetStateAction<Record<string, TopicSummary[]>>>;
+  setTopicDetailByServer: Dispatch<SetStateAction<Record<string, TopicDetail | null>>>;
+  setTopicDetailCacheByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicDetail>>>>;
   setGroups: (groups: ConsumerGroupSummary[]) => void;
+  setGroupsByServer: Dispatch<SetStateAction<Record<string, ConsumerGroupSummary[]>>>;
+  setSelectedGroupByServer: Dispatch<SetStateAction<Record<string, string>>>;
+  setGroupLagByServer: Dispatch<SetStateAction<Record<string, Record<string, ConsumerGroupLagDetail>>>>;
   setBrokersByServer: Dispatch<SetStateAction<Record<string, BrokerSummary[]>>>;
   setConsumeStates: (states: Record<string, TopicConsumeState>) => void;
+  setConsumeStatesByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicConsumeState>>>>;
   setSplitConsumeStatesByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicConsumeState>>>>;
+  setSplitPaneForServer: (serverId: string, value: SplitPaneState | null | ((current: SplitPaneState | null) => SplitPaneState | null)) => void;
+  setActiveWorkspacePane: Dispatch<SetStateAction<WorkspacePaneId>>;
+  setActiveDragPayload: Dispatch<SetStateAction<DragPayload | null>>;
+  setSplitDropSide: Dispatch<SetStateAction<SplitDropSide>>;
   setViewByServer: Dispatch<SetStateAction<Record<string, View>>>;
   setTopicViewByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicWorkView>>>>;
   setStreamingTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
@@ -66,13 +98,27 @@ export function useServerLifecycleActions({
   setHealthFailuresByServer,
   setOpenClusterIds,
   setOpenedTopicTabs,
+  setOpenedTopicTabsByServer,
+  setPreviewTopicByServer,
   setSelectedTopic,
+  setSelectedTopicByServer,
   setTopicDetail,
   setTopics,
+  setTopicsByServer,
+  setTopicDetailByServer,
+  setTopicDetailCacheByServer,
   setGroups,
+  setGroupsByServer,
+  setSelectedGroupByServer,
+  setGroupLagByServer,
   setBrokersByServer,
   setConsumeStates,
+  setConsumeStatesByServer,
   setSplitConsumeStatesByServer,
+  setSplitPaneForServer,
+  setActiveWorkspacePane,
+  setActiveDragPayload,
+  setSplitDropSide,
   setViewByServer,
   setTopicViewByServer,
   setStreamingTopicsByServer,
@@ -101,15 +147,8 @@ export function useServerLifecycleActions({
     const nextServers = await runTask("Deleting server...", () => kafkaApi.deleteServer(id));
     setServers(nextServers);
     removeServerConnectionState(id);
+    clearServerWorkspaceState(id);
     setSelectedServerId(nextServers[0]?.id ?? "");
-    setOpenedTopicTabs([]);
-    setSelectedTopic("");
-    setTopicDetail(null);
-    setConsumeStates({});
-    setSplitConsumeStatesByServer((current) => removeServerRecord(current, id));
-    setViewByServer((current) => removeServerRecord(current, id));
-    setTopicViewByServer((current) => removeServerRecord(current, id));
-    setStreamingTopicsByServer((current) => removeServerRecord(current, id));
   }
 
   async function connectServer(server: ServerProfile) {
@@ -169,8 +208,8 @@ export function useServerLifecycleActions({
   async function disconnectServer(serverId: string) {
     await stopStreamingTopicsForServer(serverId, streamingTopicsByServer, stopConsume);
     removeServerConnectionState(serverId);
+    clearServerWorkspaceState(serverId);
     if (selectedServerId === serverId) {
-      clearSelectedServerWorkspace(serverId);
       const nextCluster = openClusterIds.find((id) => id !== serverId) ?? "";
       setSelectedServerId(nextCluster);
     }
@@ -222,15 +261,26 @@ export function useServerLifecycleActions({
     setOpenClusterIds((current) => removeId(current, serverId));
   }
 
-  function clearSelectedServerWorkspace(serverId: string) {
-    setTopics([]);
-    setBrokersByServer((current) => ({ ...current, [serverId]: [] }));
-    setGroups([]);
-    setOpenedTopicTabs([]);
-    setSelectedTopic("");
-    setTopicDetail(null);
-    setConsumeStates({});
-    setSplitConsumeStatesByServer((current) => ({ ...current, [serverId]: {} }));
+  function clearServerWorkspaceState(serverId: string) {
+    setTopicsByServer((current) => removeServerRecord(current, serverId));
+    setBrokersByServer((current) => removeServerRecord(current, serverId));
+    setGroupsByServer((current) => removeServerRecord(current, serverId));
+    setSelectedGroupByServer((current) => removeServerRecord(current, serverId));
+    setGroupLagByServer((current) => removeServerRecord(current, serverId));
+    setOpenedTopicTabsByServer((current) => removeServerRecord(current, serverId));
+    setPreviewTopicByServer((current) => removeServerRecord(current, serverId));
+    setSelectedTopicByServer((current) => removeServerRecord(current, serverId));
+    setTopicDetailByServer((current) => removeServerRecord(current, serverId));
+    setTopicDetailCacheByServer((current) => removeServerRecord(current, serverId));
+    setConsumeStatesByServer((current) => removeServerRecord(current, serverId));
+    setSplitConsumeStatesByServer((current) => removeServerRecord(current, serverId));
+    setViewByServer((current) => removeServerRecord(current, serverId));
+    setTopicViewByServer((current) => removeServerRecord(current, serverId));
+    setStreamingTopicsByServer((current) => removeServerRecord(current, serverId));
+    setSplitPaneForServer(serverId, null);
+    setActiveWorkspacePane("primary");
+    setActiveDragPayload(null);
+    setSplitDropSide(null);
     setStatus("Disconnected.");
   }
 }

@@ -15,7 +15,9 @@ export function useKafkaNavigationResourceState() {
     selectedTopicByServer: state.selectedTopicByServer,
     setSelectedTopicByServer: state.setSelectedTopicByServer,
     openedTopicTabsByServer: state.openedTopicTabsByServer,
-    setOpenedTopicTabsByServer: state.setOpenedTopicTabsByServer
+    setOpenedTopicTabsByServer: state.setOpenedTopicTabsByServer,
+    previewTopicByServer: state.previewTopicByServer,
+    setPreviewTopicByServer: state.setPreviewTopicByServer
   })));
 }
 

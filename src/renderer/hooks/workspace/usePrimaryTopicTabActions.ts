@@ -7,6 +7,7 @@ type PrimaryTopicTabActionsParams = {
   selectedServerId: string;
   selectedTopic: string;
   openedTopicTabs: string[];
+  previewTopic: string;
   splitPane: SplitPaneState | null;
   isTopicStreaming: (serverId: string, topic: string, pane: WorkspacePaneId) => boolean;
   stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
@@ -14,6 +15,7 @@ type PrimaryTopicTabActionsParams = {
   promoteSplitPaneToPrimary: () => Promise<boolean>;
   selectPrimaryTopic: (topic: string) => Promise<void>;
   setOpenedTopicTabs: (action: string[] | ((current: string[]) => string[])) => void;
+  setPreviewTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
   setSelectedTopic: (topic: string) => void;
   setTopicDetail: (detail: TopicDetail | null) => void;
   setViewByServer: Dispatch<SetStateAction<Record<string, View>>>;
@@ -23,6 +25,7 @@ export function usePrimaryTopicTabActions({
   selectedServerId,
   selectedTopic,
   openedTopicTabs,
+  previewTopic,
   splitPane,
   isTopicStreaming,
   stopConsume,
@@ -30,6 +33,7 @@ export function usePrimaryTopicTabActions({
   promoteSplitPaneToPrimary,
   selectPrimaryTopic,
   setOpenedTopicTabs,
+  setPreviewTopicByServer,
   setSelectedTopic,
   setTopicDetail,
   setViewByServer
@@ -38,17 +42,22 @@ export function usePrimaryTopicTabActions({
     if (isTopicStreaming(selectedServerId, topic, "primary")) {
       await stopConsume(selectedServerId, topic, "primary");
     }
-    const nextTabs = removeTopicTab(openedTopicTabs, topic);
+    const pinnedTabs = previewTopic ? openedTopicTabs.filter((item) => item !== previewTopic) : openedTopicTabs;
+    const nextTabs = previewTopic === topic ? pinnedTabs : removeTopicTab(pinnedTabs, topic);
+    const visibleNextTabs = previewTopic && previewTopic !== topic ? [...nextTabs, previewTopic] : nextTabs;
     setOpenedTopicTabs(nextTabs);
+    if (previewTopic === topic) {
+      setPreviewTopicByServer((current) => ({ ...current, [selectedServerId]: "" }));
+    }
     clearConsumeStateForPane(selectedServerId, topic, "primary");
-    if (nextTabs.length === 0 && splitPane?.serverId === selectedServerId) {
+    if (visibleNextTabs.length === 0 && splitPane?.serverId === selectedServerId) {
       await promoteSplitPaneToPrimary();
       return;
     }
     if (selectedTopic !== topic) {
       return;
     }
-    const nextTopic = getNextTopicAfterTabClose(selectedTopic, topic, nextTabs);
+    const nextTopic = getNextTopicAfterTabClose(selectedTopic, topic, visibleNextTabs);
     if (nextTopic) {
       await selectPrimaryTopic(nextTopic);
     } else {

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Star } from "lucide-react";
 import type { TopicSummary } from "../../../../shared/types";
 import { formatCount } from "../../../utils";
@@ -21,18 +21,43 @@ export function TopicListItem(props: {
   onDrop?: (event: React.DragEvent<HTMLButtonElement>) => void;
   onDragEnd?: (event: React.DragEvent<HTMLButtonElement>) => void;
 }) {
+  const clickTimerRef = useRef<number | null>(null);
   const classNames = [
     props.active ? "topic active" : "topic",
     props.dragging ? "dragging" : "",
     props.dropPosition ? `drop-${props.dropPosition}` : ""
   ].filter(Boolean).join(" ");
 
+  useEffect(() => () => {
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+    }
+  }, []);
+
+  function scheduleSelect() {
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+    }
+    clickTimerRef.current = window.setTimeout(() => {
+      clickTimerRef.current = null;
+      props.onSelect();
+    }, 180);
+  }
+
+  function openTopic() {
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    props.onOpen();
+  }
+
   return (
     <button
       className={classNames}
       draggable={props.draggable}
-      onClick={props.onSelect}
-      onDoubleClick={props.onOpen}
+      onClick={scheduleSelect}
+      onDoubleClick={openTopic}
       onContextMenu={props.onContextMenu}
       onDragStart={props.onDragStart}
       onDragOver={props.onDragOver}
@@ -41,7 +66,14 @@ export function TopicListItem(props: {
       onDragEnd={props.onDragEnd}
       title={`${props.topic.name} (${props.topic.partitions} partitions / RF ${props.topic.replicationFactor})`}
     >
-      <span className={props.favorite ? "topic-favorite favorite" : "topic-favorite"} onClick={(event) => { event.stopPropagation(); props.onToggleFavorite(); }} title={props.favorite ? "Remove favorite" : "Add favorite"}>
+      <span
+        className={props.favorite ? "topic-favorite favorite" : "topic-favorite"}
+        onClick={(event) => {
+          event.stopPropagation();
+          props.onToggleFavorite();
+        }}
+        title={props.favorite ? "Remove favorite" : "Add favorite"}
+      >
         <Star size={14} fill={props.favorite ? "currentColor" : "none"} />
       </span>
       <span className="topic-copy">

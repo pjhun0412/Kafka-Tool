@@ -20,6 +20,7 @@ export type WorkspaceControllerSplitParams = {
     | "isTopicStreaming"
     | "moveConsumeStateBetweenPanes"
     | "openedTopicTabs"
+    | "previewTopic"
     | "retargetLiveTopic"
     | "selectedServerId"
     | "selectedTopic"
@@ -28,6 +29,7 @@ export type WorkspaceControllerSplitParams = {
     | "setConsumeStatesByServer"
     | "setOpenedTopicTabs"
     | "setOpenedTopicTabsByServer"
+    | "setPreviewTopicByServer"
     | "setSelectedServerId"
     | "setSelectedTopic"
     | "setSelectedTopicByServer"
@@ -77,6 +79,7 @@ export function useWorkspaceControllerSplit({
       selectedServerId: state.selectedServerId,
       selectedTopic: state.selectedTopic,
       openedTopicTabs: state.openedTopicTabs,
+      previewTopic: state.previewTopic,
       splitPane: state.splitPane,
       splitConsumeStatesByServer: state.splitConsumeStatesByServer,
       topicDetailByServer: state.topicDetailByServer,
@@ -98,6 +101,7 @@ export function useWorkspaceControllerSplit({
       setActiveWorkspacePane: state.setActiveWorkspacePane,
       setSelectedServerId: state.setSelectedServerId,
       setOpenedTopicTabsByServer: state.setOpenedTopicTabsByServer,
+      setPreviewTopicByServer: state.setPreviewTopicByServer,
       setSelectedTopicByServer: state.setSelectedTopicByServer,
       setViewByServer: state.setViewByServer,
       setTopicViewByServer: state.setTopicViewByServer,
@@ -109,7 +113,6 @@ export function useWorkspaceControllerSplit({
   const {
     openSplitForTopic,
     moveSplitTopicToPrimary,
-    removePrimaryTopicTabAfterSplit,
     closeSplitPane,
     closeSplitTopicTab,
     promoteSplitPaneToPrimary
@@ -126,7 +129,6 @@ export function useWorkspaceControllerSplit({
       onCloseSplitPane: closeSplitPane,
       onOpenSplitFromPrimary: async (payload) => {
         await openSplitForTopic(payload.serverId, payload.topic);
-        await removePrimaryTopicTabAfterSplit(payload.topic);
       },
       onMoveSplitToPrimary: async (payload) => {
         await moveSplitTopicToPrimary(payload.topic);
@@ -138,7 +140,6 @@ export function useWorkspaceControllerSplit({
     showSplitView,
     openSplitForTopic,
     moveSplitTopicToPrimary,
-    removePrimaryTopicTabAfterSplit,
     closeSplitPane,
     closeSplitTopicTab,
     promoteSplitPaneToPrimary,

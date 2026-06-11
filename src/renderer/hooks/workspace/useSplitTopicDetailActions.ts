@@ -1,6 +1,7 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import type { KafkaApi, TopicDetail } from "../../../shared/types";
 import type { SplitPaneState, WorkspacePaneId } from "../../uiTypes";
+import { setPreviewTopicTab } from "../../workspaceState";
 import { workspaceMessages } from "../../workspaceMessages";
 
 type SplitTopicDetailActionsParams = {
@@ -40,6 +41,23 @@ export function useSplitTopicDetailActions({
     );
   }
 
+  function previewSplitDetail(serverId: string, topic: string, detail: TopicDetail) {
+    setSplitPane((current) => current && current.serverId === serverId
+      ? (() => {
+          const isPinnedTopic = current.topicTabs.includes(topic) && current.previewTopic !== topic;
+          return {
+          ...current,
+          topic,
+          topicTabs: isPinnedTopic ? current.topicTabs : setPreviewTopicTab(current.topicTabs, topic, current.previewTopic),
+          previewTopic: isPinnedTopic ? current.previewTopic : topic,
+          view: "info",
+          detail
+        };
+      })()
+      : current
+    );
+  }
+
   async function loadSplitTopicDetail(serverId: string, topic: string) {
     if (!kafkaApi || !topic) return;
     const detail = await runPaneTask(
@@ -64,8 +82,21 @@ export function useSplitTopicDetailActions({
     applySplitDetail(serverId, topic, detail);
   }
 
+  async function previewSplitTopicDetailSilent(serverId: string, topic: string, options: { force?: boolean } = {}) {
+    if (!kafkaApi || !topic) return;
+    const cachedDetail = options.force ? null : getCachedTopicDetail(serverId, topic);
+    if (cachedDetail) {
+      previewSplitDetail(serverId, topic, cachedDetail);
+      return;
+    }
+    const detail = await kafkaApi.getTopicDetail(serverId, topic);
+    cacheTopicDetail(serverId, detail);
+    previewSplitDetail(serverId, topic, detail);
+  }
+
   return {
     loadSplitTopicDetail,
-    loadSplitTopicDetailSilent
+    loadSplitTopicDetailSilent,
+    previewSplitTopicDetailSilent
   };
 }

@@ -33,6 +33,7 @@ export function PrimaryWorkspacePane(props: {
   isSelectedServerConnected: boolean;
   active: boolean;
   topicTabs: string[];
+  previewTopic: string;
   selectedTopic: string;
   view: View;
   detail: TopicDetail | null;
@@ -148,6 +149,7 @@ export function PrimaryWorkspacePane(props: {
             <OpenedTopicTabs
               topics={props.topicTabs}
               selectedTopic={props.selectedTopic}
+              previewTopic={props.previewTopic}
               hasAvroSchema={props.hasAvroSchema}
               onActivate={props.onActivate}
               onSelect={props.onTopic}

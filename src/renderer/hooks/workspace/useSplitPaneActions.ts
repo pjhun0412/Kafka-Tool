@@ -26,6 +26,7 @@ type SplitPaneActionsParams = {
   selectedServerId: string;
   selectedTopic: string;
   openedTopicTabs: string[];
+  previewTopic: string;
   splitPane: SplitPaneState | null;
   splitConsumeStatesByServer: ConsumeStatesByServer;
   topicDetailByServer: Record<string, TopicDetail | null>;
@@ -47,6 +48,7 @@ type SplitPaneActionsParams = {
   setActiveWorkspacePane: Dispatch<SetStateAction<WorkspacePaneId>>;
   setSelectedServerId: Dispatch<SetStateAction<string>>;
   setOpenedTopicTabsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setPreviewTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
   setSelectedTopicByServer: Dispatch<SetStateAction<Record<string, string>>>;
   setViewByServer: Dispatch<SetStateAction<Record<string, View>>>;
   setTopicViewByServer: Dispatch<SetStateAction<Record<string, Record<string, TopicWorkView>>>>;
@@ -59,6 +61,7 @@ export function useSplitPaneActions({
   selectedServerId,
   selectedTopic,
   openedTopicTabs,
+  previewTopic,
   splitPane,
   splitConsumeStatesByServer,
   topicDetailByServer,
@@ -80,6 +83,7 @@ export function useSplitPaneActions({
   setActiveWorkspacePane,
   setSelectedServerId,
   setOpenedTopicTabsByServer,
+  setPreviewTopicByServer,
   setSelectedTopicByServer,
   setViewByServer,
   setTopicViewByServer,
@@ -103,6 +107,7 @@ export function useSplitPaneActions({
       retargetLiveTopic
     });
     setSplitPane((current) => createSplitPaneForTopic(current, serverId, topic, nextView, existingDetail));
+    await removePrimaryTopicTabAfterSplit(topic);
     setActiveWorkspacePane("split");
     if (nextView === "info" && !existingDetail) {
       await loadSplitTopicDetailSilent(serverId, topic);
@@ -134,9 +139,13 @@ export function useSplitPaneActions({
   }
 
   async function removePrimaryTopicTabAfterSplit(topic: string) {
-    if (!openedTopicTabs.includes(topic)) return;
-    const nextTabs = removeTopicTab(openedTopicTabs, topic);
+    if (previewTopic !== topic && !openedTopicTabs.includes(topic)) return;
+    const pinnedTabs = previewTopic ? openedTopicTabs.filter((item) => item !== previewTopic) : openedTopicTabs;
+    const nextTabs = previewTopic === topic ? pinnedTabs : removeTopicTab(pinnedTabs, topic);
     setOpenedTopicTabs(nextTabs);
+    if (previewTopic === topic) {
+      setPreviewTopicByServer((current) => ({ ...current, [selectedServerId]: "" }));
+    }
     if (selectedTopic !== topic) return;
     const nextTopic = getNextTopicAfterTabClose(selectedTopic, topic, nextTabs);
     if (nextTopic) {
@@ -198,6 +207,7 @@ export function useSplitPaneActions({
     const { nextView } = getSplitPanePromoteTarget(pane, getTopicViewFor);
     setSelectedServerId(pane.serverId);
     setOpenedTopicTabsByServer((current) => mergeSplitTopicTabsByServer(current, pane));
+    setPreviewTopicByServer((current) => ({ ...current, [pane.serverId]: pane.previewTopic ?? "" }));
     setSelectedTopicByServer((current) => ({ ...current, [pane.serverId]: nextTopic }));
     setViewByServer((current) => ({ ...current, [pane.serverId]: nextView }));
     setTopicViewByServer((current) => mergeSplitTopicViewsByServer(current, pane, nextTopic, nextView, getTopicViewFor));
@@ -214,7 +224,6 @@ export function useSplitPaneActions({
   return {
     openSplitForTopic,
     moveSplitTopicToPrimary,
-    removePrimaryTopicTabAfterSplit,
     closeSplitPane,
     closeSplitTopicTab,
     promoteSplitPaneToPrimary

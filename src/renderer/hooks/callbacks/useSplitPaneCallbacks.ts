@@ -1,7 +1,7 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
 import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
-import type { OffsetOrder, SplitPaneState, TopicConsumeState, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
+import type { OffsetOrder, SplitPaneState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import { createSplitConsumeCallbacks, createSplitProduceCallbacks } from "./splitPaneCallbackGroups";
 
 export type ProduceDraftPatch = { key?: string; headers?: string; value?: string };
@@ -15,7 +15,7 @@ export type SplitPaneCallbacksParams = {
   startSplitPaneDrag: (event: React.DragEvent) => void;
   clearDragPayload: () => void;
   showSplitView: (view: View) => void;
-  activateSplitTopic: (topic: string) => Promise<void>;
+  activateSplitTopic: (topic: string, view?: TopicWorkView, options?: { addToTabs?: boolean; preservePreview?: boolean; silent?: boolean }) => Promise<void>;
   closeSplitTopicTab: (topic: string) => Promise<void>;
   startTopicDrag: (event: React.DragEvent, serverId: string, topic: string, source: WorkspacePaneId) => void;
   refreshSplitPaneView: (pane: SplitPaneState, state: TopicConsumeState) => Promise<void>;
@@ -88,7 +88,7 @@ export function useSplitPaneCallbacks({
     view: showSplitView,
     selectTopic: (topic: string) => {
       setActiveWorkspacePane("split");
-      void activateSplitTopic(topic);
+      void activateSplitTopic(topic, undefined, { preservePreview: true, silent: true });
     },
     openTopic: (topic: string) => {
       setActiveWorkspacePane("split");

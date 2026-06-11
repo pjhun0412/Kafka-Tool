@@ -88,6 +88,7 @@ export function useWorkspaceAppController() {
   const {
     view,
     openedTopicTabs,
+    previewTopic,
     topicDetail,
     consumeStates,
     selectedDefaultConsumeState,
@@ -187,6 +188,7 @@ export function useWorkspaceAppController() {
     state: controllerState,
     derived: {
       openedTopicTabs,
+      previewTopic,
       selectedTopic,
       getTopicViewFor,
       getCachedTopicDetail,
@@ -233,6 +235,7 @@ export function useWorkspaceAppController() {
     derived: {
       isQuickSearchOpen,
       openedTopicTabs,
+      previewTopic,
       quickSearchIndex,
       quickSearchResults,
       selectedConsumeState,

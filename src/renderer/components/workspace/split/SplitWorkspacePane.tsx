@@ -103,6 +103,7 @@ export function SplitWorkspacePane(props: {
             <OpenedTopicTabs
               topics={props.pane.topicTabs}
               selectedTopic={props.pane.topic}
+              previewTopic={props.pane.previewTopic}
               hasAvroSchema={(topic) => Boolean(props.manualAvroSchemas[topic])}
               onActivate={props.onActivate}
               onSelect={props.onTopic}

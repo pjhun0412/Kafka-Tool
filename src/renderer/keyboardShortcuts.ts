@@ -1,4 +1,5 @@
 import type { AppPreferences } from "../shared/types";
+import type { TranslationKey } from "./i18n";
 
 export type KeyboardShortcutId =
   | "quickSearch"
@@ -13,8 +14,8 @@ export type KeyboardShortcutMap = Record<KeyboardShortcutId, string>;
 
 export type KeyboardShortcutDefinition = {
   id: KeyboardShortcutId;
-  labelKey: string;
-  descriptionKey: string;
+  labelKey: TranslationKey;
+  descriptionKey: TranslationKey;
   defaultBinding: string;
 };
 

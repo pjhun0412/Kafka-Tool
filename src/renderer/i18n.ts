@@ -727,7 +727,9 @@ function applyParams(template: string, params: Record<string, string>) {
   return template.replace(/\{(\w+)\}/g, (_match, key: string) => params[key] ?? "");
 }
 
-export function t(language: AppLanguage, key: keyof typeof messages.en, params: Record<string, string> = {}) {
+export type TranslationKey = keyof typeof messages.en;
+
+export function t(language: AppLanguage, key: TranslationKey, params: Record<string, string> = {}) {
   return applyParams(messages[language][key] ?? messages.en[key], params);
 }
 

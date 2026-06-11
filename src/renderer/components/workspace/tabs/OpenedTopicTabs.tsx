@@ -6,6 +6,7 @@ import { t } from "../../../i18n";
 export function OpenedTopicTabs(props: {
   topics: string[];
   selectedTopic: string;
+  previewTopic?: string;
   hasAvroSchema: (topic: string) => boolean;
   onActivate: () => void;
   onSelect: (topic: string) => void;
@@ -22,7 +23,10 @@ export function OpenedTopicTabs(props: {
         props.topics.map((topic) => (
           <button
             key={topic}
-            className={topic === props.selectedTopic ? "topic-tab active" : "topic-tab"}
+            className={[
+              topic === props.selectedTopic ? "topic-tab active" : "topic-tab",
+              topic === props.previewTopic ? "preview" : ""
+            ].filter(Boolean).join(" ")}
             draggable
             title={topic}
             onMouseDown={(event) => {

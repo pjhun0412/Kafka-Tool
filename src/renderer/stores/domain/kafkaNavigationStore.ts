@@ -7,10 +7,12 @@ type KafkaNavigationStore = {
   topicViewByServer: Record<string, Record<string, TopicWorkView>>;
   selectedTopicByServer: Record<string, string>;
   openedTopicTabsByServer: Record<string, string[]>;
+  previewTopicByServer: Record<string, string>;
   setViewByServer: (value: SetValue<Record<string, View>>) => void;
   setTopicViewByServer: (value: SetValue<Record<string, Record<string, TopicWorkView>>>) => void;
   setSelectedTopicByServer: (value: SetValue<Record<string, string>>) => void;
   setOpenedTopicTabsByServer: (value: SetValue<Record<string, string[]>>) => void;
+  setPreviewTopicByServer: (value: SetValue<Record<string, string>>) => void;
 };
 
 export const useKafkaNavigationStore = create<KafkaNavigationStore>((set) => ({
@@ -18,6 +20,7 @@ export const useKafkaNavigationStore = create<KafkaNavigationStore>((set) => ({
   topicViewByServer: {},
   selectedTopicByServer: {},
   openedTopicTabsByServer: {},
+  previewTopicByServer: {},
   setViewByServer: (viewByServer) => set((current) => ({ viewByServer: resolveValue(viewByServer, current.viewByServer) })),
   setTopicViewByServer: (topicViewByServer) => set((current) => ({
     topicViewByServer: resolveValue(topicViewByServer, current.topicViewByServer)
@@ -27,5 +30,8 @@ export const useKafkaNavigationStore = create<KafkaNavigationStore>((set) => ({
   })),
   setOpenedTopicTabsByServer: (openedTopicTabsByServer) => set((current) => ({
     openedTopicTabsByServer: resolveValue(openedTopicTabsByServer, current.openedTopicTabsByServer)
+  })),
+  setPreviewTopicByServer: (previewTopicByServer) => set((current) => ({
+    previewTopicByServer: resolveValue(previewTopicByServer, current.previewTopicByServer)
   }))
 }));

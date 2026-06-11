@@ -10,7 +10,9 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     selectedTopicByServer,
     setSelectedTopicByServer,
     openedTopicTabsByServer,
-    setOpenedTopicTabsByServer
+    setOpenedTopicTabsByServer,
+    previewTopicByServer,
+    setPreviewTopicByServer
   } = resourceState.navigation;
   const {
     topicsByServer,
@@ -51,6 +53,7 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     groupsByServer,
     manualAvroSchemasByServer,
     openedTopicTabsByServer,
+    previewTopicByServer,
     preferencesLoaded,
     selectedGroupByServer,
     selectedTopicByServer,
@@ -61,6 +64,7 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     setGroupsByServer,
     setManualAvroSchemasByServer,
     setOpenedTopicTabsByServer,
+    setPreviewTopicByServer,
     setPreferencesLoaded,
     setSelectedGroupByServer,
     setSelectedTopicByServer,
