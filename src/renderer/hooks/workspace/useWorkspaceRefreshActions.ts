@@ -31,7 +31,7 @@ type WorkspaceRefreshActionsParams = {
   loadSplitTopicDetailSilent: (serverId: string, topic: string, options?: { force?: boolean }) => Promise<void>;
   isTopicStreaming: (serverId: string, topic: string, pane: WorkspacePaneId) => boolean;
   stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
-  getDefaultConsumeState: (serverId?: string) => TopicConsumeState;
+  getDefaultConsumeState: (serverId?: string, topic?: string) => TopicConsumeState;
   updateSelectedConsumeState: (patch: Partial<TopicConsumeState>) => void;
   updateConsumeStateFor: (serverId: string, topic: string, patch: Partial<TopicConsumeState>, pane?: WorkspacePaneId) => void;
   updateProduceDraftFor: (serverId: string, topic: string, patch: ProduceDraft) => void;
@@ -179,7 +179,7 @@ export function useWorkspaceRefreshActions({
       if (isTopicStreaming(pane.serverId, pane.topic, "split")) {
         await stopConsume(pane.serverId, pane.topic, "split");
       }
-      updateConsumeStateFor(pane.serverId, pane.topic, buildConsumeResetState(getDefaultConsumeState(pane.serverId), state), "split");
+      updateConsumeStateFor(pane.serverId, pane.topic, buildConsumeResetState(getDefaultConsumeState(pane.serverId, pane.topic), state), "split");
       setStatus(workspaceMessages.consumeReset);
       showPaneToast("split", workspaceMessages.consumeReset, "success", { serverId: pane.serverId, topic: pane.topic });
       return;

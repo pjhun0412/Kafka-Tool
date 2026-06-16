@@ -8,7 +8,7 @@ type KafkaConsumeEventsParams = {
   kafkaApi: KafkaApi | undefined;
   selectedServerId: string;
   consumeDefaultsByServer: Record<string, Partial<TopicConsumeState>>;
-  getDefaultConsumeState: (serverId?: string) => TopicConsumeState;
+  getDefaultConsumeState: (serverId?: string, topic?: string) => TopicConsumeState;
   getMessageTarget: (serverId: string, topic: string, consumerId?: WorkspacePaneId) => WorkspacePaneId;
   mergeConsumeState: (
     states: ConsumeStatesByServer,
@@ -43,7 +43,7 @@ export function useKafkaConsumeEvents({
       const targetPane = getMessageTarget(serverId, message.topic, consumerId);
       const applyMessage = (current: ConsumeStatesByServer) => {
         const serverStates = current[serverId] ?? {};
-        const previous = serverStates[message.topic] ?? getDefaultConsumeState(serverId);
+        const previous = serverStates[message.topic] ?? getDefaultConsumeState(serverId, message.topic);
         const maxMessages = previous.maxMessages;
         return mergeConsumeState(current, serverId, message.topic, {
           messages: [message, ...previous.messages].slice(0, maxMessages),

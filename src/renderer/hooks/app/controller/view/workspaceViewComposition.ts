@@ -80,6 +80,8 @@ export function useWorkspaceControllerViewComposition(params: {
     state,
     language,
     applyImportedSettings: setup.settingsTransferActions.applyImportedSettings,
+    importSettings: setup.settingsTransferActions.importSettings,
+    exportSettings: setup.settingsTransferActions.exportSettings,
     selectedServerResources: {
       refreshTopics: resources.refreshTopics,
       refreshBrokers: resources.refreshBrokers,

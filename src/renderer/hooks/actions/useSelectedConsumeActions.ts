@@ -11,6 +11,7 @@ type SelectedConsumeActionsParams = {
       | Record<string, TopicConsumeState>
       | ((current: Record<string, TopicConsumeState>) => Record<string, TopicConsumeState>)
   ) => void;
+  rememberViewerPreference: (serverId: string, topic: string, patch: Partial<TopicConsumeState>) => void;
   setConsumeDefaultsByServer: Dispatch<SetStateAction<AppPreferences["consumeDefaultsByServer"]>>;
 };
 
@@ -19,10 +20,12 @@ export function useSelectedConsumeActions({
   selectedTopic,
   selectedDefaultConsumeState,
   setConsumeStates,
+  rememberViewerPreference,
   setConsumeDefaultsByServer
 }: SelectedConsumeActionsParams) {
   function updateSelectedConsumeState(patch: Partial<TopicConsumeState>) {
     if (!selectedTopic) return;
+    rememberViewerPreference(selectedServerId, selectedTopic, patch);
     setConsumeStates((current) => ({
       ...current,
       [selectedTopic]: {

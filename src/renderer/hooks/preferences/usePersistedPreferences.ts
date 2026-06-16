@@ -3,12 +3,17 @@ import type { AppPreferences, KafkaApi, ManualAvroSchema } from "../../../shared
 import { INTER_FONT_FAMILY, LEGACY_DEFAULT_FONT_FAMILY, LEGACY_INTER_FONT_FAMILY } from "../../fontConfig";
 import { normalizeLanguagePreference, type LanguagePreference } from "../../i18n";
 import { useReleaseNotesStore } from "../../stores/ui/releaseNotesStore";
+import { pruneViewerPreferences, type ViewerPreferences } from "../../viewerPreferences";
 
 type PersistedPreferenceParams = {
   kafkaApi: KafkaApi | undefined;
   setStatus: (status: string) => void;
   favoriteTopicsByServer: Record<string, string[]>;
   setFavoriteTopicsByServer: (value: Record<string, string[]>) => void;
+  consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
+  setConsumeDefaults: (value: NonNullable<AppPreferences["consumeDefaults"]>) => void;
+  viewerPreferences: Required<ViewerPreferences>;
+  setViewerPreferences: (value: Required<ViewerPreferences>) => void;
   consumeDefaultsByServer: AppPreferences["consumeDefaultsByServer"];
   setConsumeDefaultsByServer: (value: AppPreferences["consumeDefaultsByServer"]) => void;
   manualAvroSchemasByServer: Record<string, Record<string, ManualAvroSchema>>;
@@ -33,6 +38,8 @@ type PersistedPreferenceParams = {
   setExportFormatTemplate: (template: string) => void;
   keyboardShortcuts: NonNullable<AppPreferences["keyboardShortcuts"]>;
   setKeyboardShortcuts: (shortcuts: NonNullable<AppPreferences["keyboardShortcuts"]>) => void;
+  logRetentionDays: number;
+  setLogRetentionDays: (days: number) => void;
   appVersion: string;
   setAppVersion: (version: string) => void;
   lastSeenReleaseVersion: string;
@@ -50,6 +57,10 @@ export function usePersistedPreferences({
   setStatus,
   favoriteTopicsByServer,
   setFavoriteTopicsByServer,
+  consumeDefaults,
+  setConsumeDefaults,
+  viewerPreferences,
+  setViewerPreferences,
   consumeDefaultsByServer,
   setConsumeDefaultsByServer,
   manualAvroSchemasByServer,
@@ -74,6 +85,8 @@ export function usePersistedPreferences({
   setExportFormatTemplate,
   keyboardShortcuts,
   setKeyboardShortcuts,
+  logRetentionDays,
+  setLogRetentionDays,
   appVersion,
   setAppVersion,
   lastSeenReleaseVersion,
@@ -88,6 +101,8 @@ export function usePersistedPreferences({
     void Promise.all([kafkaApi.loadPreferences(), kafkaApi.getAppVersion()]).then(([preferences, version]) => {
       setAppVersion(version);
       setFavoriteTopicsByServer(preferences.favoriteTopicsByServer ?? {});
+      setConsumeDefaults(preferences.consumeDefaults ?? {});
+      setViewerPreferences(pruneViewerPreferences(preferences.viewerPreferences));
       setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
       setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
       if (typeof preferences.layout?.sidebarWidth === "number") {
@@ -113,6 +128,9 @@ export function usePersistedPreferences({
         setExportFormatTemplate(preferences.exportFormatTemplate);
       }
       setKeyboardShortcuts(preferences.keyboardShortcuts ?? {});
+      if (typeof preferences.diagnostics?.logRetentionDays === "number") {
+        setLogRetentionDays(preferences.diagnostics.logRetentionDays);
+      }
       const seenVersion = preferences.releaseNotes?.lastSeenVersion ?? "";
       setLastSeenReleaseVersion(seenVersion);
       if (version && seenVersion !== version) {
@@ -125,6 +143,8 @@ export function usePersistedPreferences({
     });
   }, [
     kafkaApi,
+    setConsumeDefaults,
+    setViewerPreferences,
     setConsumeDefaultsByServer,
     setExportFormatTemplate,
     setFavoriteTopicsByServer,
@@ -133,6 +153,7 @@ export function usePersistedPreferences({
     setAppVersion,
     setLanguage,
     setKeyboardShortcuts,
+    setLogRetentionDays,
     setLastSeenReleaseVersion,
     setManualAvroSchemasByServer,
     setMessagePaneHeight,
@@ -150,6 +171,8 @@ export function usePersistedPreferences({
     }
     void kafkaApi.savePreferences({
       favoriteTopicsByServer,
+      consumeDefaults,
+      viewerPreferences: pruneViewerPreferences(viewerPreferences),
       consumeDefaultsByServer,
       manualAvroSchemasByServer,
       layout: {
@@ -164,6 +187,9 @@ export function usePersistedPreferences({
         language
       },
       keyboardShortcuts,
+      diagnostics: {
+        logRetentionDays
+      },
       releaseNotes: {
         lastSeenVersion: lastSeenReleaseVersion
       },
@@ -173,6 +199,8 @@ export function usePersistedPreferences({
     kafkaApi,
     preferencesLoaded,
     favoriteTopicsByServer,
+    consumeDefaults,
+    viewerPreferences,
     consumeDefaultsByServer,
     manualAvroSchemasByServer,
     sidebarWidth,
@@ -183,6 +211,7 @@ export function usePersistedPreferences({
     fontSize,
     language,
     keyboardShortcuts,
+    logRetentionDays,
     lastSeenReleaseVersion,
     exportFormatTemplate,
     setStatus

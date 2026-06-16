@@ -1,4 +1,4 @@
-import { useElectronMenuEvents, usePersistedPreferences } from "../../preferences";
+import { useElectronMenuEvents, usePersistedPreferences, useRendererErrorLogging } from "../../preferences";
 import { useServerBootstrap, useServerHealthMonitor } from "../../ui";
 import { useKafkaConsumeEvents, useSelectedServerResources } from "../../workspace";
 
@@ -14,6 +14,7 @@ type AppRuntimeEffectsParams = {
 export function useAppRuntimeEffects(params: AppRuntimeEffectsParams) {
   useServerBootstrap(params.serverBootstrap);
   usePersistedPreferences(params.persistedPreferences);
+  useRendererErrorLogging(params.electronMenuEvents.kafkaApi);
   useServerHealthMonitor(params.serverHealthMonitor);
   useElectronMenuEvents(params.electronMenuEvents);
   useKafkaConsumeEvents(params.kafkaConsumeEvents);

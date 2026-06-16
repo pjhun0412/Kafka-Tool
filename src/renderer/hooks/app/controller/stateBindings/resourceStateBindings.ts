@@ -36,6 +36,10 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     setGroupLagByServer
   } = resourceState.consumerGroups;
   const {
+    consumeDefaults,
+    setConsumeDefaults,
+    viewerPreferences,
+    setViewerPreferences,
     consumeDefaultsByServer,
     setConsumeDefaultsByServer,
     manualAvroSchemasByServer,
@@ -47,6 +51,8 @@ export function createResourceStateBindings(appState: AppStateComposition) {
 
   return {
     brokersByServer,
+    consumeDefaults,
+    viewerPreferences,
     consumeDefaultsByServer,
     favoriteTopicsByServer,
     groupLagByServer,
@@ -58,6 +64,8 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     selectedGroupByServer,
     selectedTopicByServer,
     setBrokersByServer,
+    setConsumeDefaults,
+    setViewerPreferences,
     setConsumeDefaultsByServer,
     setFavoriteTopicsByServer,
     setGroupLagByServer,

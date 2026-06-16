@@ -69,6 +69,7 @@ export function useWorkspaceControllerInteractions({
       selectedTopic: consume.selectedTopic,
       selectedDefaultConsumeState: consume.selectedDefaultConsumeState,
       setConsumeStates: consume.setConsumeStates,
+      rememberViewerPreference: consume.rememberViewerPreference,
       setConsumeDefaultsByServer: consume.setConsumeDefaultsByServer
     },
     workspaceRefresh: {

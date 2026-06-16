@@ -2692,6 +2692,14 @@
     @apply text-[12px] font-bold leading-5 text-slate-400;
   }
 
+  .settings-grid.two-column {
+    @apply grid-cols-1 md:grid-cols-2;
+  }
+
+  .preferences-modal .setting-card select {
+    @apply h-9 min-h-9;
+  }
+
   .shortcut-list {
     @apply grid gap-2;
   }
@@ -2930,6 +2938,43 @@
 
   .preferences-modal .modal-actions .primary {
     @apply bg-[#007acc] text-white shadow-[0_8px_18px_rgba(0,122,204,0.2)] hover:bg-[#0e8bd8];
+  }
+
+  .settings-transfer-modal {
+    width: min(520px, calc(100vw - 48px));
+  }
+
+  .settings-transfer-description,
+  .settings-transfer-help {
+    @apply m-0 text-[13px] leading-5 text-slate-500;
+  }
+
+  .settings-transfer-description {
+    @apply mb-4;
+  }
+
+  .settings-transfer-body {
+    @apply grid gap-3;
+  }
+
+  .settings-transfer-checkbox {
+    @apply flex items-center gap-2 text-sm font-extrabold text-ink;
+  }
+
+  .settings-transfer-passwords {
+    @apply grid gap-3;
+  }
+
+  .settings-transfer-error {
+    @apply mt-3 text-xs font-extrabold text-red-400;
+  }
+
+  .inline-setting-row {
+    @apply mt-2 flex items-center gap-2;
+  }
+
+  .inline-setting-row input {
+    @apply max-w-[120px];
   }
 
   .toast {

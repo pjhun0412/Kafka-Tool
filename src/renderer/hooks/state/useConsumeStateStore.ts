@@ -3,6 +3,11 @@ import { useShallow } from "zustand/react/shallow";
 import { emptyConsumeState, type TopicConsumeState, type WorkspacePaneId } from "../../uiTypes";
 import { useConsumeStateZustandStore } from "../../stores/domain/consumeStateStore";
 import {
+  getViewerPreferenceOverride,
+  updateTopicViewerPreference,
+  type ViewerPreferences
+} from "../../viewerPreferences";
+import {
   getTopicConsumeState,
   removeTopicConsumeState,
   removeTopicConsumeStates,
@@ -12,10 +17,19 @@ import {
 
 type ConsumeStateStoreParams = {
   selectedServerId: string;
+  consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
+  viewerPreferences: Required<ViewerPreferences>;
+  setViewerPreferences: (value: Required<ViewerPreferences> | ((current: Required<ViewerPreferences>) => Required<ViewerPreferences>)) => void;
   consumeDefaultsByServer: AppPreferences["consumeDefaultsByServer"];
 };
 
-export function useConsumeStateStore({ selectedServerId, consumeDefaultsByServer }: ConsumeStateStoreParams) {
+export function useConsumeStateStore({
+  selectedServerId,
+  consumeDefaults,
+  viewerPreferences,
+  setViewerPreferences,
+  consumeDefaultsByServer
+}: ConsumeStateStoreParams) {
   const {
     consumeStatesByServer,
     setConsumeStatesByServer,
@@ -28,12 +42,30 @@ export function useConsumeStateStore({ selectedServerId, consumeDefaultsByServer
     setSplitConsumeStatesByServer: state.setSplitConsumeStatesByServer
   })));
 
-  function getDefaultConsumeState(serverId = selectedServerId): TopicConsumeState {
+  function getConsumeBaseline(serverId = selectedServerId): TopicConsumeState {
     return {
       ...emptyConsumeState,
+      ...consumeDefaults,
       ...(consumeDefaultsByServer[serverId] ?? {}),
       mode: "offset"
     };
+  }
+
+  function getDefaultConsumeState(serverId = selectedServerId, topic = ""): TopicConsumeState {
+    return {
+      ...getConsumeBaseline(serverId),
+      ...getViewerPreferenceOverride(viewerPreferences, serverId, topic)
+    };
+  }
+
+  function rememberViewerPreference(serverId: string, topic: string, patch: Partial<TopicConsumeState>) {
+    setViewerPreferences((current) => updateTopicViewerPreference({
+      current,
+      serverId,
+      topic,
+      baseline: getConsumeBaseline(serverId),
+      patch
+    }));
   }
 
   function setConsumeStates(action: Record<string, TopicConsumeState> | ((current: Record<string, TopicConsumeState>) => Record<string, TopicConsumeState>)) {
@@ -52,7 +84,7 @@ export function useConsumeStateStore({ selectedServerId, consumeDefaultsByServer
     patch: Partial<TopicConsumeState>
   ) {
     const serverStates = current[serverId] ?? {};
-    const previous = serverStates[topic] ?? getDefaultConsumeState(serverId);
+    const previous = serverStates[topic] ?? getDefaultConsumeState(serverId, topic);
     return setTopicConsumeState(current, serverId, topic, {
       ...previous,
       ...patch
@@ -60,6 +92,7 @@ export function useConsumeStateStore({ selectedServerId, consumeDefaultsByServer
   }
 
   function updateConsumeStateFor(serverId: string, topic: string, patch: Partial<TopicConsumeState>, pane: WorkspacePaneId = "primary") {
+    rememberViewerPreference(serverId, topic, patch);
     if (pane === "split") {
       setSplitConsumeStatesByServer((current) => mergeConsumeState(current, serverId, topic, patch));
       return;
@@ -101,6 +134,7 @@ export function useConsumeStateStore({ selectedServerId, consumeDefaultsByServer
     getDefaultConsumeState,
     setConsumeStates,
     mergeConsumeState,
+    rememberViewerPreference,
     updateConsumeStateFor,
     moveConsumeStateBetweenPanes,
     clearConsumeStateForPane,

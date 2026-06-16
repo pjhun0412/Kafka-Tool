@@ -1,5 +1,5 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
-import type { AppKeyboardShortcutPreferences, ServerProfile, TopicCreateRequest } from "../../../shared/types";
+import type { AppKeyboardShortcutPreferences, AppPreferences, ServerProfile, TopicCreateRequest } from "../../../shared/types";
 import type { AppLanguage, LanguagePreference } from "../../i18n";
 import type { KeyboardShortcutMap } from "../../keyboardShortcuts";
 import type { QuickSearchResult, QuickSearchScopedQuery } from "../../quickSearch";
@@ -29,6 +29,9 @@ type WorkspaceOverlaysProps = {
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
+  consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
+  viewerPreferenceRetentionDays: number;
+  logRetentionDays: number;
   keyboardShortcuts: KeyboardShortcutMap;
   appVersion: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
@@ -36,6 +39,9 @@ type WorkspaceOverlaysProps = {
   onFontSize: (fontSize: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
+  onConsumeDefaults: (defaults: NonNullable<AppPreferences["consumeDefaults"]>) => void;
+  onViewerPreferenceRetentionDays: (days: number) => void;
+  onLogRetentionDays: (days: number) => void;
   onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
   onLastSeenReleaseVersion: (version: string) => void;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
@@ -85,6 +91,9 @@ export function WorkspaceOverlays({
   language,
   resolvedLanguage,
   exportFormatTemplate,
+  consumeDefaults,
+  viewerPreferenceRetentionDays,
+  logRetentionDays,
   keyboardShortcuts,
   appVersion,
   manualAvroSchemaRows,
@@ -92,6 +101,9 @@ export function WorkspaceOverlays({
   onFontSize,
   onLanguage,
   onExportFormatTemplate,
+  onConsumeDefaults,
+  onViewerPreferenceRetentionDays,
+  onLogRetentionDays,
   onKeyboardShortcuts,
   onLastSeenReleaseVersion,
   onOpenManualAvroSchema,
@@ -141,6 +153,9 @@ export function WorkspaceOverlays({
         language={language}
         resolvedLanguage={resolvedLanguage}
         exportFormatTemplate={exportFormatTemplate}
+        consumeDefaults={consumeDefaults}
+        viewerPreferenceRetentionDays={viewerPreferenceRetentionDays}
+        logRetentionDays={logRetentionDays}
         keyboardShortcuts={keyboardShortcuts}
         appVersion={appVersion}
         manualAvroSchemaRows={manualAvroSchemaRows}
@@ -148,6 +163,9 @@ export function WorkspaceOverlays({
         onFontSize={onFontSize}
         onLanguage={onLanguage}
         onExportFormatTemplate={onExportFormatTemplate}
+        onConsumeDefaults={onConsumeDefaults}
+        onViewerPreferenceRetentionDays={onViewerPreferenceRetentionDays}
+        onLogRetentionDays={onLogRetentionDays}
         onKeyboardShortcuts={onKeyboardShortcuts}
         onLastSeenReleaseVersion={onLastSeenReleaseVersion}
         onOpenManualAvroSchema={onOpenManualAvroSchema}

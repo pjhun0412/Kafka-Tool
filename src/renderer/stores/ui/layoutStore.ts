@@ -21,6 +21,7 @@ type LayoutStore = {
   language: LanguagePreference;
   exportFormatTemplate: string;
   keyboardShortcuts: KeyboardShortcutMap;
+  logRetentionDays: number;
   appVersion: string;
   lastSeenReleaseVersion: string;
   setSidebarWidth: (value: SetValue<number>) => void;
@@ -32,6 +33,7 @@ type LayoutStore = {
   setLanguage: (value: SetValue<LanguagePreference>) => void;
   setExportFormatTemplate: (value: SetValue<string>) => void;
   setKeyboardShortcuts: (value: SetValue<AppKeyboardShortcutPreferences>) => void;
+  setLogRetentionDays: (value: SetValue<number>) => void;
   setAppVersion: (value: SetValue<string>) => void;
   setLastSeenReleaseVersion: (value: SetValue<string>) => void;
 };
@@ -50,6 +52,7 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   language: DEFAULT_LANGUAGE,
   exportFormatTemplate: DEFAULT_EXPORT_FORMAT_TEMPLATE,
   keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
+  logRetentionDays: 14,
   appVersion: "",
   lastSeenReleaseVersion: "",
   setSidebarWidth: (sidebarWidth) => set((current) => ({ sidebarWidth: resolveValue(sidebarWidth, current.sidebarWidth) })),
@@ -64,6 +67,9 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   })),
   setKeyboardShortcuts: (keyboardShortcuts) => set((current) => ({
     keyboardShortcuts: normalizeKeyboardShortcutMap(resolveValue(keyboardShortcuts, current.keyboardShortcuts))
+  })),
+  setLogRetentionDays: (logRetentionDays) => set((current) => ({
+    logRetentionDays: Math.min(365, Math.max(1, Math.round(resolveValue(logRetentionDays, current.logRetentionDays) || 14)))
   })),
   setAppVersion: (appVersion) => set((current) => ({
     appVersion: resolveValue(appVersion, current.appVersion)

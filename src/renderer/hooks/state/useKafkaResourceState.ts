@@ -56,6 +56,10 @@ export function useKafkaConsumerGroupResourceState() {
 
 export function useKafkaPreferenceResourceState() {
   return useKafkaPreferenceStore(useShallow((state) => ({
+    consumeDefaults: state.consumeDefaults,
+    setConsumeDefaults: state.setConsumeDefaults,
+    viewerPreferences: state.viewerPreferences,
+    setViewerPreferences: state.setViewerPreferences,
     consumeDefaultsByServer: state.consumeDefaultsByServer,
     setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
     manualAvroSchemasByServer: state.manualAvroSchemasByServer,

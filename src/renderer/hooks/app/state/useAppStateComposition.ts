@@ -27,6 +27,9 @@ export function useAppStateComposition() {
   const resources = useAppResourceState();
   const consumeState = useConsumeStateStore({
     selectedServerId: serverCluster.selectedServerId,
+    consumeDefaults: resources.preferences.consumeDefaults,
+    viewerPreferences: resources.preferences.viewerPreferences,
+    setViewerPreferences: resources.preferences.setViewerPreferences,
     consumeDefaultsByServer: resources.preferences.consumeDefaultsByServer
   });
   const produceDrafts = useProduceDraftStore();

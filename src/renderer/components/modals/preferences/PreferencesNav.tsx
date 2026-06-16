@@ -38,6 +38,12 @@ export function PreferencesNav(props: {
               <small>{t(language, "preferences.nav.languageHelp")}</small>
             </button>
           )}
+          {(!props.collapsedGroups.application || props.normalizedQuery) && props.matches.pages.has("diagnostics") && (
+            <button className={props.activePage === "diagnostics" ? "active child" : "child"} onClick={() => props.onActivePage("diagnostics")}>
+              <span>Diagnostics</span>
+              <small>{language === "ko" ? "로그 보관 및 오류 분석" : "Logs and troubleshooting"}</small>
+            </button>
+          )}
         </div>
       )}
       {props.matches.editor && (
@@ -55,6 +61,19 @@ export function PreferencesNav(props: {
             <button className={props.activePage === "keyboard-shortcuts" ? "active child" : "child"} onClick={() => props.onActivePage("keyboard-shortcuts")}>
               <span>{t(language, "preferences.nav.shortcuts")}</span>
               <small>{t(language, "preferences.nav.shortcutsHelp")}</small>
+            </button>
+          )}
+        </div>
+      )}
+      {props.matches.consume && (
+        <div className="preferences-nav-group">
+          <button className="preferences-nav-parent" type="button" onClick={() => props.onToggleGroup("consume")} aria-expanded={!props.collapsedGroups.consume}>
+            {props.collapsedGroups.consume && !props.normalizedQuery ? <ChevronRight size={14} /> : <ChevronDown size={14} />} Consume
+          </button>
+          {(!props.collapsedGroups.consume || props.normalizedQuery) && props.matches.pages.has("viewer-defaults") && (
+            <button className={props.activePage === "viewer-defaults" ? "active child" : "child"} onClick={() => props.onActivePage("viewer-defaults")}>
+              <span>{t(language, "preferences.nav.viewerDefaults")}</span>
+              <small>{t(language, "preferences.nav.viewerDefaultsHelp")}</small>
             </button>
           )}
         </div>
@@ -85,7 +104,7 @@ export function PreferencesNav(props: {
           )}
         </div>
       )}
-      {!props.matches.application && !props.matches.editor && !props.matches.export && !props.matches.avro && (
+      {!props.matches.application && !props.matches.editor && !props.matches.consume && !props.matches.export && !props.matches.avro && (
         <div className="preferences-no-results">{t(language, "preferences.nav.noResults")}</div>
       )}
     </aside>

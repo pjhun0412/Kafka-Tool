@@ -1,13 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppLogPayload, AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
   saveServer: (server: Omit<ServerProfile, "id"> & { id?: string }) => ipcRenderer.invoke("servers:save", server),
   deleteServer: (id: string) => ipcRenderer.invoke("servers:delete", id),
   reorderServers: (ids: string[]) => ipcRenderer.invoke("servers:reorder", ids),
-  exportSettings: () => ipcRenderer.invoke("settings:export"),
-  importSettings: () => ipcRenderer.invoke("settings:import"),
+  exportSettings: (options) => ipcRenderer.invoke("settings:export", options),
+  importSettings: (options) => ipcRenderer.invoke("settings:import", options),
+  logError: (payload: AppLogPayload) => ipcRenderer.invoke("app:log-error", payload),
+  openLogsFolder: () => ipcRenderer.invoke("app:open-logs-folder"),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   installUpdate: () => ipcRenderer.invoke("updates:install"),
   getAppVersion: () => ipcRenderer.invoke("app:version"),
@@ -60,6 +62,16 @@ const api: KafkaApi = {
     const listener = (_event: Electron.IpcRendererEvent, error: string) => callback(error);
     ipcRenderer.on("settings:error", listener);
     return () => ipcRenderer.removeListener("settings:error", listener);
+  },
+  onSettingsImportRequested: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("settings:import-requested", listener);
+    return () => ipcRenderer.removeListener("settings:import-requested", listener);
+  },
+  onSettingsExportRequested: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("settings:export-requested", listener);
+    return () => ipcRenderer.removeListener("settings:export-requested", listener);
   },
   onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, section?: AppPreferenceSection) => callback(section);

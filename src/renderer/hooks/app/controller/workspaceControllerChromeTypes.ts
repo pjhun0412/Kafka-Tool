@@ -1,4 +1,5 @@
 import type { useWorkspaceChromeCompositions } from "../layout/useWorkspaceChromeCompositions";
+import type { ViewerPreferences } from "../../../viewerPreferences";
 
 export type ChromeSidebarProps = Parameters<typeof useWorkspaceChromeCompositions>[0]["sidebar"];
 export type ChromeOverlayProps = Parameters<typeof useWorkspaceChromeCompositions>[0]["overlay"];
@@ -24,6 +25,8 @@ export type ControllerChromeState = Pick<
     | "language"
     | "resolvedLanguage"
     | "exportFormatTemplate"
+    | "consumeDefaults"
+    | "logRetentionDays"
     | "keyboardShortcuts"
     | "appVersion"
     | "manualAvroSchemasByServer"
@@ -37,12 +40,18 @@ export type ControllerChromeState = Pick<
     setDraggingFavoriteTopic: ChromeSidebarProps["onFavoriteDragStart"];
     setDraggingServerId: ChromeSidebarProps["onServerDragStart"];
     setExportFormatTemplate: ChromeOverlayProps["onExportFormatTemplate"];
+    setConsumeDefaults: ChromeOverlayProps["onConsumeDefaults"];
+    viewerPreferences: Required<ViewerPreferences>;
+    setViewerPreferences: (
+      value: Required<ViewerPreferences> | ((current: Required<ViewerPreferences>) => Required<ViewerPreferences>)
+    ) => void;
     setFavoriteDropTarget: ChromeSidebarProps["onFavoriteDropTarget"];
     setFontFamily: ChromeOverlayProps["onFontFamily"];
     setFontSize: ChromeOverlayProps["onFontSize"];
     setIsTopicSortMenuOpen: ChromeSidebarProps["onTopicSortMenuOpen"];
     setLanguage: ChromeOverlayProps["onLanguage"];
     setKeyboardShortcuts: ChromeOverlayProps["onKeyboardShortcuts"];
+    setLogRetentionDays: ChromeOverlayProps["onLogRetentionDays"];
     setLastSeenReleaseVersion: ChromeOverlayProps["onLastSeenReleaseVersion"];
     setSelectedServerId: ChromeSidebarProps["onServerSelect"];
     setServerDropTarget: ChromeSidebarProps["onServerDropTarget"];

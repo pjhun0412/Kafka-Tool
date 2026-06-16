@@ -1,7 +1,7 @@
 ﻿import { create } from "zustand";
 
-export type PreferencePage = "language" | "editor-font" | "keyboard-shortcuts" | "export-log" | "avro-schemas";
-export type PreferenceGroup = "application" | "editor" | "export" | "avro";
+export type PreferencePage = "language" | "diagnostics" | "editor-font" | "keyboard-shortcuts" | "viewer-defaults" | "export-log" | "avro-schemas";
+export type PreferenceGroup = "application" | "editor" | "consume" | "export" | "avro";
 
 type PreferencesStore = {
   isPreferencesOpen: boolean;
@@ -20,6 +20,7 @@ type PreferencesStore = {
 const collapsedGroups: Record<PreferenceGroup, boolean> = {
   application: true,
   editor: true,
+  consume: true,
   export: true,
   avro: true
 };

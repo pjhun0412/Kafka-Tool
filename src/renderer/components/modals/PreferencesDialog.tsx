@@ -1,17 +1,19 @@
 ﻿import { X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { AppKeyboardShortcutPreferences } from "../../../shared/types";
+import type { AppKeyboardShortcutPreferences, AppPreferences } from "../../../shared/types";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import type { PreferenceGroup, PreferencePage, PreferenceSearchMatches } from "../../hooks/preferences/usePreferenceNavigation";
 import { t, type AppLanguage, type LanguagePreference } from "../../i18n";
 import type { KeyboardShortcutMap } from "../../keyboardShortcuts";
 import { DEFAULT_EXPORT_FORMAT_TEMPLATE, DEFAULT_FONT_FAMILY } from "../../stores/ui/layoutStore";
 import { AvroSchemasPreferences } from "./preferences/AvroSchemasPreferences";
+import { DiagnosticsPreferences } from "./preferences/DiagnosticsPreferences";
 import { EditorFontPreferences } from "./preferences/EditorFontPreferences";
 import { ExportLogPreferences } from "./preferences/ExportLogPreferences";
 import { KeyboardShortcutsPreferences } from "./preferences/KeyboardShortcutsPreferences";
 import { LanguagePreferences } from "./preferences/LanguagePreferences";
 import { PreferencesNav } from "./preferences/PreferencesNav";
+import { ViewerDefaultsPreferences } from "./preferences/ViewerDefaultsPreferences";
 
 type PreferencesDialogProps = {
   activePage: PreferencePage;
@@ -24,7 +26,10 @@ type PreferencesDialogProps = {
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
+  consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
+  viewerPreferenceRetentionDays: number;
   keyboardShortcuts: KeyboardShortcutMap;
+  logRetentionDays: number;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onActivePage: (page: PreferencePage) => void;
   onToggleGroup: (group: PreferenceGroup) => void;
@@ -33,7 +38,10 @@ type PreferencesDialogProps = {
   onFontSize: (fontSize: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
+  onConsumeDefaults: (defaults: NonNullable<AppPreferences["consumeDefaults"]>) => void;
+  onViewerPreferenceRetentionDays: (days: number) => void;
   onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
+  onLogRetentionDays: (days: number) => void;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
   onDeleteManualAvroSchema: (serverId: string, topic: string) => void;
   onClose: () => void;
@@ -50,7 +58,10 @@ export function PreferencesDialog({
   language,
   resolvedLanguage,
   exportFormatTemplate,
+  consumeDefaults,
+  viewerPreferenceRetentionDays,
   keyboardShortcuts,
+  logRetentionDays,
   manualAvroSchemaRows,
   onActivePage,
   onToggleGroup,
@@ -59,7 +70,10 @@ export function PreferencesDialog({
   onFontSize,
   onLanguage,
   onExportFormatTemplate,
+  onConsumeDefaults,
+  onViewerPreferenceRetentionDays,
   onKeyboardShortcuts,
+  onLogRetentionDays,
   onOpenManualAvroSchema,
   onDeleteManualAvroSchema,
   onClose
@@ -109,6 +123,21 @@ export function PreferencesDialog({
                 language={language}
                 resolvedLanguage={resolvedLanguage}
                 onLanguage={onLanguage}
+              />
+            )}
+            {activePage === "diagnostics" && (
+              <DiagnosticsPreferences
+                language={resolvedLanguage}
+                logRetentionDays={logRetentionDays}
+                onLogRetentionDays={onLogRetentionDays}
+              />
+            )}
+            {activePage === "viewer-defaults" && (
+              <ViewerDefaultsPreferences
+                consumeDefaults={consumeDefaults}
+                retentionDays={viewerPreferenceRetentionDays}
+                onConsumeDefaults={onConsumeDefaults}
+                onRetentionDays={onViewerPreferenceRetentionDays}
               />
             )}
             {activePage === "export-log" && (

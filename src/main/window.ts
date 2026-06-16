@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron";
 import path from "node:path";
+import { logMainError, writeAppLog } from "./logger.js";
 import { appIconPath, readPreferences, writePreferences } from "./storage.js";
 import type { AppPreferences, UpdateStatus } from "../shared/types.js";
 
@@ -64,10 +65,14 @@ export async function createMainWindow(options: {
 
   window.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
     console.error("Renderer failed to load", { errorCode, errorDescription, validatedURL });
+    void writeAppLog("error", "renderer-load", "Renderer failed to load", { errorCode, errorDescription, validatedURL });
   });
 
   window.webContents.on("console-message", (_event, level, message) => {
     console.log(`Renderer console[${level}]: ${message}`);
+    if (level >= 2) {
+      void writeAppLog(level >= 3 ? "error" : "warn", "renderer-console", message);
+    }
   });
 
   window.on("resize", scheduleWindowBoundsSave);
@@ -87,11 +92,13 @@ export async function createMainWindow(options: {
     await window.loadFile(path.join(app.getAppPath(), "dist/renderer/index.html"));
   } catch (error) {
     console.error("Failed to load renderer", error);
+    logMainError("window.load", error);
   }
 
   if (app.isPackaged) {
     setTimeout(() => {
       void options.checkForUpdates().catch((error) => {
+        logMainError("auto-update.check", error);
         options.sendUpdateStatus({
           status: "error",
           message: error instanceof Error ? error.message : String(error)

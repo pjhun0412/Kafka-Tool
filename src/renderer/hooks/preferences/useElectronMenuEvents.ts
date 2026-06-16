@@ -11,6 +11,8 @@ type ElectronMenuEventParams = {
   appVersion: string;
   openPreferencesSection: (section: "editor" | "avro") => void;
   applyImportedSettings: (result: ImportSettingsResult) => void;
+  importSettings: () => void | Promise<void>;
+  exportSettings: () => void | Promise<void>;
   setStatus: (status: string) => void;
   setToast: Dispatch<SetStateAction<ToastState>>;
 };
@@ -33,6 +35,8 @@ export function useElectronMenuEvents({
   appVersion,
   openPreferencesSection,
   applyImportedSettings,
+  importSettings,
+  exportSettings,
   setStatus,
   setToast
 }: ElectronMenuEventParams) {
@@ -65,6 +69,12 @@ export function useElectronMenuEvents({
 
   useEffect(() => {
     if (!kafkaApi) return;
+    const offImportRequested = kafkaApi.onSettingsImportRequested(() => {
+      void importSettings();
+    });
+    const offExportRequested = kafkaApi.onSettingsExportRequested(() => {
+      void exportSettings();
+    });
     const offImported = kafkaApi.onSettingsImported((result) => {
       applyImportedSettings(result);
       setStatus("Settings import completed.");
@@ -79,11 +89,13 @@ export function useElectronMenuEvents({
       setToast({ message: error, kind: "error" });
     });
     return () => {
+      offImportRequested();
+      offExportRequested();
       offImported();
       offExported();
       offSettingsError();
     };
-  }, [kafkaApi, applyImportedSettings, setStatus, setToast]);
+  }, [kafkaApi, applyImportedSettings, importSettings, exportSettings, setStatus, setToast]);
 
   useEffect(() => {
     if (!kafkaApi) return;

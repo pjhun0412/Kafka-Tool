@@ -1,6 +1,6 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { AppKeyboardShortcutPreferences, ServerProfile, TopicCreateRequest } from "../../../shared/types";
+import type { AppKeyboardShortcutPreferences, AppPreferences, ServerProfile, TopicCreateRequest } from "../../../shared/types";
 import type { AppLanguage, LanguagePreference } from "../../i18n";
 import type { KeyboardShortcutMap } from "../../keyboardShortcuts";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
@@ -9,6 +9,7 @@ import { useFeedbackStore } from "../../stores/ui/feedbackStore";
 import { useManualAvroSchemaStore } from "../../stores/ui/manualAvroSchemaStore";
 import { useReleaseNotesStore } from "../../stores/ui/releaseNotesStore";
 import { useServerFormStore } from "../../stores/ui/serverFormStore";
+import { useSettingsTransferDialogStore } from "../../stores/ui/settingsTransferDialogStore";
 import { useSidebarInteractionStore } from "../../stores/ui/sidebarInteractionStore";
 import { useTopicCreateStore } from "../../stores/ui/topicCreateStore";
 import { ConnectionErrorDialog } from "../modals/ConnectionErrorDialog";
@@ -16,6 +17,7 @@ import { ManualAvroSchemaDialog } from "../modals/ManualAvroSchemaDialog";
 import { PreferencesDialog } from "../modals/PreferencesDialog";
 import { ReleaseNotesDialog } from "../modals/ReleaseNotesDialog";
 import { ServerProfileDialog } from "../modals/ServerProfileDialog";
+import { SettingsTransferDialog } from "../modals/SettingsTransferDialog";
 import { TopicActionDialog } from "../modals/TopicActionDialog";
 import { TopicCreateDialog } from "../modals/TopicCreateDialog";
 
@@ -27,6 +29,9 @@ export function WorkspaceDialogs(props: {
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
+  consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
+  viewerPreferenceRetentionDays: number;
+  logRetentionDays: number;
   keyboardShortcuts: KeyboardShortcutMap;
   appVersion: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
@@ -34,6 +39,9 @@ export function WorkspaceDialogs(props: {
   onFontSize: (fontSize: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
+  onConsumeDefaults: (defaults: NonNullable<AppPreferences["consumeDefaults"]>) => void;
+  onViewerPreferenceRetentionDays: (days: number) => void;
+  onLogRetentionDays: (days: number) => void;
   onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
   onLastSeenReleaseVersion: (version: string) => void;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
@@ -121,9 +129,29 @@ export function WorkspaceDialogs(props: {
     preferenceSearchMatches,
     togglePreferenceGroup
   } = usePreferenceNavigation();
+  const {
+    settingsTransferKind,
+    closeSettingsTransferDialog,
+    submitExportOptions,
+    submitImportOptions
+  } = useSettingsTransferDialogStore(useShallow((state) => ({
+    settingsTransferKind: state.kind,
+    closeSettingsTransferDialog: state.closeSettingsTransferDialog,
+    submitExportOptions: state.submitExportOptions,
+    submitImportOptions: state.submitImportOptions
+  })));
 
   return (
     <>
+      {settingsTransferKind && (
+        <SettingsTransferDialog
+          kind={settingsTransferKind}
+          language={props.resolvedLanguage}
+          onClose={closeSettingsTransferDialog}
+          onSubmitExport={submitExportOptions}
+          onSubmitImport={submitImportOptions}
+        />
+      )}
       {isServerFormOpen && (
         <ServerProfileDialog
           form={serverForm}
@@ -146,6 +174,9 @@ export function WorkspaceDialogs(props: {
           language={props.language}
           resolvedLanguage={props.resolvedLanguage}
           exportFormatTemplate={props.exportFormatTemplate}
+          consumeDefaults={props.consumeDefaults}
+          viewerPreferenceRetentionDays={props.viewerPreferenceRetentionDays}
+          logRetentionDays={props.logRetentionDays}
           keyboardShortcuts={props.keyboardShortcuts}
           manualAvroSchemaRows={props.manualAvroSchemaRows}
           onActivePage={setActivePreferencesPage}
@@ -155,6 +186,9 @@ export function WorkspaceDialogs(props: {
           onFontSize={props.onFontSize}
           onLanguage={props.onLanguage}
           onExportFormatTemplate={props.onExportFormatTemplate}
+          onConsumeDefaults={props.onConsumeDefaults}
+          onViewerPreferenceRetentionDays={props.onViewerPreferenceRetentionDays}
+          onLogRetentionDays={props.onLogRetentionDays}
           onKeyboardShortcuts={props.onKeyboardShortcuts}
           onOpenManualAvroSchema={(serverId, topic) => {
             setIsPreferencesOpen(false);

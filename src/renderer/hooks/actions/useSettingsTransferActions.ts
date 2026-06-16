@@ -1,7 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type {
+  ExportSettingsOptions,
   ImportSettingsResult,
+  ImportSettingsOptions,
   KafkaApi
 } from "../../../shared/types";
 import type { ToastState } from "../../uiTypes";
@@ -16,6 +18,7 @@ import { useServerClusterStore } from "../../stores/domain/serverClusterStore";
 import { useTopicResourceStore } from "../../stores/domain/topicResourceStore";
 import { useLayoutStore } from "../../stores/ui/layoutStore";
 import { useSearchStore } from "../../stores/ui/searchStore";
+import { useSettingsTransferDialogStore } from "../../stores/ui/settingsTransferDialogStore";
 import {
   applyImportedPreferences,
   resetWorkspaceAfterSettingsImport
@@ -55,6 +58,8 @@ export function useSettingsTransferActions({
     setTopicDetailCacheByServer: state.setTopicDetailCacheByServer
   })));
   const kafkaPreferenceSetters = useKafkaPreferenceStore(useShallow((state) => ({
+    setConsumeDefaults: state.setConsumeDefaults,
+    setViewerPreferences: state.setViewerPreferences,
     setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
     setManualAvroSchemasByServer: state.setManualAvroSchemasByServer
   })));
@@ -77,6 +82,7 @@ export function useSettingsTransferActions({
     setFontSize: state.setFontSize,
     setExportFormatTemplate: state.setExportFormatTemplate,
     setKeyboardShortcuts: state.setKeyboardShortcuts,
+    setLogRetentionDays: state.setLogRetentionDays,
     setLastSeenReleaseVersion: state.setLastSeenReleaseVersion
   })));
   const consumeResetSetters = useConsumeStateZustandStore(useShallow((state) => ({
@@ -89,6 +95,8 @@ export function useSettingsTransferActions({
   function applyImportedSettings(result: ImportSettingsResult) {
     applyImportedPreferences(result.preferences, {
       setFavoriteTopicsByServer: topicResourceSetters.setFavoriteTopicsByServer,
+      setConsumeDefaults: kafkaPreferenceSetters.setConsumeDefaults,
+      setViewerPreferences: kafkaPreferenceSetters.setViewerPreferences,
       setConsumeDefaultsByServer: kafkaPreferenceSetters.setConsumeDefaultsByServer,
       setManualAvroSchemasByServer: kafkaPreferenceSetters.setManualAvroSchemasByServer,
       ...layoutPreferenceSetters
@@ -116,10 +124,12 @@ export function useSettingsTransferActions({
 
   async function exportSettings() {
     if (!kafkaApi) return;
+    const options = await useSettingsTransferDialogStore.getState().requestExportOptions();
+    if (!options) return;
     setLoading(true);
     setToast({ message: "Exporting settings...", kind: "loading" });
     try {
-      const filePath = await kafkaApi.exportSettings();
+      const filePath = await kafkaApi.exportSettings(options);
       if (filePath) {
         setStatus(`Settings exported: ${filePath}`);
         setToast({ message: "Settings exported.", kind: "success" });
@@ -137,13 +147,12 @@ export function useSettingsTransferActions({
 
   async function importSettings() {
     if (!kafkaApi) return;
-    if (!window.confirm("Replace the current server list and preferences with the imported file?")) {
-      return;
-    }
+    const options = await useSettingsTransferDialogStore.getState().requestImportOptions();
+    if (!options) return;
     setLoading(true);
     setToast({ message: "Importing settings...", kind: "loading" });
     try {
-      const result = await kafkaApi.importSettings();
+      const result = await kafkaApi.importSettings(options);
       if (!result) {
         setToast(null);
         return;

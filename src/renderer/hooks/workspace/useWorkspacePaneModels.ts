@@ -35,7 +35,7 @@ type WorkspacePaneModelsParams = {
   manualAvroSchemasByServer: Record<string, Record<string, ManualAvroSchema>>;
   consumeStatesByServer: ConsumeStatesByServer;
   splitConsumeStatesByServer: ConsumeStatesByServer;
-  getDefaultConsumeState: (serverId?: string) => TopicConsumeState;
+  getDefaultConsumeState: (serverId?: string, topic?: string) => TopicConsumeState;
 };
 
 export function useWorkspacePaneModels({
@@ -71,7 +71,7 @@ export function useWorkspacePaneModels({
     selectedGroupId: primaryGroupId,
     selectedGroupLag: groupLagByServer[selectedServerId]?.[primaryGroupId] ?? null,
     manualAvroSchemas: manualAvroSchemasByServer[selectedServerId] ?? {},
-    consumeState: consumeStatesByServer[selectedServerId]?.[selectedTopic] ?? getDefaultConsumeState(selectedServerId)
+    consumeState: consumeStatesByServer[selectedServerId]?.[selectedTopic] ?? getDefaultConsumeState(selectedServerId, selectedTopic)
   };
 
   const splitGroupId = visibleSplitPane ? selectedGroupByServer[visibleSplitPane.serverId] ?? "" : "";
@@ -90,7 +90,7 @@ export function useWorkspacePaneModels({
         selectedGroupId: splitGroupId,
         selectedGroupLag: groupLagByServer[visibleSplitPane.serverId]?.[splitGroupId] ?? null,
         manualAvroSchemas: manualAvroSchemasByServer[visibleSplitPane.serverId] ?? {},
-        consumeState: splitConsumeStatesByServer[visibleSplitPane.serverId]?.[visibleSplitPane.topic] ?? getDefaultConsumeState(visibleSplitPane.serverId)
+        consumeState: splitConsumeStatesByServer[visibleSplitPane.serverId]?.[visibleSplitPane.topic] ?? getDefaultConsumeState(visibleSplitPane.serverId, visibleSplitPane.topic)
       }
     : null;
 

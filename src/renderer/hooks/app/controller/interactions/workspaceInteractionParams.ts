@@ -107,6 +107,7 @@ export function createWorkspaceInteractionParams({
       selectedTopic: derived.selectedTopic,
       selectedDefaultConsumeState: derived.selectedDefaultConsumeState,
       setConsumeStates: state.setConsumeStates,
+      rememberViewerPreference: state.rememberViewerPreference,
       setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
       activeWorkspacePane: state.activeWorkspacePane,
       view: derived.view,

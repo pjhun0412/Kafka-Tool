@@ -179,6 +179,30 @@ export type AppKeyboardShortcutPreferences = Partial<Record<
 
 export type AppPreferences = {
   favoriteTopicsByServer: Record<string, string[]>;
+  consumeDefaults?: Partial<{
+    mode: "offset" | "timeRange" | "live";
+    limit: number;
+    partition: string;
+    offsetOrder: "asc" | "desc";
+    autoScroll: boolean;
+    maxMessages: number;
+    filterField: "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
+    inspectorMode: "raw" | "tree" | "preview";
+    inspectorCollapsed: boolean;
+    keyFormat: "text" | "hex" | "base64";
+    valueFormat: "json" | "text" | "hex" | "base64";
+    payloadEncoding: "utf-8" | "euc-kr";
+  }>;
+  viewerPreferences?: Partial<{
+    retentionDays: number;
+    byServer: Record<string, Record<string, {
+      inspectorMode?: "raw" | "tree" | "preview";
+      keyFormat?: "text" | "hex" | "base64";
+      valueFormat?: "json" | "text" | "hex" | "base64";
+      payloadEncoding?: "utf-8" | "euc-kr";
+      updatedAt: number;
+    }>>;
+  }>;
   consumeDefaultsByServer: Record<string, Partial<{
     mode: "offset" | "timeRange" | "live";
     limit: number;
@@ -187,6 +211,8 @@ export type AppPreferences = {
     autoScroll: boolean;
     maxMessages: number;
     filterField: "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
+    inspectorMode: "raw" | "tree" | "preview";
+    inspectorCollapsed: boolean;
     keyFormat: "text" | "hex" | "base64";
     valueFormat: "json" | "text" | "hex" | "base64";
     payloadEncoding: "utf-8" | "euc-kr";
@@ -204,6 +230,9 @@ export type AppPreferences = {
     language: "auto" | "ko" | "en";
   }>;
   keyboardShortcuts?: AppKeyboardShortcutPreferences;
+  diagnostics?: Partial<{
+    logRetentionDays: number;
+  }>;
   releaseNotes?: Partial<{
     lastSeenVersion: string;
   }>;
@@ -222,6 +251,34 @@ export type AppSettingsBundle = {
   exportedAt: string;
   servers: ServerProfile[];
   preferences: AppPreferences;
+};
+
+export type EncryptedAppSettingsBundle = {
+  version: 2;
+  encrypted: true;
+  algorithm: "aes-256-gcm";
+  kdf: "pbkdf2-sha256";
+  iterations: number;
+  salt: string;
+  iv: string;
+  authTag: string;
+  data: string;
+};
+
+export type ExportSettingsOptions = {
+  includeSecrets?: boolean;
+  password?: string;
+};
+
+export type ImportSettingsOptions = {
+  password?: string;
+};
+
+export type AppLogPayload = {
+  level: "info" | "warn" | "error";
+  message: string;
+  stack?: string;
+  source?: string;
 };
 
 export type ImportSettingsResult = {
@@ -371,8 +428,10 @@ export type KafkaApi = {
   saveServer: (server: Omit<ServerProfile, "id"> & { id?: string }) => Promise<ServerProfile[]>;
   deleteServer: (id: string) => Promise<ServerProfile[]>;
   reorderServers: (ids: string[]) => Promise<ServerProfile[]>;
-  exportSettings: () => Promise<string | null>;
-  importSettings: () => Promise<ImportSettingsResult | null>;
+  exportSettings: (options?: ExportSettingsOptions) => Promise<string | null>;
+  importSettings: (options?: ImportSettingsOptions) => Promise<ImportSettingsResult | null>;
+  logError: (payload: AppLogPayload) => Promise<void>;
+  openLogsFolder: () => Promise<string>;
   checkForUpdates: () => Promise<void>;
   installUpdate: () => Promise<void>;
   getAppVersion: () => Promise<string>;
@@ -406,6 +465,8 @@ export type KafkaApi = {
   onSettingsImported: (callback: (result: ImportSettingsResult) => void) => () => void;
   onSettingsExported: (callback: (filePath: string) => void) => () => void;
   onSettingsError: (callback: (error: string) => void) => () => void;
+  onSettingsImportRequested: (callback: () => void) => () => void;
+  onSettingsExportRequested: (callback: () => void) => () => void;
   onPreferencesOpen: (callback: (section?: AppPreferenceSection) => void) => () => void;
   onReleaseNotesOpen: (callback: () => void) => () => void;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;

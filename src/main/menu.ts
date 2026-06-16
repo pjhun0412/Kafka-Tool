@@ -1,4 +1,5 @@
 import { app, dialog, Menu, type BrowserWindow } from "electron";
+import { openLogsFolder } from "./logger.js";
 import { menuText } from "./menuText.js";
 import type { AppMenuLanguage, ImportSettingsResult, UpdateStatus } from "../shared/types.js";
 
@@ -43,24 +44,7 @@ export function createApplicationMenu(options: {
           click: async () => {
             const window = options.getWindow();
             if (!window) return;
-            const confirm = await dialog.showMessageBox(window, {
-              type: "question",
-              buttons: [labels.importButton, labels.cancelButton],
-              defaultId: 0,
-              cancelId: 1,
-              title: labels.importTitle,
-              message: labels.importMessage
-            });
-            if (confirm.response !== 0) return;
-            try {
-              const result = await options.importSettingsFromFile();
-              if (result) {
-                window.webContents.send("settings:imported", result);
-              }
-            } catch (error) {
-              const message = error instanceof Error ? error.message : String(error);
-              window.webContents.send("settings:error", message);
-            }
+            window.webContents.send("settings:import-requested");
           }
         },
         {
@@ -69,15 +53,7 @@ export function createApplicationMenu(options: {
           click: async () => {
             const window = options.getWindow();
             if (!window) return;
-            try {
-              const filePath = await options.exportSettingsToFile();
-              if (filePath) {
-                window.webContents.send("settings:exported", filePath);
-              }
-            } catch (error) {
-              const message = error instanceof Error ? error.message : String(error);
-              window.webContents.send("settings:error", message);
-            }
+            window.webContents.send("settings:export-requested");
           }
         },
         { type: "separator" },
@@ -145,6 +121,18 @@ export function createApplicationMenu(options: {
         {
           label: labels.releaseNotes,
           click: () => options.getWindow()?.webContents.send("release-notes:open")
+        },
+        {
+          label: options.getLanguage() === "ko" ? "로그 폴더 열기" : "Open Logs Folder",
+          click: async () => {
+            try {
+              const error = await openLogsFolder();
+              if (error) options.getWindow()?.webContents.send("settings:error", error);
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              options.getWindow()?.webContents.send("settings:error", message);
+            }
+          }
         },
         { type: "separator" },
         {

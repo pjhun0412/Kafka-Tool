@@ -12,9 +12,13 @@ import type {
   TopicSummary
 } from "../../../shared/types";
 import type { TopicConsumeState, TopicWorkView, View } from "../../uiTypes";
+import type { ViewerPreferences } from "../../viewerPreferences";
+import { pruneViewerPreferences } from "../../viewerPreferences";
 
 export type ImportedPreferenceSetters = {
   setFavoriteTopicsByServer: Dispatch<SetStateAction<Record<string, string[]>>>;
+  setConsumeDefaults: Dispatch<SetStateAction<NonNullable<AppPreferences["consumeDefaults"]>>>;
+  setViewerPreferences: Dispatch<SetStateAction<Required<ViewerPreferences>>>;
   setConsumeDefaultsByServer: Dispatch<SetStateAction<AppPreferences["consumeDefaultsByServer"]>>;
   setManualAvroSchemasByServer: Dispatch<SetStateAction<Record<string, Record<string, ManualAvroSchema>>>>;
   setSidebarWidth: Dispatch<SetStateAction<number>>;
@@ -24,6 +28,7 @@ export type ImportedPreferenceSetters = {
   setFontSize: Dispatch<SetStateAction<number>>;
   setExportFormatTemplate: Dispatch<SetStateAction<string>>;
   setKeyboardShortcuts: Dispatch<SetStateAction<NonNullable<AppPreferences["keyboardShortcuts"]>>>;
+  setLogRetentionDays: Dispatch<SetStateAction<number>>;
   setLastSeenReleaseVersion: Dispatch<SetStateAction<string>>;
 };
 
@@ -54,6 +59,8 @@ export type WorkspaceResetSetters = {
 
 export function applyImportedPreferences(preferences: AppPreferences, setters: ImportedPreferenceSetters) {
   setters.setFavoriteTopicsByServer(preferences.favoriteTopicsByServer ?? {});
+  setters.setConsumeDefaults(preferences.consumeDefaults ?? {});
+  setters.setViewerPreferences(pruneViewerPreferences(preferences.viewerPreferences));
   setters.setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
   setters.setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
   if (typeof preferences.layout?.sidebarWidth === "number") setters.setSidebarWidth(preferences.layout.sidebarWidth);
@@ -63,6 +70,7 @@ export function applyImportedPreferences(preferences: AppPreferences, setters: I
   if (typeof preferences.appearance?.fontSize === "number") setters.setFontSize(preferences.appearance.fontSize);
   if (typeof preferences.exportFormatTemplate === "string") setters.setExportFormatTemplate(preferences.exportFormatTemplate);
   setters.setKeyboardShortcuts(preferences.keyboardShortcuts ?? {});
+  if (typeof preferences.diagnostics?.logRetentionDays === "number") setters.setLogRetentionDays(preferences.diagnostics.logRetentionDays);
   setters.setLastSeenReleaseVersion(preferences.releaseNotes?.lastSeenVersion ?? "");
 }
 

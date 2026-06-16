@@ -12,7 +12,7 @@ export type WorkspaceDerivedStateParams = {
   topicDetailByServer: Record<string, TopicDetail | null>;
   consumeStatesByServer: Record<string, Record<string, TopicConsumeState>>;
   splitPane: SplitPaneState | null;
-  getDefaultConsumeState: () => TopicConsumeState;
+  getDefaultConsumeState: (serverId?: string, topic?: string) => TopicConsumeState;
   getProduceDraft: (serverId: string, topic: string) => ProduceDraft;
 };
 
@@ -27,7 +27,7 @@ export function useWorkspaceDerivedState(params: WorkspaceDerivedStateParams) {
     : pinnedTopicTabs;
   const topicDetail = params.topicDetailByServer[params.selectedServerId] ?? null;
   const consumeStates = params.consumeStatesByServer[params.selectedServerId] ?? {};
-  const selectedDefaultConsumeState = params.getDefaultConsumeState();
+  const selectedDefaultConsumeState = params.getDefaultConsumeState(params.selectedServerId, selectedTopic);
   const visibleSplitPane = params.splitPane?.serverId === params.selectedServerId ? params.splitPane : null;
   const selectedProduceDraft = params.getProduceDraft(params.selectedServerId, selectedTopic);
   const splitProduceDraft = visibleSplitPane

@@ -7,6 +7,7 @@ import { createConsumeProduceService, nextOffset } from "./ipc/consumeProduce.js
 import { registerMessageExportIpcHandlers } from "./ipc/messageExport.js";
 import { registerServerIpcHandlers } from "./ipc/servers.js";
 import { registerTopicIpcHandlers } from "./ipc/topics.js";
+import { logMainError, pruneOldLogs, writeAppLog } from "./logger.js";
 import { createApplicationMenu, getLiveRecordTitle, resolveMenuLanguage } from "./menu.js";
 import { createSettingsTransferActions } from "./settingsTransfer.js";
 import { createMainWindow } from "./window.js";
@@ -20,6 +21,8 @@ let mainWindow: BrowserWindow | null = null;
 const appUserModelId = "local.kafka-tool";
 let isCleaningUpConsumers = false;
 let menuLanguage: AppMenuLanguage = app.getLocale().toLowerCase().startsWith("ko") ? "ko" : "en";
+
+void writeAppLog("info", "app", `Kafka Tool starting. version=${app.getVersion()} platform=${process.platform} arch=${process.arch}`);
 
 function sendUpdateStatus(status: UpdateStatus) {
   mainWindow?.webContents.send("updates:status", status);
@@ -48,6 +51,7 @@ async function createWindow() {
     onCreated: (window, preferences) => {
       mainWindow = window;
       menuLanguage = resolveMenuLanguage(preferences.appearance?.language);
+      void pruneOldLogs(preferences.diagnostics?.logRetentionDays);
       rebuildApplicationMenu();
       window.on("closed", () => {
         mainWindow = null;
@@ -126,9 +130,19 @@ async function cleanupConsumersAndExit() {
 }
 
 process.on("SIGINT", () => {
+  void writeAppLog("info", "app", "SIGINT received.");
   void cleanupConsumersAndExit();
 });
 
 process.on("SIGTERM", () => {
+  void writeAppLog("info", "app", "SIGTERM received.");
   void cleanupConsumersAndExit();
+});
+
+process.on("uncaughtException", (error) => {
+  logMainError("uncaughtException", error);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logMainError("unhandledRejection", reason);
 });

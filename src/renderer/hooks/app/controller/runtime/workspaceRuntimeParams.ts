@@ -9,6 +9,8 @@ export function createWorkspaceRuntimeParams(params: {
   state: ControllerState;
   language: WorkspaceControllerRuntimeParams["language"];
   applyImportedSettings: WorkspaceControllerRuntimeParams["applyImportedSettings"];
+  importSettings: WorkspaceControllerRuntimeParams["importSettings"];
+  exportSettings: WorkspaceControllerRuntimeParams["exportSettings"];
   selectedServerResources: RuntimeResourceActions;
 }): WorkspaceControllerRuntimeParams {
   return {
@@ -16,6 +18,8 @@ export function createWorkspaceRuntimeParams(params: {
     state: params.state,
     language: params.language,
     applyImportedSettings: params.applyImportedSettings,
+    importSettings: params.importSettings,
+    exportSettings: params.exportSettings,
     selectedServerResources: params.selectedServerResources
   };
 }

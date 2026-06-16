@@ -24,6 +24,9 @@ export function createOverlayChromeComposition({
     language: state.language,
     resolvedLanguage: state.resolvedLanguage,
     exportFormatTemplate: state.exportFormatTemplate,
+    consumeDefaults: state.consumeDefaults,
+    viewerPreferenceRetentionDays: state.viewerPreferences.retentionDays,
+    logRetentionDays: state.logRetentionDays,
     keyboardShortcuts: state.keyboardShortcuts,
     appVersion: state.appVersion,
     manualAvroSchemaRows,
@@ -31,6 +34,12 @@ export function createOverlayChromeComposition({
     onFontSize: state.setFontSize,
     onLanguage: state.setLanguage,
     onExportFormatTemplate: state.setExportFormatTemplate,
+    onConsumeDefaults: state.setConsumeDefaults,
+    onViewerPreferenceRetentionDays: (retentionDays) => state.setViewerPreferences((current) => ({
+      ...current,
+      retentionDays
+    })),
+    onLogRetentionDays: state.setLogRetentionDays,
     onKeyboardShortcuts: state.setKeyboardShortcuts,
     onLastSeenReleaseVersion: state.setLastSeenReleaseVersion,
     servers: state.servers,

@@ -7,10 +7,12 @@ export type WorkspaceControllerRuntimeParams = {
   state: Omit<RuntimeEffectsParams["serverBootstrap"], "kafkaApi"> &
     Omit<RuntimeEffectsParams["persistedPreferences"], "kafkaApi"> &
     Omit<RuntimeEffectsParams["serverHealthMonitor"], "kafkaApi"> &
-    Omit<RuntimeEffectsParams["electronMenuEvents"], "kafkaApi" | "language" | "applyImportedSettings"> &
+    Omit<RuntimeEffectsParams["electronMenuEvents"], "kafkaApi" | "language" | "applyImportedSettings" | "importSettings" | "exportSettings"> &
     Omit<RuntimeEffectsParams["kafkaConsumeEvents"], "kafkaApi"> &
     Pick<RuntimeEffectsParams["selectedServerResources"], "selectedServerId" | "connectedServerIds" | "topicsByServer" | "brokersByServer" | "groupsByServer">;
   applyImportedSettings: RuntimeEffectsParams["electronMenuEvents"]["applyImportedSettings"];
+  importSettings: RuntimeEffectsParams["electronMenuEvents"]["importSettings"];
+  exportSettings: RuntimeEffectsParams["electronMenuEvents"]["exportSettings"];
   language: RuntimeEffectsParams["electronMenuEvents"]["language"];
   selectedServerResources: Omit<
     RuntimeEffectsParams["selectedServerResources"],
@@ -22,6 +24,8 @@ export function useWorkspaceControllerRuntime({
   kafkaApi,
   state,
   applyImportedSettings,
+  importSettings,
+  exportSettings,
   language,
   selectedServerResources
 }: WorkspaceControllerRuntimeParams) {
@@ -37,6 +41,10 @@ export function useWorkspaceControllerRuntime({
       setStatus: state.setStatus,
       favoriteTopicsByServer: state.favoriteTopicsByServer,
       setFavoriteTopicsByServer: state.setFavoriteTopicsByServer,
+      consumeDefaults: state.consumeDefaults,
+      setConsumeDefaults: state.setConsumeDefaults,
+      viewerPreferences: state.viewerPreferences,
+      setViewerPreferences: state.setViewerPreferences,
       consumeDefaultsByServer: state.consumeDefaultsByServer,
       setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
       manualAvroSchemasByServer: state.manualAvroSchemasByServer,
@@ -61,6 +69,8 @@ export function useWorkspaceControllerRuntime({
       setExportFormatTemplate: state.setExportFormatTemplate,
       keyboardShortcuts: state.keyboardShortcuts,
       setKeyboardShortcuts: state.setKeyboardShortcuts,
+      logRetentionDays: state.logRetentionDays,
+      setLogRetentionDays: state.setLogRetentionDays,
       appVersion: state.appVersion,
       setAppVersion: state.setAppVersion,
       lastSeenReleaseVersion: state.lastSeenReleaseVersion,
@@ -84,6 +94,8 @@ export function useWorkspaceControllerRuntime({
       appVersion: state.appVersion,
       openPreferencesSection: state.openPreferencesSection,
       applyImportedSettings,
+      importSettings,
+      exportSettings,
       setStatus: state.setStatus,
       setToast: state.setToast
     },
