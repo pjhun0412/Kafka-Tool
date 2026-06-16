@@ -5,6 +5,7 @@ import { activateTopicInSplitPane } from "../../workspaceState";
 type SplitTopicActivationParams = {
   splitPane: SplitPaneState | null;
   getTopicViewFor: (serverId: string, topic: string) => TopicWorkView;
+  getCachedTopicDetail: (serverId: string, topic: string) => SplitPaneState["detail"];
   loadSplitTopicDetail: (serverId: string, topic: string) => Promise<void>;
   loadSplitTopicDetailSilent: (serverId: string, topic: string) => Promise<void>;
   setSplitPane: Dispatch<SetStateAction<SplitPaneState | null>>;
@@ -14,6 +15,7 @@ type SplitTopicActivationParams = {
 export function useSplitTopicActivation({
   splitPane,
   getTopicViewFor,
+  getCachedTopicDetail,
   loadSplitTopicDetail,
   loadSplitTopicDetailSilent,
   setSplitPane,
@@ -27,11 +29,13 @@ export function useSplitTopicActivation({
     const pane = splitPane;
     if (!pane || !topic) return;
     const nextView = view ?? getTopicViewFor(pane.serverId, topic);
-    const shouldLoadDetail = nextView === "info" && (pane.topic !== topic || !pane.detail);
+    const cachedDetail = nextView === "info" ? getCachedTopicDetail(pane.serverId, topic) : null;
+    const shouldLoadDetail = nextView === "info" && !cachedDetail && (pane.topic !== topic || !pane.detail);
     setActiveWorkspacePane("split");
     setSplitPane((current) => activateTopicInSplitPane(current, topic, nextView, shouldLoadDetail, {
       addToTabs: options.addToTabs ?? true,
-      preservePreview: options.preservePreview
+      preservePreview: options.preservePreview,
+      detail: cachedDetail
     }));
     if (shouldLoadDetail) {
       if (options.silent) {

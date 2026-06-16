@@ -130,7 +130,7 @@ export function activateTopicInSplitPane(
   topic: string,
   view: SplitPaneState["view"],
   shouldClearDetail: boolean,
-  options: { addToTabs?: boolean; preservePreview?: boolean } = {}
+  options: { addToTabs?: boolean; preservePreview?: boolean; detail?: SplitPaneState["detail"] } = {}
 ) {
   if (!current) return current;
   const addToTabs = options.addToTabs ?? true;
@@ -149,7 +149,7 @@ export function activateTopicInSplitPane(
     topicTabs,
     previewTopic: preservePreview ? current.previewTopic : addToTabs ? undefined : topic,
     view,
-    detail: shouldClearDetail ? null : current.detail
+    detail: options.detail ?? (shouldClearDetail ? null : current.detail)
   };
 }
 

@@ -173,25 +173,36 @@ export function useSplitPaneActions({
       await stopConsume(pane.serverId, topic, "split");
     }
     clearConsumeStateForPane(pane.serverId, topic, "split");
-    await applySplitTopicClose(pane, topic);
+    await applySplitTopicClose(topic);
   }
 
   async function removeSplitTopicTabAfterMove(topic: string) {
-    const pane = splitPane;
-    if (!pane) return;
-    await applySplitTopicClose(pane, topic);
+    await applySplitTopicClose(topic);
   }
 
-  async function applySplitTopicClose(pane: SplitPaneState, topic: string) {
-    const result = closeTopicInSplitPane(pane, topic, (nextTopic) => getTopicViewFor(pane.serverId, nextTopic));
-    if (!result.pane) {
-      setSplitPane(null);
+  async function applySplitTopicClose(topic: string) {
+    let nextLoadServerId = "";
+    let nextLoadTopic = "";
+    let closedPane = false;
+    setSplitPane((current) => {
+      if (!current || !current.topicTabs.includes(topic)) return current;
+      const result = closeTopicInSplitPane(current, topic, (nextTopic) => getTopicViewFor(current.serverId, nextTopic));
+      if (!result.pane) {
+        closedPane = true;
+        return null;
+      }
+      if (result.nextTopic && result.nextView === "info" && result.closedActiveTopic) {
+        nextLoadServerId = current.serverId;
+        nextLoadTopic = result.nextTopic;
+      }
+      return result.pane;
+    });
+    if (closedPane) {
       setActiveWorkspacePane("primary");
       return;
     }
-    setSplitPane(result.pane);
-    if (result.nextTopic && result.nextView === "info" && result.closedActiveTopic) {
-      await loadSplitTopicDetailSilent(pane.serverId, result.nextTopic);
+    if (nextLoadServerId && nextLoadTopic) {
+      await loadSplitTopicDetailSilent(nextLoadServerId, nextLoadTopic);
     }
   }
 
