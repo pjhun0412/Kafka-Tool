@@ -111,6 +111,10 @@ export function createApplicationMenu(options: {
           click: () => showHelpDialog(labels.helpKafkaTitle, labels.helpKafkaMessage)
         },
         {
+          label: labels.produceTips,
+          click: () => showHelpDialog(labels.helpProduceTitle, labels.helpProduceMessage)
+        },
+        {
           label: labels.viewerTips,
           click: () => showHelpDialog(labels.helpViewerTitle, labels.helpViewerMessage)
         },
