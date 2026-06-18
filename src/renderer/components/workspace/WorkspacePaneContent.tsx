@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { OnChangeFn, SortingState } from "@tanstack/react-table";
 import type {
   BrokerSummary,
@@ -11,6 +12,8 @@ import type {
 } from "../../../shared/types";
 import type { AppLanguage } from "../../i18n";
 import { getDefaultTimeRangeValues } from "../../consumeConfig";
+import type { ProduceDraftOverride } from "../../hooks/actions/useProduceActions";
+import { parseProduceDurationMs, renderProduceTemplateDraft, type ProduceTemplateDraft } from "../../produceTemplate";
 import type { OffsetOrder, TopicConsumeState, View } from "../../uiTypes";
 import { ConsumePanel } from "./consume/ConsumePanel";
 import { ConsumerGroupsPanel } from "./groups/ConsumerGroupsPanel";
@@ -22,6 +25,7 @@ type WorkspacePaneContentProps = {
   serverId: string;
   view: View;
   topic: string;
+  openedTopicTabs: string[];
   language: AppLanguage;
   detail: TopicDetail | null;
   topics: TopicSummary[];
@@ -70,9 +74,119 @@ type WorkspacePaneContentProps = {
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
   onProduce: () => void;
+  onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
+  onProduceIntervalActivity?: (topic: string, running: boolean) => void;
+};
+
+type ProduceIntervalRequest = {
+  draft: ProduceTemplateDraft;
+  stopMode: "count" | "duration";
+  intervalMs: number;
+  count: number;
+  durationText: string;
+};
+
+const emptyProduceIntervalState = {
+  error: "",
+  isRunning: false,
+  sentCount: 0,
+  startedAt: 0
 };
 
 export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
+  const [produceIntervalConfig, setProduceIntervalConfig] = useState({
+    durationText: "5m",
+    intervalMs: 1000,
+    mode: "single" as "single" | "interval",
+    stopMode: "count" as "count" | "duration",
+    totalCount: 10
+  });
+  const [produceIntervalStates, setProduceIntervalStates] = useState<Record<string, typeof emptyProduceIntervalState>>({});
+  const produceIntervalRunRef = useRef<Record<string, boolean>>({});
+  const produceIntervalKey = `${props.serverId}\u0000${props.topic}`;
+  const produceIntervalState = produceIntervalStates[produceIntervalKey] ?? emptyProduceIntervalState;
+
+  useEffect(() => () => {
+    Object.keys(produceIntervalRunRef.current).forEach((key) => {
+      produceIntervalRunRef.current[key] = false;
+    });
+  }, []);
+
+  useEffect(() => {
+    const allowedKeys = new Set(props.openedTopicTabs.map((topic) => `${props.serverId}\u0000${topic}`));
+    Object.keys(produceIntervalRunRef.current).forEach((key) => {
+      if (!allowedKeys.has(key)) {
+        produceIntervalRunRef.current[key] = false;
+        const topic = key.split("\u0000")[1] ?? "";
+        props.onProduceIntervalActivity?.(topic, false);
+      }
+    });
+    setProduceIntervalStates((current) => {
+      const next = { ...current };
+      Object.keys(next).forEach((key) => {
+        if (!allowedKeys.has(key)) delete next[key];
+      });
+      return next;
+    });
+  }, [props.openedTopicTabs, props.onProduceIntervalActivity, props.serverId]);
+
+  async function startProduceInterval(request: ProduceIntervalRequest) {
+    const runKey = produceIntervalKey;
+    const runTopic = props.topic;
+    const delay = Math.max(100, Math.floor(request.intervalMs || 100));
+    const count = request.stopMode === "count" ? Math.max(1, Math.min(100000, Math.floor(request.count || 1))) : Number.POSITIVE_INFINITY;
+    const durationMs = request.stopMode === "duration" ? parseProduceDurationMs(request.durationText) : 0;
+    const startedAt = Date.now();
+    produceIntervalRunRef.current[runKey] = true;
+    props.onProduceIntervalActivity?.(runTopic, true);
+    setProduceIntervalStates((current) => ({
+      ...current,
+      [runKey]: { error: "", isRunning: true, sentCount: 0, startedAt }
+    }));
+
+    for (let index = 1; index <= count && produceIntervalRunRef.current[runKey]; index += 1) {
+      if (durationMs > 0 && Date.now() - startedAt >= durationMs) break;
+      try {
+        await props.onProduceDraft(renderProduceTemplateDraft(request.draft, index));
+        setProduceIntervalStates((current) => ({
+          ...current,
+          [runKey]: { ...(current[runKey] ?? emptyProduceIntervalState), sentCount: index }
+        }));
+      } catch (error) {
+        produceIntervalRunRef.current[runKey] = false;
+        props.onProduceIntervalActivity?.(runTopic, false);
+        setProduceIntervalStates((current) => ({
+          ...current,
+          [runKey]: {
+            ...(current[runKey] ?? emptyProduceIntervalState),
+            error: error instanceof Error ? error.message : String(error),
+            isRunning: false
+          }
+        }));
+        return;
+      }
+      if (index < count && produceIntervalRunRef.current[runKey]) {
+        if (durationMs > 0 && Date.now() - startedAt + delay > durationMs) break;
+        await new Promise((resolve) => window.setTimeout(resolve, delay));
+      }
+    }
+    produceIntervalRunRef.current[runKey] = false;
+    props.onProduceIntervalActivity?.(runTopic, false);
+    setProduceIntervalStates((current) => ({
+      ...current,
+      [runKey]: { ...(current[runKey] ?? emptyProduceIntervalState), isRunning: false }
+    }));
+  }
+
+  function stopProduceInterval() {
+    produceIntervalRunRef.current[produceIntervalKey] = false;
+    props.onProduceIntervalActivity?.(props.topic, false);
+    setProduceIntervalStates((current) => ({
+      ...current,
+      [produceIntervalKey]: { ...(current[produceIntervalKey] ?? emptyProduceIntervalState), isRunning: false }
+    }));
+  }
+
   return (
     <div className={["content-grid", props.className].filter(Boolean).join(" ")}>
       {props.view === "brokers" && <BrokersPanel serverId={props.serverId} brokers={props.brokers} />}
@@ -186,6 +300,12 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onHeaders={props.onProduceHeaders}
           onValue={props.onProduceValue}
           onProduce={props.onProduce}
+          onProduceDraft={props.onProduceDraft}
+          intervalConfig={produceIntervalConfig}
+          intervalState={produceIntervalState}
+          onIntervalConfig={setProduceIntervalConfig}
+          onStartInterval={startProduceInterval}
+          onStopInterval={stopProduceInterval}
         />
       )}
     </div>

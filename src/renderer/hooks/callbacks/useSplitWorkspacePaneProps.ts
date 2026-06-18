@@ -39,7 +39,8 @@ type SplitPaneCallbackProps =
   | "onProduceKey"
   | "onProduceHeaders"
   | "onProduceValue"
-  | "onProduce";
+  | "onProduce"
+  | "onProduceDraft";
 
 type SplitWorkspacePanePropsParams = Omit<WorkspaceAppLayoutSplitPaneProps, SplitPaneCallbackProps> & {
   callbacks: ReturnType<typeof useSplitPaneCallbacks>;
@@ -88,6 +89,7 @@ export function createSplitWorkspacePaneProps({
     onProduceKey: callbacks.produceKey,
     onProduceHeaders: callbacks.produceHeaders,
     onProduceValue: callbacks.produceValue,
-    onProduce: callbacks.produce
+    onProduce: callbacks.produce,
+    onProduceDraft: callbacks.produceDraft
   };
 }

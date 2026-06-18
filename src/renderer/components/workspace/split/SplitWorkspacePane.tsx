@@ -12,6 +12,7 @@ import type {
 } from "../../../../shared/types";
 import type { OffsetOrder, PaneToastState, SplitPaneState, TopicConsumeState, View } from "../../../uiTypes";
 import type { AppLanguage } from "../../../i18n";
+import type { ProduceDraftOverride } from "../../../hooks/actions/useProduceActions";
 import { PaneToastView } from "../feedback/WorkspaceFeedback";
 import { OpenedTopicTabs } from "../tabs/OpenedTopicTabs";
 import { TopicWorkTabs } from "../tabs/WorkspaceModeTabs";
@@ -74,14 +75,35 @@ export function SplitWorkspacePane(props: {
   produceKey: string;
   produceHeaders: string;
   produceValue: string;
+  topicActivities: Record<string, { intervalProduce?: boolean; live?: boolean }>;
   onProduceKey: (value: string) => void;
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
   onProduce: () => void;
+  onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
   paneToast: PaneToastState;
   language: AppLanguage;
 }) {
+  const [intervalTopicActivities, setIntervalTopicActivities] = React.useState<Record<string, boolean>>({});
   const isTopicView = props.pane.view === "info" || props.pane.view === "consume" || props.pane.view === "produce" || props.pane.view === "settings";
+  const topicActivities = React.useMemo(() => {
+    const next = { ...props.topicActivities };
+    Object.entries(intervalTopicActivities).forEach(([topic, running]) => {
+      if (running) {
+        next[topic] = { ...(next[topic] ?? {}), intervalProduce: true };
+      }
+    });
+    return next;
+  }, [intervalTopicActivities, props.topicActivities]);
+
+  const setProduceIntervalActivity = React.useCallback((topic: string, running: boolean) => {
+    setIntervalTopicActivities((current) => {
+      if (running) return { ...current, [topic]: true };
+      const { [topic]: _removed, ...next } = current;
+      return next;
+    });
+  }, []);
+
   function editTopicSettings() {
     props.onView("settings");
     window.setTimeout(() => {
@@ -104,6 +126,7 @@ export function SplitWorkspacePane(props: {
               topics={props.pane.topicTabs}
               selectedTopic={props.pane.topic}
               previewTopic={props.pane.previewTopic}
+              topicActivities={topicActivities}
               hasAvroSchema={(topic) => Boolean(props.manualAvroSchemas[topic])}
               onActivate={props.onActivate}
               onSelect={props.onTopic}
@@ -129,6 +152,7 @@ export function SplitWorkspacePane(props: {
         serverId={props.pane.serverId}
         view={props.pane.view}
         topic={props.pane.topic}
+        openedTopicTabs={props.pane.topicTabs}
         language={props.language}
         detail={props.pane.detail}
         topics={props.topics}
@@ -177,6 +201,8 @@ export function SplitWorkspacePane(props: {
         onProduceHeaders={props.onProduceHeaders}
         onProduceValue={props.onProduceValue}
         onProduce={props.onProduce}
+        onProduceDraft={props.onProduceDraft}
+        onProduceIntervalActivity={setProduceIntervalActivity}
       />
     </section>
   );

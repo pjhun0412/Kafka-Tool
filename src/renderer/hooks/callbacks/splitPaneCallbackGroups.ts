@@ -1,5 +1,6 @@
 import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
 import type { OffsetOrder, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
+import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { SplitPaneCallbacksParams } from "./useSplitPaneCallbacks";
 
 type SplitConsumeCallbackParams = Pick<
@@ -70,6 +71,10 @@ export function createSplitProduceCallbacks(params: SplitProduceCallbackParams) 
     },
     produce: () => {
       if (params.pane) void params.produceFor(params.pane.serverId, params.pane.topic, "split");
+    },
+    produceDraft: (draft: ProduceDraftOverride) => {
+      if (!params.pane) return Promise.resolve();
+      return params.produceFor(params.pane.serverId, params.pane.topic, "split", draft);
     }
   };
 }

@@ -7,6 +7,7 @@ import { workspaceMessages } from "../../workspaceMessages";
 type PrimaryTopicNavigationActionsParams = {
   kafkaApi: KafkaApi | undefined;
   selectedServerId: string;
+  selectedTopic: string;
   getWorkspaceTargetForServer: (serverId?: string, topic?: string) => WorkspaceActionTarget;
   getTopicViewFor: (serverId: string, topic: string) => TopicWorkView;
   getCachedTopicDetail: (serverId: string, topic: string) => TopicDetail | null;
@@ -31,6 +32,7 @@ type PrimaryTopicNavigationActionsParams = {
 export function usePrimaryTopicNavigationActions({
   kafkaApi,
   selectedServerId,
+  selectedTopic,
   getWorkspaceTargetForServer,
   getTopicViewFor,
   getCachedTopicDetail,
@@ -72,6 +74,10 @@ export function usePrimaryTopicNavigationActions({
     const nextView = getTopicViewFor(target.serverId, topic);
     setActiveWorkspacePane("primary");
     setSelectedServerId(target.serverId);
+    if (target.serverId === selectedServerId && topic === selectedTopic) {
+      setSelectedTopicByServer((current) => ({ ...current, [target.serverId]: topic }));
+      return;
+    }
     const currentPinnedTabs = openedTopicTabsByServer[target.serverId] ?? [];
     const isPinnedTopic = currentPinnedTabs.includes(topic);
     if (!isPinnedTopic) {

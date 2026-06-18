@@ -137,6 +137,12 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
       active: activeWorkspacePane === "primary",
       topicTabs: openedTopicTabs,
       previewTopic,
+      topicActivities: Object.fromEntries(
+        openedTopicTabs.map((topic) => [
+          topic,
+          { live: isTopicStreaming(selectedServerId, topic, "primary") }
+        ])
+      ),
       selectedTopic,
       view,
       detail: topicDetail,

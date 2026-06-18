@@ -14,6 +14,10 @@
   @apply min-h-[86px];
 }
 
+.produce-panel textarea.invalid {
+  @apply border-red-500/60 ring-1 ring-red-500/40;
+}
+
 .produce-schema-notice {
   @apply inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-extrabold text-cyan-800;
 }
@@ -29,4 +33,122 @@
 
 .produce-schema-notice {
   @apply border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
+}
+
+.produce-mode-row {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.produce-mode-row .segmented-control {
+  @apply inline-flex h-9 min-h-9 overflow-hidden rounded-md border border-[#3c3c3c] bg-[#2d2d2d] shadow-none;
+}
+
+.produce-mode-row .segmented-control button {
+  @apply min-h-9 border-0 bg-transparent px-3 text-[12px] text-slate-300 transition hover:bg-[#333333] hover:text-white;
+  font-weight: var(--app-font-weight);
+}
+
+.produce-mode-row .segmented-control button.active {
+  @apply bg-[#37373d] text-white shadow-none hover:bg-[#3f3f46];
+}
+
+.produce-interval-controls {
+  @apply flex flex-wrap items-center gap-2 text-[11px] text-slate-300;
+}
+
+.produce-interval-controls label {
+  @apply inline-flex h-9 min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 leading-none;
+  font-weight: var(--app-font-weight);
+}
+
+.produce-interval-controls input,
+.produce-interval-controls select {
+  @apply h-7 min-h-0 w-[76px] rounded border-0 bg-[#252526] px-2 py-0 text-right text-[11px] leading-7 text-white outline-none ring-0;
+  color-scheme: dark;
+  font-weight: var(--app-font-weight);
+}
+
+.produce-interval-controls select {
+  @apply w-[92px] pr-7 text-left;
+}
+
+.produce-interval-status {
+  @apply inline-flex h-9 min-h-9 items-center rounded-md border border-[#264f78] bg-[#1b2f3a] px-2 text-[11px] text-[#9cdcfe];
+  font-weight: var(--app-font-weight);
+}
+
+.produce-template-panel {
+  @apply grid gap-2 rounded-md border border-[#30363d] bg-[#1b1b1c] p-3;
+}
+
+.produce-interval-warning {
+  @apply rounded-md border border-[#7a5d1e] bg-[#2f260d] px-3 py-2 text-[12px] text-[#f3d17a];
+}
+
+.produce-interval-confirm {
+  @apply grid gap-1 rounded-md border border-[#264f78] bg-[#142331] px-3 py-2 text-[12px] text-slate-200;
+}
+
+.produce-interval-confirm strong {
+  @apply text-[#9cdcfe];
+}
+
+.produce-interval-confirm span {
+  @apply text-slate-300;
+}
+
+.produce-interval-confirm-actions {
+  @apply mt-2 flex justify-end gap-2;
+}
+
+.produce-interval-running {
+  @apply flex flex-wrap items-center gap-2 rounded-md border border-[#264f78] bg-[#1b2f3a] px-3 py-2 text-[12px] text-[#9cdcfe];
+}
+
+.produce-interval-running span:first-child {
+  @apply rounded bg-[#264f78] px-2 py-0.5 text-white;
+}
+
+.produce-template-guide {
+  @apply rounded-md border border-[#30363d] bg-[#111315];
+}
+
+.produce-template-guide summary {
+  @apply cursor-pointer select-none px-3 py-2 text-[12px] font-semibold text-slate-200;
+}
+
+.produce-template-examples {
+  @apply grid gap-1 border-t border-[#30363d] p-2;
+}
+
+.produce-template-example {
+  @apply grid grid-cols-[minmax(180px,280px)_minmax(0,1fr)] items-center gap-3 rounded px-2 py-1 text-[11px];
+}
+
+.produce-template-example code {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[#9cdcfe];
+}
+
+.produce-template-example span {
+  @apply min-w-0 text-muted;
+}
+
+.produce-interval-error {
+  @apply rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] text-red-200;
+}
+
+.produce-value-error {
+  @apply grid gap-1 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] text-red-200;
+}
+
+.produce-value-error > span + span {
+  @apply text-red-100/80;
+}
+
+.produce-error-snippet {
+  @apply m-0 overflow-auto rounded border border-red-500/30 bg-[#111315] px-2 py-1 text-[11px] leading-5 text-red-100;
+}
+
+.produce-error-snippet code {
+  @apply block whitespace-pre font-mono;
 }

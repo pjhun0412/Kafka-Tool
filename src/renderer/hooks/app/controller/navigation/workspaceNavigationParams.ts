@@ -77,6 +77,7 @@ export function createWorkspaceNavigationParams({
     primaryTopicNavigation: {
       kafkaApi: window.kafkaApi,
       selectedServerId: state.selectedServerId,
+      selectedTopic: derived.selectedTopic,
       getWorkspaceTargetForServer: actions.getWorkspaceTargetForServer,
       getCachedTopicDetail: actions.getCachedTopicDetail,
       openedTopicTabsByServer: state.openedTopicTabsByServer,

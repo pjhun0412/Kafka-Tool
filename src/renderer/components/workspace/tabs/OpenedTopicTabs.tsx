@@ -7,6 +7,7 @@ export function OpenedTopicTabs(props: {
   topics: string[];
   selectedTopic: string;
   previewTopic?: string;
+  topicActivities?: Record<string, { intervalProduce?: boolean; live?: boolean }>;
   hasAvroSchema: (topic: string) => boolean;
   onActivate: () => void;
   onSelect: (topic: string) => void;
@@ -44,6 +45,8 @@ export function OpenedTopicTabs(props: {
             }}
           >
             <span>{topic}</span>
+            {props.topicActivities?.[topic]?.live && <span className="topic-tab-activity live" title="Live consuming" />}
+            {props.topicActivities?.[topic]?.intervalProduce && <span className="topic-tab-activity produce" title="Interval produce running" />}
             {props.hasAvroSchema(topic) && <span className="topic-tab-badge" title="Avro schema registered">Avro</span>}
             <X size={14} onClick={(event) => { event.stopPropagation(); props.onClose(topic); }} />
           </button>

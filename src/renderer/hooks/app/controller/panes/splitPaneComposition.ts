@@ -122,6 +122,12 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
       produceKey: splitProduceDraft.key,
       produceHeaders: splitProduceDraft.headers,
       produceValue: splitProduceDraft.value,
+      topicActivities: Object.fromEntries(
+        visibleSplitPane.topicTabs.map((topic) => [
+          topic,
+          { live: isTopicStreaming(visibleSplitPane.serverId, topic, "split") }
+        ])
+      ),
       paneToast: splitPaneToast,
       language
     } : null

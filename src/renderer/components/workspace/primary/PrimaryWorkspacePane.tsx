@@ -13,6 +13,7 @@ import type {
 } from "../../../../shared/types";
 import type { OffsetOrder, PaneToastState, TopicConsumeState, View } from "../../../uiTypes";
 import type { AppLanguage } from "../../../i18n";
+import type { ProduceDraftOverride } from "../../../hooks/actions/useProduceActions";
 import { PaneToastView } from "../feedback/WorkspaceFeedback";
 import { ClusterTabs } from "../tabs/ClusterTabs";
 import { OpenedTopicTabs } from "../tabs/OpenedTopicTabs";
@@ -34,6 +35,7 @@ export function PrimaryWorkspacePane(props: {
   active: boolean;
   topicTabs: string[];
   previewTopic: string;
+  topicActivities: Record<string, { intervalProduce?: boolean; live?: boolean }>;
   selectedTopic: string;
   view: View;
   detail: TopicDetail | null;
@@ -99,8 +101,28 @@ export function PrimaryWorkspacePane(props: {
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
   onProduce: () => void;
+  onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
 }) {
+  const [intervalTopicActivities, setIntervalTopicActivities] = React.useState<Record<string, boolean>>({});
   const isTopicView = props.view === "info" || props.view === "consume" || props.view === "produce" || props.view === "settings";
+  const topicActivities = React.useMemo(() => {
+    const next = { ...props.topicActivities };
+    Object.entries(intervalTopicActivities).forEach(([topic, running]) => {
+      if (running) {
+        next[topic] = { ...(next[topic] ?? {}), intervalProduce: true };
+      }
+    });
+    return next;
+  }, [intervalTopicActivities, props.topicActivities]);
+
+  const setProduceIntervalActivity = React.useCallback((topic: string, running: boolean) => {
+    setIntervalTopicActivities((current) => {
+      if (running) return { ...current, [topic]: true };
+      const { [topic]: _removed, ...next } = current;
+      return next;
+    });
+  }, []);
+
   function editTopicSettings() {
     props.onTopicView("settings");
     window.setTimeout(() => {
@@ -150,6 +172,7 @@ export function PrimaryWorkspacePane(props: {
               topics={props.topicTabs}
               selectedTopic={props.selectedTopic}
               previewTopic={props.previewTopic}
+              topicActivities={topicActivities}
               hasAvroSchema={props.hasAvroSchema}
               onActivate={props.onActivate}
               onSelect={props.onTopic}
@@ -174,6 +197,7 @@ export function PrimaryWorkspacePane(props: {
           serverId={props.selectedServerId}
           view={props.view}
           topic={props.selectedTopic}
+          openedTopicTabs={props.topicTabs}
           language={props.language}
           detail={props.detail}
           topics={props.topics}
@@ -222,6 +246,8 @@ export function PrimaryWorkspacePane(props: {
           onProduceHeaders={props.onProduceHeaders}
           onProduceValue={props.onProduceValue}
           onProduce={props.onProduce}
+          onProduceDraft={props.onProduceDraft}
+          onProduceIntervalActivity={setProduceIntervalActivity}
         />
       </section>
     </section>

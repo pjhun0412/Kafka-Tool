@@ -41,7 +41,8 @@ type PrimaryPaneCallbackProps =
   | "onProduceKey"
   | "onProduceHeaders"
   | "onProduceValue"
-  | "onProduce";
+  | "onProduce"
+  | "onProduceDraft";
 
 type PrimaryWorkspacePanePropsParams = Omit<WorkspaceAppLayoutPrimaryPaneProps, PrimaryPaneCallbackProps> & {
   callbacks: ReturnType<typeof usePrimaryPaneCallbacks>;
@@ -92,6 +93,7 @@ export function createPrimaryWorkspacePaneProps({
     onProduceKey: callbacks.produceKey,
     onProduceHeaders: callbacks.produceHeaders,
     onProduceValue: callbacks.produceValue,
-    onProduce: callbacks.produce
+    onProduce: callbacks.produce,
+    onProduceDraft: callbacks.produceDraft
   };
 }

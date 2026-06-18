@@ -1,5 +1,6 @@
 import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
 import { toConsumeDefaultPatch } from "../../consumeConfig";
+import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { ConsumeDefaultPatch, OffsetOrder, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
 import type { PrimaryPaneCallbacksParams } from "./usePrimaryPaneCallbacks";
 
@@ -65,6 +66,7 @@ export function createPrimaryProduceCallbacks(params: PrimaryProduceCallbackPara
     produceKey: (key: string) => params.updateProduceDraftFor(params.selectedServerId, params.selectedTopic, { key }),
     produceHeaders: (headers: string) => params.updateProduceDraftFor(params.selectedServerId, params.selectedTopic, { headers }),
     produceValue: (value: string) => params.updateProduceDraftFor(params.selectedServerId, params.selectedTopic, { value }),
-    produce: () => void params.produce(params.paneId)
+    produce: () => void params.produce(params.paneId),
+    produceDraft: (draft: ProduceDraftOverride) => params.produce(params.paneId, draft)
   };
 }

@@ -1,6 +1,7 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
 import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
+import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import { createSplitConsumeCallbacks, createSplitProduceCallbacks } from "./splitPaneCallbackGroups";
 
@@ -38,7 +39,7 @@ export type SplitPaneCallbacksParams = {
   exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string, payloadOptions?: MessageExportPayloadOptions) => Promise<void>;
   exportOffsetConditionMessages: (format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) => Promise<void>;
   updateProduceDraftFor: (serverId: string, topic: string, patch: ProduceDraftPatch) => void;
-  produceFor: (serverId: string, topic: string, pane?: WorkspacePaneId) => Promise<void>;
+  produceFor: (serverId: string, topic: string, pane?: WorkspacePaneId, draftOverride?: ProduceDraftOverride) => Promise<void>;
 };
 
 export function useSplitPaneCallbacks({

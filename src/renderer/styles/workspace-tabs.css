@@ -234,6 +234,20 @@
   @apply shrink-0 rounded border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-cyan-700;
 }
 
+.topic-tab-activity {
+  @apply h-2 w-2 shrink-0 rounded-full border border-[#1e1e1e];
+}
+
+.topic-tab-activity.live {
+  @apply bg-[#4ec9b0];
+  box-shadow: 0 0 0 2px rgb(78 201 176 / 0.16);
+}
+
+.topic-tab-activity.produce {
+  @apply bg-[#d7ba7d];
+  box-shadow: 0 0 0 2px rgb(215 186 125 / 0.16);
+}
+
 .topic-tab svg {
   @apply shrink-0 rounded text-[#9da5b4] hover:bg-slate-200 hover:text-red-600;
 }

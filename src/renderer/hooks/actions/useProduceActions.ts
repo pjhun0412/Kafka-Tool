@@ -9,6 +9,8 @@ type ProduceDraft = {
   headers: string;
 };
 
+export type ProduceDraftOverride = Partial<ProduceDraft>;
+
 type ProduceActionParams = {
   kafkaApi: KafkaApi | undefined;
   selectedServerId: string;
@@ -38,13 +40,13 @@ export function useProduceActions({
   setStatus,
   setToast
 }: ProduceActionParams) {
-  async function produce(pane?: WorkspacePaneId) {
-    await produceFor(selectedServerId, selectedTopic, pane);
+  async function produce(pane?: WorkspacePaneId, draftOverride?: ProduceDraftOverride) {
+    await produceFor(selectedServerId, selectedTopic, pane, draftOverride);
   }
 
-  async function produceFor(serverId: string, topic: string, pane?: WorkspacePaneId) {
+  async function produceFor(serverId: string, topic: string, pane?: WorkspacePaneId, draftOverride?: ProduceDraftOverride) {
     if (!kafkaApi || !serverId || !topic) return;
-    const draft = getProduceDraft(serverId, topic);
+    const draft = { ...getProduceDraft(serverId, topic), ...draftOverride };
     const validationError = validateJsonLikeValue(draft.value);
     if (validationError) {
       setStatus(validationError);

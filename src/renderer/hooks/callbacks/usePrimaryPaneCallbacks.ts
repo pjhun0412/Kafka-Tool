@@ -1,6 +1,7 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
 import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
+import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import type { ConsumeDefaultPatch } from "../../uiTypes";
 import { createPrimaryConsumeCallbacks, createPrimaryProduceCallbacks } from "./primaryPaneCallbackGroups";
@@ -43,7 +44,7 @@ export type PrimaryPaneCallbacksParams = {
   exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string, payloadOptions?: MessageExportPayloadOptions) => Promise<void>;
   exportOffsetConditionMessages: (format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) => Promise<void>;
   updateProduceDraftFor: (serverId: string, topic: string, patch: { key?: string; headers?: string; value?: string }) => void;
-  produce: (pane?: WorkspacePaneId) => Promise<void>;
+  produce: (pane?: WorkspacePaneId, draftOverride?: ProduceDraftOverride) => Promise<void>;
 };
 
 export function usePrimaryPaneCallbacks({
