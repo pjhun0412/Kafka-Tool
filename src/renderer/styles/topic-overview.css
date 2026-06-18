@@ -1,0 +1,90 @@
+.server-topics-panel {
+  @apply flex flex-col overflow-hidden;
+}
+
+.server-topics-table {
+  @apply min-h-0 flex-1 overflow-auto;
+}
+
+.server-topics-table tbody tr {
+  @apply cursor-pointer;
+}
+
+.server-topic-favorite {
+  @apply mx-auto;
+}
+
+.topic-actionbar {
+  @apply mb-2 flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-line bg-slate-50 px-2 py-1.5;
+}
+
+.topic-info-summary,
+.topic-info-configs {
+  @apply mb-3 grid gap-2;
+}
+
+.topic-info-summary {
+  @apply grid-cols-6;
+}
+
+.topic-info-configs {
+  @apply grid-cols-3;
+}
+
+.topic-info-summary div,
+.topic-info-configs div {
+  @apply min-w-0 rounded-lg border border-line bg-white/[0.04] p-3;
+}
+
+.topic-info-summary span,
+.topic-info-configs span {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-bold uppercase text-muted;
+}
+
+.topic-info-summary strong,
+.topic-info-configs strong {
+  @apply mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-slate-100;
+}
+
+.topic-info-partitions {
+  @apply mt-2;
+}
+
+.topic-select-all {
+  @apply mr-auto inline-flex items-center gap-2 text-[12px] font-extrabold text-slate-700;
+}
+
+.topic-select-all input,
+.server-topics-table input[type="checkbox"] {
+  @apply m-0 h-4 min-h-0 w-4 shrink-0 accent-brand;
+  padding: 0;
+}
+
+.server-topics-panel {
+  @apply border-[#30363d] bg-[#252526] text-slate-100 shadow-[0_12px_30px_rgba(0,0,0,0.24)];
+}
+
+.topic-actionbar {
+  @apply border-[#30363d] bg-[#252526] text-slate-100 shadow-[0_8px_20px_rgba(0,0,0,0.18)];
+}
+
+.server-topics-table {
+  @apply border-[#30363d] bg-[#1e1e1e] text-slate-100;
+}
+
+.server-topics-table th {
+  @apply border-[#30363d] bg-[#252526] text-slate-300;
+}
+
+.server-topics-table td {
+  @apply border-[#2b2b2b];
+  font-weight: var(--app-font-weight);
+}
+
+.server-topics-table tbody tr {
+  @apply hover:bg-white/[0.05];
+}
+
+.topic-select-all {
+  @apply text-slate-300;
+}

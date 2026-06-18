@@ -21,23 +21,35 @@ export function createOverlayChromeComposition({
     onCloseQuickSearch: search.quickSearch.closeQuickSearch,
     fontFamily: state.fontFamily,
     fontSize: state.fontSize,
+    fontWeight: state.fontWeight,
     language: state.language,
     resolvedLanguage: state.resolvedLanguage,
     exportFormatTemplate: state.exportFormatTemplate,
     consumeDefaults: state.consumeDefaults,
     viewerPreferenceRetentionDays: state.viewerPreferences.retentionDays,
+    viewerFontSize: state.viewerPreferences.fontSize,
+    viewerFontWeight: state.viewerPreferences.fontWeight,
     logRetentionDays: state.logRetentionDays,
     keyboardShortcuts: state.keyboardShortcuts,
     appVersion: state.appVersion,
     manualAvroSchemaRows,
     onFontFamily: state.setFontFamily,
     onFontSize: state.setFontSize,
+    onFontWeight: state.setFontWeight,
     onLanguage: state.setLanguage,
     onExportFormatTemplate: state.setExportFormatTemplate,
     onConsumeDefaults: state.setConsumeDefaults,
     onViewerPreferenceRetentionDays: (retentionDays) => state.setViewerPreferences((current) => ({
       ...current,
       retentionDays
+    })),
+    onViewerFontSize: (fontSize) => state.setViewerPreferences((current) => ({
+      ...current,
+      fontSize
+    })),
+    onViewerFontWeight: (fontWeight) => state.setViewerPreferences((current) => ({
+      ...current,
+      fontWeight
     })),
     onLogRetentionDays: state.setLogRetentionDays,
     onKeyboardShortcuts: state.setKeyboardShortcuts,

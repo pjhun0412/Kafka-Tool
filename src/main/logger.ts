@@ -30,10 +30,27 @@ function redact(value: string) {
     .replace(/(authorization["'\s:=]+)([^"',\s]+)/gi, "$1[REDACTED]");
 }
 
-function serializeDetail(detail: unknown) {
+function serializeError(error: Error, depth = 0): string {
+  const lines = [error.stack || `${error.name}: ${error.message}`];
+  const errorRecord = error as Error & Record<string, unknown> & { cause?: unknown };
+  const entries = Object.entries(errorRecord).filter(([key]) => key !== "cause");
+  if (entries.length > 0) {
+    try {
+      lines.push(JSON.stringify(Object.fromEntries(entries)));
+    } catch {
+      lines.push(String(Object.fromEntries(entries)));
+    }
+  }
+  if (errorRecord.cause && depth < 4) {
+    lines.push(`Caused by: ${serializeDetail(errorRecord.cause, depth + 1)}`);
+  }
+  return lines.join("\n");
+}
+
+function serializeDetail(detail: unknown, depth = 0) {
   if (!detail) return "";
   if (detail instanceof Error) {
-    return detail.stack || detail.message;
+    return serializeError(detail, depth);
   }
   if (typeof detail === "string") return detail;
   try {

@@ -232,6 +232,8 @@ export const defaultPreferences: AppPreferences = {
   },
   viewerPreferences: {
     retentionDays: 90,
+    fontSize: 13,
+    fontWeight: 600,
     byServer: {}
   },
   consumeDefaultsByServer: {},
@@ -240,6 +242,7 @@ export const defaultPreferences: AppPreferences = {
   appearance: {
     fontFamily: "Inter, 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontSize: 13,
+    fontWeight: 600,
     language: "auto"
   },
   keyboardShortcuts: {},

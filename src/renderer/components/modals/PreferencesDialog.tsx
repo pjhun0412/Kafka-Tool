@@ -23,11 +23,14 @@ type PreferencesDialogProps = {
   matches: PreferenceSearchMatches;
   fontFamily: string;
   fontSize: number;
+  fontWeight: number;
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
   consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
   viewerPreferenceRetentionDays: number;
+  viewerFontSize: number;
+  viewerFontWeight: number;
   keyboardShortcuts: KeyboardShortcutMap;
   logRetentionDays: number;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
@@ -36,10 +39,13 @@ type PreferencesDialogProps = {
   onQuery: (query: string) => void;
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onFontWeight: (fontWeight: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
   onConsumeDefaults: (defaults: NonNullable<AppPreferences["consumeDefaults"]>) => void;
   onViewerPreferenceRetentionDays: (days: number) => void;
+  onViewerFontSize: (fontSize: number) => void;
+  onViewerFontWeight: (fontWeight: number) => void;
   onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
   onLogRetentionDays: (days: number) => void;
   onOpenManualAvroSchema: (serverId: string, topic: string) => void;
@@ -55,11 +61,14 @@ export function PreferencesDialog({
   matches,
   fontFamily,
   fontSize,
+  fontWeight,
   language,
   resolvedLanguage,
   exportFormatTemplate,
   consumeDefaults,
   viewerPreferenceRetentionDays,
+  viewerFontSize,
+  viewerFontWeight,
   keyboardShortcuts,
   logRetentionDays,
   manualAvroSchemaRows,
@@ -68,10 +77,13 @@ export function PreferencesDialog({
   onQuery,
   onFontFamily,
   onFontSize,
+  onFontWeight,
   onLanguage,
   onExportFormatTemplate,
   onConsumeDefaults,
   onViewerPreferenceRetentionDays,
+  onViewerFontSize,
+  onViewerFontWeight,
   onKeyboardShortcuts,
   onLogRetentionDays,
   onOpenManualAvroSchema,
@@ -108,8 +120,10 @@ export function PreferencesDialog({
               <EditorFontPreferences
                 fontFamily={fontFamily}
                 fontSize={fontSize}
+                fontWeight={fontWeight}
                 onFontFamily={onFontFamily}
                 onFontSize={onFontSize}
+                onFontWeight={onFontWeight}
               />
             )}
             {activePage === "keyboard-shortcuts" && (
@@ -136,8 +150,12 @@ export function PreferencesDialog({
               <ViewerDefaultsPreferences
                 consumeDefaults={consumeDefaults}
                 retentionDays={viewerPreferenceRetentionDays}
+                fontSize={viewerFontSize}
+                fontWeight={viewerFontWeight}
                 onConsumeDefaults={onConsumeDefaults}
                 onRetentionDays={onViewerPreferenceRetentionDays}
+                onFontSize={onViewerFontSize}
+                onFontWeight={onViewerFontWeight}
               />
             )}
             {activePage === "export-log" && (

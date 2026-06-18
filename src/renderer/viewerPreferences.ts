@@ -2,6 +2,8 @@ import type { AppPreferences } from "../shared/types";
 import type { TopicConsumeState } from "./uiTypes";
 
 export const DEFAULT_VIEWER_PREFERENCE_RETENTION_DAYS = 90;
+export const DEFAULT_VIEWER_FONT_SIZE = 13;
+export const DEFAULT_VIEWER_FONT_WEIGHT = 600;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type ViewerPreferences = NonNullable<AppPreferences["viewerPreferences"]>;
@@ -14,6 +16,8 @@ const viewerPreferenceKeys = ["inspectorMode", "keyFormat", "valueFormat", "payl
 export function normalizeViewerPreferences(preferences?: AppPreferences["viewerPreferences"]): Required<ViewerPreferences> {
   return {
     retentionDays: typeof preferences?.retentionDays === "number" ? preferences.retentionDays : DEFAULT_VIEWER_PREFERENCE_RETENTION_DAYS,
+    fontSize: typeof preferences?.fontSize === "number" ? Math.min(18, Math.max(11, preferences.fontSize)) : DEFAULT_VIEWER_FONT_SIZE,
+    fontWeight: typeof preferences?.fontWeight === "number" ? Math.min(800, Math.max(400, preferences.fontWeight)) : DEFAULT_VIEWER_FONT_WEIGHT,
     byServer: preferences?.byServer ?? {}
   };
 }

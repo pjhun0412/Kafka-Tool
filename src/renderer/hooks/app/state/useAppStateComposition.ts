@@ -1,4 +1,5 @@
 import { useShallow } from "zustand/react/shallow";
+import { useEffect } from "react";
 import { usePreferenceNavigation } from "../../preferences";
 import {
   useConsumeStateStore,
@@ -48,6 +49,17 @@ export function useAppStateComposition() {
   const preferences = usePreferenceNavigation();
   const sidebarInteraction = useSidebarInteractionState();
   const workspacePane = useWorkspacePaneState(serverCluster.selectedServerId);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--message-viewer-font-size",
+      `${Math.min(18, Math.max(11, resources.preferences.viewerPreferences.fontSize))}px`
+    );
+    document.documentElement.style.setProperty(
+      "--message-viewer-font-weight",
+      String(Math.min(800, Math.max(400, resources.preferences.viewerPreferences.fontWeight)))
+    );
+  }, [resources.preferences.viewerPreferences.fontSize, resources.preferences.viewerPreferences.fontWeight]);
 
   return {
     serverCluster,

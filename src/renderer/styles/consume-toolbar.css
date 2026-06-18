@@ -1,0 +1,221 @@
+.consume-workspace > .toolbar {
+  @apply gap-1.5 rounded-lg border border-[#30363d] bg-[#252526] p-2 text-slate-100 shadow-[0_8px_20px_rgba(0,0,0,0.18)];
+}
+
+.consume-workspace > .toolbar .count {
+  @apply whitespace-nowrap;
+}
+
+.toolbar input,
+.toolbar select {
+  @apply h-9 min-h-9 py-2;
+}
+
+.toolbar .primary,
+.toolbar .danger,
+.toolbar .export-button {
+  @apply h-9 min-h-9 px-3;
+}
+
+.toolbar .export-menu {
+  @apply inline-flex h-9 min-h-9 items-center;
+}
+
+.export-button {
+  @apply inline-flex h-9 min-h-9 items-center justify-center gap-1 rounded-md border border-[#333333] bg-[#252526] px-2.5 text-[12px] font-extrabold text-[#c8c8c8] shadow-none transition hover:border-[#4a4a4a] hover:bg-[#303031] hover:text-[#f0f0f0] disabled:cursor-not-allowed disabled:border-line disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none;
+}
+
+.export-menu {
+  @apply relative inline-flex;
+}
+
+.export-menu-popover {
+  @apply absolute left-0 top-[calc(100%+4px)] z-30 grid min-w-[128px] overflow-hidden rounded-md border border-[#30363d] bg-[#252526] p-1 text-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.45)];
+}
+
+.export-menu-popover button {
+  @apply inline-flex h-8 items-center gap-2 rounded px-2 text-left text-[12px] font-extrabold text-slate-300 transition hover:bg-white/[0.06] hover:text-white;
+}
+
+.export-menu-label {
+  @apply px-2 pt-1 text-[10px] font-black uppercase tracking-wide text-slate-500;
+}
+
+.export-menu-divider {
+  @apply my-1 h-px bg-slate-200;
+}
+
+.filter-bar {
+  @apply mb-2.5 grid shrink-0 grid-cols-[120px_minmax(180px,1fr)_auto_auto_auto] items-center gap-2 rounded-lg border border-[#30363d] bg-[#252526] p-2 text-slate-100 shadow-[0_8px_20px_rgba(0,0,0,0.18)];
+}
+
+.paging-bar {
+  @apply mb-2 flex min-h-8 shrink-0 items-center justify-between gap-2 rounded-lg border border-[#264f78] bg-[#102a3c] px-2.5 text-[12px] font-extrabold text-cyan-100;
+}
+
+.paging-bar > div {
+  @apply inline-flex items-center gap-1.5;
+}
+
+.filter-input-wrap {
+  @apply min-w-0;
+}
+
+.filter-input-wrap input {
+  @apply w-full;
+}
+
+.filter-bar input,
+.filter-bar select {
+  @apply h-9 min-h-9 bg-transparent py-2 text-[12px] text-slate-100;
+}
+
+.filter-help {
+  @apply relative inline-flex h-9 min-h-9 items-center;
+}
+
+.filter-help .icon-button,
+.filter-help .ui-button-icon {
+  @apply h-9 min-h-9 w-9 rounded-md border border-line bg-white text-slate-500 hover:border-brand/40 hover:bg-brand/10 hover:text-ink;
+}
+
+.filter-help-popover {
+  @apply pointer-events-none invisible absolute right-0 top-[calc(100%+6px)] z-40 flex w-[430px] max-w-[70vw] flex-col gap-2 rounded-md border border-[#30363d] bg-[#252526] p-3.5 text-[12px] font-semibold text-[#d4d4d4] opacity-0 shadow-[0_24px_70px_rgba(0,0,0,0.45)] transition;
+}
+
+.filter-help-popover > span:not(.filter-help-row):not(.filter-help-note) {
+  display: none;
+}
+
+.filter-help-popover strong {
+  @apply text-[12px] font-black text-ink;
+}
+
+.filter-help-popover b {
+  @apply font-black text-[#9da5b4];
+}
+
+.filter-help-content {
+  @apply grid gap-1.5;
+}
+
+.filter-help-row {
+  @apply grid grid-cols-[82px_minmax(0,1fr)] items-start gap-2 text-[12px] leading-5;
+}
+
+.filter-help-row code {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap rounded border border-[#3c3c3c] bg-[#1e1e1e] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[#e6edf3];
+}
+
+.filter-help-note {
+  @apply mt-1 border-t border-[#30363d] pt-2 text-[11px] leading-4 text-[#9da5b4];
+}
+
+.filter-help:hover .filter-help-popover,
+.filter-help:focus-within .filter-help-popover {
+  @apply visible opacity-100;
+}
+
+.filter-mode-toggle {
+  @apply inline-flex h-9 min-h-9 items-center justify-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2.5 text-[12px] font-extrabold text-slate-300 shadow-sm transition hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+}
+
+.filter-mode-toggle.active {
+  @apply border-amber-300 bg-amber-50 text-amber-800 shadow-sm;
+}
+
+.date-field {
+  @apply relative flex h-9 min-h-9 w-[150px] shrink-0 grid-cols-none items-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2 text-slate-100 transition placeholder:text-slate-500 focus-within:border-[#007acc] focus-within:ring-2 focus-within:ring-[#007acc]/25;
+}
+
+.date-field input {
+  @apply h-[34px] min-h-0 flex-1 border-0 bg-transparent p-0 text-[12px] leading-[34px] text-slate-100 ring-0;
+}
+
+.date-field input:focus {
+  @apply border-0 ring-0;
+}
+
+.date-field input::-webkit-calendar-picker-indicator {
+  @apply cursor-pointer opacity-60;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.datetime-picker {
+  @apply relative shrink-0;
+}
+
+.datetime-trigger {
+  @apply flex h-9 min-h-9 w-[150px] items-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2 text-left text-[12px] font-extrabold text-slate-200 shadow-sm transition hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-trigger span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.datetime-popover {
+  @apply absolute left-0 top-[calc(100%+8px)] z-50 grid w-[260px] gap-1.5 rounded-lg border border-[#3c3c3c] bg-[#252526] p-2.5 text-slate-200 shadow-[0_24px_70px_rgba(0,0,0,0.48)];
+}
+
+.datetime-popover-header {
+  @apply grid grid-cols-[28px_minmax(0,1fr)_28px] items-center gap-2;
+}
+
+.datetime-popover-header strong {
+  @apply text-center text-[13px] font-extrabold text-white;
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-popover-header button,
+.datetime-footer button {
+  @apply grid min-h-7 place-items-center rounded-md bg-[#2d2d2d] px-2 text-[12px] font-extrabold text-slate-300 transition hover:bg-[#333333] hover:text-white;
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-weekdays,
+.datetime-days {
+  @apply grid grid-cols-7 gap-1;
+}
+
+.datetime-weekdays span {
+  @apply grid h-6 place-items-center text-[10px] font-extrabold uppercase text-[#9da5b4];
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-days button {
+  @apply grid h-7 place-items-center rounded-md text-[12px] font-extrabold text-slate-300 transition hover:bg-[#333333] hover:text-white;
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-days button.muted {
+  @apply text-slate-500;
+}
+
+.datetime-days button.today {
+  @apply ring-1 ring-[#007acc]/45;
+}
+
+.datetime-days button.selected {
+  @apply bg-[#007acc] text-white shadow-sm hover:bg-[#007acc] hover:text-white;
+}
+
+.datetime-footer {
+  @apply mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-[#3c3c3c] pt-2;
+}
+
+.datetime-footer label {
+  @apply flex min-h-8 items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-slate-400;
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-footer input {
+  @apply h-7 min-h-0 flex-1 border-0 bg-transparent p-0 text-[12px] font-extrabold text-slate-100 ring-0;
+  font-weight: var(--app-font-weight);
+}
+
+.datetime-footer input:focus {
+  @apply border-0 ring-0;
+}

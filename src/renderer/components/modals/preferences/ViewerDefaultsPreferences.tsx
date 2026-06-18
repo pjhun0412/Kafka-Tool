@@ -8,8 +8,12 @@ type ConsumeDefaults = NonNullable<AppPreferences["consumeDefaults"]>;
 export function ViewerDefaultsPreferences(props: {
   consumeDefaults: ConsumeDefaults;
   retentionDays: number;
+  fontSize: number;
+  fontWeight: number;
   onConsumeDefaults: (defaults: ConsumeDefaults) => void;
   onRetentionDays: (days: number) => void;
+  onFontSize: (fontSize: number) => void;
+  onFontWeight: (fontWeight: number) => void;
 }) {
   const language = useAppLanguage();
 
@@ -73,6 +77,33 @@ export function ViewerDefaultsPreferences(props: {
             <option value="json">{t(language, "label.previewJson")}</option>
             <option value="hex">{t(language, "label.previewHex")}</option>
             <option value="base64">{t(language, "label.previewBase64")}</option>
+          </select>
+        </label>
+      </div>
+      <div className="setting-card">
+        <label>
+          {t(language, "preferences.viewer.fontSize")}
+          <span>{t(language, "preferences.viewer.fontSizeHelp")}</span>
+          <div className="inline-setting-row">
+            <input
+              type="number"
+              min={11}
+              max={18}
+              value={props.fontSize}
+              onChange={(event) => props.onFontSize(Number(event.target.value) || 13)}
+            />
+            <span>px</span>
+          </div>
+        </label>
+        <label>
+          {t(language, "preferences.viewer.fontWeight")}
+          <span>{t(language, "preferences.viewer.fontWeightHelp")}</span>
+          <select value={props.fontWeight} onChange={(event) => props.onFontWeight(Number(event.target.value))}>
+            <option value={400}>400</option>
+            <option value={500}>500</option>
+            <option value={600}>600</option>
+            <option value={700}>700</option>
+            <option value={800}>800</option>
           </select>
         </label>
       </div>

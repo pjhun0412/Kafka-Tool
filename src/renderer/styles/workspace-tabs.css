@@ -1,0 +1,243 @@
+.topbar .eyebrow,
+.split-topbar .eyebrow,
+.cluster-tabs-empty,
+.topic-tabs-empty {
+  @apply text-slate-400;
+}
+
+.tabs {
+  @apply mb-2.5 flex gap-1.5;
+}
+
+.tabs button {
+  @apply inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line bg-white px-3 text-[12px] font-extrabold text-slate-600 shadow-sm transition hover:border-brand/30 hover:bg-cyan-50 hover:text-ink;
+}
+
+.tabs button.active {
+  @apply border-ink bg-ink text-white shadow-[0_8px_20px_rgba(15,23,42,0.18)] hover:bg-ink;
+}
+
+.cluster-tabs {
+  @apply mb-2 flex min-h-[42px] items-center gap-1.5 overflow-x-auto rounded-lg border border-[#303030] bg-[#252526] px-1.5 py-1.5 text-slate-100 shadow-none;
+}
+
+.cluster-tabs-empty {
+  @apply px-2 text-[12px] text-slate-400;
+}
+
+.cluster-tab {
+  @apply relative inline-flex h-8 min-h-8 max-h-8 max-w-[220px] shrink-0 items-center gap-2 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 py-0 text-[12px] font-extrabold leading-none text-[#c8c8c8] shadow-none transition hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+}
+
+.cluster-tab.active {
+  @apply border-[#4a4a4a] bg-[#303034] text-[#ffffff] shadow-none hover:bg-[#303034];
+}
+
+.cluster-tab.active::before {
+  content: "";
+  @apply absolute left-0 right-0 top-0 h-0.5 rounded-none bg-[#3794ff]/85;
+}
+
+.cluster-tab-name {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap leading-none;
+}
+
+.cluster-tab svg {
+  @apply shrink-0 rounded text-[#9da5b4] hover:bg-white/10 hover:text-red-300;
+}
+
+.cluster-tab.active svg {
+  @apply text-[#9cdcfe];
+}
+
+.cluster-tab.active .connection-dot {
+  @apply ring-white/20;
+}
+
+.cluster-tab .connection-dot {
+  @apply h-3.5 w-3.5 border border-[#4a4a4a] bg-[#3c3c3c] ring-0;
+}
+
+.cluster-tab .connection-dot.connected {
+  @apply border-emerald-400/40 bg-emerald-500;
+  box-shadow: 0 0 0 2px rgb(34 197 94 / 0.14);
+}
+
+.cluster-tab .connection-dot.failed {
+  @apply border-red-400/50 bg-red-500;
+  box-shadow: 0 0 0 2px rgb(239 68 68 / 0.14);
+}
+
+.cluster-tab .connection-dot.compact {
+  @apply h-2.5 min-h-2.5 w-2.5 min-w-2.5 max-w-2.5 rounded-full border border-[#5f6b7a] bg-[#3c3c3c] p-0 text-transparent ring-0;
+  box-shadow: none;
+}
+
+.cluster-tab .connection-dot.compact.connected {
+  @apply border-emerald-300/50 bg-emerald-400;
+  box-shadow: 0 0 0 2px rgb(52 211 153 / 0.14);
+}
+
+.cluster-tab .connection-dot.compact.failed {
+  @apply border-red-300/60 bg-red-500;
+  box-shadow: 0 0 0 2px rgb(239 68 68 / 0.14);
+}
+
+.cluster-tab .connection-dot.compact::before,
+.cluster-tab .connection-dot.compact::after {
+  content: none;
+  display: none;
+}
+
+.server-work-tabs {
+  @apply mb-2 border-[#303030] bg-[#252526] shadow-none;
+}
+
+.server-work-tabs .ghost {
+  @apply hidden;
+}
+
+.server-work-tabs button {
+  @apply relative h-8 min-h-8 max-h-8 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 py-0 text-[12px] font-extrabold leading-none text-[#c8c8c8] shadow-none hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+}
+
+.server-work-tabs button svg {
+  @apply text-[#9da5b4];
+}
+
+.server-work-tabs button.active {
+  @apply border-[#4a4a4a] bg-[#303034] text-[#ffffff] shadow-none hover:bg-[#303034];
+}
+
+.server-work-tabs button.active::before {
+  content: "";
+  @apply absolute left-0 right-0 top-0 h-0.5 rounded-none bg-[#3794ff]/85;
+}
+
+.server-work-tabs button.active svg {
+  @apply text-[#9cdcfe];
+}
+
+.topic-work-tabs {
+  @apply mb-3 gap-1.5;
+}
+
+.topic-work-tabs .refresh-side {
+  @apply ml-auto;
+}
+
+.topic-work-tabs button,
+.split-topic-tabs button {
+  @apply relative min-h-8 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 text-[#c8c8c8] shadow-none hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+}
+
+.topic-work-tabs button svg,
+.split-topic-tabs button svg {
+  @apply text-[#9da5b4];
+}
+
+.topic-work-tabs button.active,
+.split-topic-tabs button.active {
+  @apply border-[#3c3c3c] bg-[#2d2d30] text-[#ffffff] shadow-none hover:bg-[#2d2d30];
+}
+
+.topic-work-tabs button.active::before,
+.split-topic-tabs button.active::before {
+  content: "";
+  @apply absolute left-0 right-0 top-0 h-0.5 rounded-none bg-[#3794ff]/85;
+}
+
+.topic-work-tabs button.active svg,
+.split-topic-tabs button.active svg {
+  @apply text-[#9cdcfe];
+}
+
+.topic-action-menu-wrap {
+  @apply relative;
+}
+
+.tabs button.icon-only {
+  @apply w-9 px-0;
+}
+
+.tabs button.topic-menu-button,
+.tabs button.topic-menu-button.active {
+  @apply border-[#333333] bg-[#252526] text-[#c8c8c8] shadow-none outline-none ring-0 hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0] focus:border-[#4a4a4a] focus:ring-0;
+}
+
+.topic-action-menu {
+  @apply absolute right-0 top-[calc(100%+6px)] z-40 w-[230px] rounded-md border border-[#303030] bg-[#1f1f1f] p-1.5 outline-none shadow-[0_16px_42px_rgba(0,0,0,0.42)];
+}
+
+.topic-action-menu button {
+  @apply flex h-auto min-h-0 w-full flex-col items-start gap-0.5 rounded border-0 bg-transparent px-2.5 py-2 text-left text-[12px] font-extrabold text-[#f0f0f0] shadow-none outline-none hover:bg-[#2d2d30] focus:bg-[#2d2d30] focus:ring-0;
+}
+
+.topic-action-menu button span {
+  @apply text-[11px] font-bold text-[#9da5b4];
+}
+
+.topic-tabs {
+  @apply mb-2 flex min-h-[40px] items-center gap-1.5 overflow-x-auto rounded-lg border border-[#303030] bg-[#252526] px-1.5 py-1.5 text-slate-100 shadow-none;
+}
+
+.topic-tabs-empty {
+  @apply px-2 text-[13px] text-slate-400;
+}
+
+.topic-tab {
+  @apply relative inline-flex h-8 min-h-8 max-h-8 max-w-[220px] shrink-0 items-center gap-1.5 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 py-0 text-[12px] font-extrabold leading-none text-[#c8c8c8] shadow-none transition hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+}
+
+.topic-tab.active {
+  @apply border-[#4a4a4a] bg-[#303034] text-[#ffffff] shadow-none hover:bg-[#303034];
+}
+
+.topic-tab.active::before {
+  content: "";
+  @apply absolute left-0 right-0 top-0 h-0.5 rounded-none bg-[#3794ff]/85;
+}
+
+.primary-topic-pane:not(.active-pane) .topic-tab.active,
+.split-pane:not(.active-pane) .topic-tab.active,
+.inactive-pane .topic-tab.active {
+  @apply border-[#333333] bg-[#252526] text-[#9da5b4];
+}
+
+.primary-topic-pane:not(.active-pane) .topic-tab.active::before,
+.split-pane:not(.active-pane) .topic-tab.active::before,
+.inactive-pane .topic-tab.active::before {
+  @apply bg-transparent;
+}
+
+.topic-tab span {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap leading-none;
+}
+
+.topic-tab.preview span:first-child {
+  @apply italic text-[#d4d4d4];
+}
+
+.topic-tab.preview:not(.active) span:first-child,
+.primary-topic-pane:not(.active-pane) .topic-tab.preview.active span:first-child,
+.split-pane:not(.active-pane) .topic-tab.preview.active span:first-child,
+.inactive-pane .topic-tab.preview.active span:first-child {
+  @apply text-[#9da5b4];
+}
+
+.primary-topic-pane.active-pane .topic-tab.preview.active span:first-child,
+.split-pane.active-pane .topic-tab.preview.active span:first-child {
+  @apply text-[#ffffff];
+}
+
+.topic-tab .topic-tab-badge {
+  @apply shrink-0 rounded border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-cyan-700;
+}
+
+.topic-tab svg {
+  @apply shrink-0 rounded text-[#9da5b4] hover:bg-slate-200 hover:text-red-600;
+}
+
+.topic-tab.active svg {
+  @apply text-[#9cdcfe];
+}

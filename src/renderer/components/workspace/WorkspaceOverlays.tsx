@@ -26,21 +26,27 @@ type WorkspaceOverlaysProps = {
 
   fontFamily: string;
   fontSize: number;
+  fontWeight: number;
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
   consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
   viewerPreferenceRetentionDays: number;
+  viewerFontSize: number;
+  viewerFontWeight: number;
   logRetentionDays: number;
   keyboardShortcuts: KeyboardShortcutMap;
   appVersion: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onFontWeight: (fontWeight: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
   onConsumeDefaults: (defaults: NonNullable<AppPreferences["consumeDefaults"]>) => void;
   onViewerPreferenceRetentionDays: (days: number) => void;
+  onViewerFontSize: (fontSize: number) => void;
+  onViewerFontWeight: (fontWeight: number) => void;
   onLogRetentionDays: (days: number) => void;
   onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
   onLastSeenReleaseVersion: (version: string) => void;
@@ -88,21 +94,27 @@ export function WorkspaceOverlays({
   onExecuteQuickSearch,
   fontFamily,
   fontSize,
+  fontWeight,
   language,
   resolvedLanguage,
   exportFormatTemplate,
   consumeDefaults,
   viewerPreferenceRetentionDays,
+  viewerFontSize,
+  viewerFontWeight,
   logRetentionDays,
   keyboardShortcuts,
   appVersion,
   manualAvroSchemaRows,
   onFontFamily,
   onFontSize,
+  onFontWeight,
   onLanguage,
   onExportFormatTemplate,
   onConsumeDefaults,
   onViewerPreferenceRetentionDays,
+  onViewerFontSize,
+  onViewerFontWeight,
   onLogRetentionDays,
   onKeyboardShortcuts,
   onLastSeenReleaseVersion,
@@ -150,21 +162,27 @@ export function WorkspaceOverlays({
         onSaveServer={onSaveServer}
         fontFamily={fontFamily}
         fontSize={fontSize}
+        fontWeight={fontWeight}
         language={language}
         resolvedLanguage={resolvedLanguage}
         exportFormatTemplate={exportFormatTemplate}
         consumeDefaults={consumeDefaults}
         viewerPreferenceRetentionDays={viewerPreferenceRetentionDays}
+        viewerFontSize={viewerFontSize}
+        viewerFontWeight={viewerFontWeight}
         logRetentionDays={logRetentionDays}
         keyboardShortcuts={keyboardShortcuts}
         appVersion={appVersion}
         manualAvroSchemaRows={manualAvroSchemaRows}
         onFontFamily={onFontFamily}
         onFontSize={onFontSize}
+        onFontWeight={onFontWeight}
         onLanguage={onLanguage}
         onExportFormatTemplate={onExportFormatTemplate}
         onConsumeDefaults={onConsumeDefaults}
         onViewerPreferenceRetentionDays={onViewerPreferenceRetentionDays}
+        onViewerFontSize={onViewerFontSize}
+        onViewerFontWeight={onViewerFontWeight}
         onLogRetentionDays={onLogRetentionDays}
         onKeyboardShortcuts={onKeyboardShortcuts}
         onLastSeenReleaseVersion={onLastSeenReleaseVersion}

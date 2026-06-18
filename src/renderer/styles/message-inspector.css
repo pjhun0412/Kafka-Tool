@@ -1,0 +1,161 @@
+.message-view {
+  @apply min-h-0 overflow-auto rounded-lg border border-[#20333a] bg-[#0d1113] p-3 font-mono font-semibold leading-5 text-[#e6edf3] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)];
+  font-family: var(--app-font-family);
+  font-size: var(--message-viewer-font-size, 13px);
+  font-weight: var(--message-viewer-font-weight, 600);
+}
+
+.message-view mark,
+.message-tree mark {
+  @apply rounded bg-yellow-300 px-0.5 text-ink;
+}
+
+.message-view pre,
+.message-view code {
+  @apply text-[#e6edf3];
+  font-family: var(--app-font-family);
+}
+
+.epoch-token {
+  @apply cursor-help underline decoration-cyan-300/50 decoration-dotted underline-offset-2;
+}
+
+.message-inspector {
+  @apply grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2;
+}
+
+.message-inspector-toolbar {
+  @apply flex min-h-8 min-w-0 flex-wrap items-center gap-2;
+  --message-inspector-control-height: 32px;
+}
+
+.message-inspector-options {
+  @apply flex min-w-0 shrink-0 items-center gap-2;
+}
+
+.message-inspector-search {
+  @apply min-w-[180px] flex-1 py-0 text-[12px] text-[#d8d8d8];
+  height: var(--message-inspector-control-height);
+  min-height: var(--message-inspector-control-height);
+}
+
+.message-inspector-actions {
+  @apply ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1.5;
+}
+
+.preview-mode-select {
+  @apply w-[128px] shrink-0 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-0 text-[12px] font-bold text-[#e6e6e6];
+  height: var(--message-inspector-control-height);
+  min-height: var(--message-inspector-control-height);
+  line-height: var(--message-inspector-control-height);
+  color-scheme: dark;
+}
+
+.preview-target-select {
+  @apply w-[108px];
+}
+
+.preview-encoding-select {
+  @apply w-[104px];
+}
+
+.payload-format-control {
+  @apply inline-flex h-9 min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-[11px] font-extrabold leading-none text-slate-300 shadow-sm;
+  font-weight: var(--app-font-weight);
+}
+
+.payload-format-control select,
+.toolbar .payload-format-control select {
+  @apply h-7 min-h-0 w-[92px] rounded border-0 bg-[#252526] py-0 pl-1.5 pr-7 text-[11px] font-extrabold leading-7 text-white outline-none ring-0;
+  color-scheme: dark;
+  font-weight: var(--app-font-weight);
+}
+
+.payload-format-control select:focus,
+.toolbar .payload-format-control select:focus {
+  @apply border-0 ring-0;
+}
+
+.payload-format-control select option,
+.toolbar .payload-format-control select option {
+  @apply bg-[#252526] text-white;
+}
+
+.payload-format-encoding select,
+.toolbar .payload-format-encoding select {
+  @apply w-[104px];
+}
+
+.order-format-control select,
+.toolbar .order-format-control select {
+  @apply w-[96px];
+}
+
+.message-preview {
+  @apply whitespace-pre-wrap break-words;
+}
+
+.hex-preview {
+  @apply whitespace-pre overflow-auto break-normal;
+}
+
+.compact-segmented button {
+  @apply px-2.5;
+  height: var(--message-inspector-control-height);
+  min-height: var(--message-inspector-control-height);
+}
+
+.message-inspector-actions .compact {
+  height: var(--message-inspector-control-height);
+  min-height: var(--message-inspector-control-height);
+}
+
+.message-tree {
+  @apply min-h-0 overflow-auto rounded-lg border border-line bg-[#0f161a] p-3 font-mono font-semibold leading-5 text-[#e6edf3];
+  font-family: var(--app-font-family);
+  font-size: var(--message-viewer-font-size, 13px);
+  font-weight: var(--message-viewer-font-weight, 600);
+}
+
+.message-tree,
+.message-tree * {
+  @apply text-[#e6edf3];
+  font-family: var(--app-font-family);
+}
+
+.message-tree-node {
+  @apply min-w-0;
+}
+
+.message-tree-node.leaf {
+  @apply flex min-h-[24px] items-center gap-1.5;
+}
+
+.message-tree-node-toggle {
+  @apply inline-flex min-h-[24px] items-center gap-1 rounded px-1 text-left text-cyan-50 hover:bg-white/10;
+}
+
+.message-tree-children {
+  @apply ml-4 border-l border-white/10 pl-2;
+}
+
+.message-tree-key {
+  @apply text-[#98d7ff];
+}
+
+.message-tree-value {
+  @apply min-w-0 break-all text-slate-100;
+}
+
+.message-tree-separator,
+.message-tree-meta {
+  @apply text-slate-500;
+}
+
+.message-tree-filter {
+  @apply ml-1 inline-grid h-5 w-5 shrink-0 place-items-center rounded text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-cyan-200;
+}
+
+.message-tree-node.leaf:hover .message-tree-filter {
+  @apply opacity-100;
+}

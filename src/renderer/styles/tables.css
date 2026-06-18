@@ -1,0 +1,40 @@
+.message-table td,
+.server-topics-table td,
+.consumer-groups-table td,
+.group-lag-table td,
+.broker-table td {
+  font-weight: var(--app-font-weight);
+}
+
+th,
+td {
+  @apply border-[#2b2b2b];
+}
+
+.check-column {
+  @apply w-12 max-w-12 text-center;
+}
+
+.grid-check-cell,
+.grid-favorite-cell {
+  @apply flex h-full min-h-8 w-full cursor-pointer items-center justify-center;
+}
+
+.grid-row-action-cell {
+  @apply cursor-pointer p-0 text-center;
+}
+
+.grid-check-cell input {
+  @apply pointer-events-none;
+}
+
+.grid-favorite-cell .topic-favorite {
+  @apply pointer-events-none;
+}
+
+.consumer-groups-table td strong,
+.group-summary strong,
+.group-summary-grid strong,
+.group-topic-row strong {
+  font-weight: var(--app-font-weight);
+}

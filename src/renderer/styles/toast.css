@@ -1,0 +1,105 @@
+.toast {
+  @apply fixed left-1/2 top-5 z-50 inline-flex min-h-11 min-w-[260px] max-w-[560px] -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-white px-4 py-3 text-[13px] font-extrabold text-slate-700 shadow-soft;
+  box-shadow: 0 18px 50px rgb(15 23 42 / 18%);
+}
+
+.toast::before {
+  content: "";
+  @apply absolute bottom-0 left-0 top-0 w-1 rounded-l-lg bg-slate-400;
+}
+
+.toast-icon {
+  @apply grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600;
+}
+
+.toast-message {
+  @apply min-w-0 whitespace-normal break-words leading-5;
+}
+
+.toast.loading {
+  @apply text-slate-700;
+}
+
+.toast.loading::before {
+  @apply bg-brand;
+}
+
+.toast.loading .toast-icon {
+  @apply bg-cyan-50 text-brand;
+}
+
+.toast.success {
+  @apply border-emerald-200 bg-emerald-50 text-emerald-800;
+}
+
+.toast.success::before {
+  @apply bg-emerald-500;
+}
+
+.toast.success .toast-icon {
+  @apply bg-emerald-100 text-emerald-700;
+}
+
+.toast.error {
+  @apply border-red-200 bg-red-50 text-red-800;
+}
+
+.toast.error::before {
+  @apply bg-red-500;
+}
+
+.toast.error .toast-icon {
+  @apply bg-red-100 text-red-700;
+}
+
+.toast {
+  @apply min-h-11 min-w-[300px] border-[#3c3c3c] bg-[#252526] px-4 py-3 text-[13px] font-extrabold text-[#e6e6e6] shadow-[0_18px_55px_rgba(0,0,0,0.42)];
+}
+
+.toast::before {
+  @apply bg-[#3794ff];
+}
+
+.toast-icon {
+  @apply h-7 w-7 bg-[#1e1e1e] text-[#9cdcfe] ring-1 ring-[#3c3c3c];
+}
+
+.toast-message {
+  @apply text-[#e6e6e6];
+}
+
+.toast.loading {
+  @apply border-[#3c3c3c] bg-[#252526] text-[#e6e6e6];
+}
+
+.toast.loading::before {
+  @apply bg-[#3794ff];
+}
+
+.toast.loading .toast-icon {
+  @apply bg-[#1b2f3a] text-[#9cdcfe] ring-[#264f78];
+}
+
+.toast.success {
+  @apply border-emerald-500/30 bg-[#1f2a24] text-emerald-100;
+}
+
+.toast.success::before {
+  @apply bg-emerald-500;
+}
+
+.toast.success .toast-icon {
+  @apply bg-emerald-500/10 text-emerald-300 ring-emerald-500/30;
+}
+
+.toast.error {
+  @apply border-red-500/30 bg-[#2a1f1f] text-red-100;
+}
+
+.toast.error::before {
+  @apply bg-red-500;
+}
+
+.toast.error .toast-icon {
+  @apply bg-red-500/10 text-red-300 ring-red-500/30;
+}

@@ -26,6 +26,7 @@ export type ImportedPreferenceSetters = {
   setMessagePaneHeight: Dispatch<SetStateAction<number>>;
   setFontFamily: Dispatch<SetStateAction<string>>;
   setFontSize: Dispatch<SetStateAction<number>>;
+  setFontWeight: Dispatch<SetStateAction<number>>;
   setExportFormatTemplate: Dispatch<SetStateAction<string>>;
   setKeyboardShortcuts: Dispatch<SetStateAction<NonNullable<AppPreferences["keyboardShortcuts"]>>>;
   setLogRetentionDays: Dispatch<SetStateAction<number>>;
@@ -68,6 +69,7 @@ export function applyImportedPreferences(preferences: AppPreferences, setters: I
   if (typeof preferences.layout?.messagePaneHeight === "number") setters.setMessagePaneHeight(preferences.layout.messagePaneHeight);
   if (typeof preferences.appearance?.fontFamily === "string") setters.setFontFamily(preferences.appearance.fontFamily);
   if (typeof preferences.appearance?.fontSize === "number") setters.setFontSize(preferences.appearance.fontSize);
+  if (typeof preferences.appearance?.fontWeight === "number") setters.setFontWeight(preferences.appearance.fontWeight);
   if (typeof preferences.exportFormatTemplate === "string") setters.setExportFormatTemplate(preferences.exportFormatTemplate);
   setters.setKeyboardShortcuts(preferences.keyboardShortcuts ?? {});
   if (typeof preferences.diagnostics?.logRetentionDays === "number") setters.setLogRetentionDays(preferences.diagnostics.logRetentionDays);

@@ -63,6 +63,8 @@ export function useWorkspaceControllerRuntime({
       setFontFamily: state.setFontFamily,
       fontSize: state.fontSize,
       setFontSize: state.setFontSize,
+      fontWeight: state.fontWeight,
+      setFontWeight: state.setFontWeight,
       language: state.language,
       setLanguage: state.setLanguage,
       exportFormatTemplate: state.exportFormatTemplate,

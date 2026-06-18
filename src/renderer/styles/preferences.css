@@ -1,0 +1,332 @@
+.preferences-modal {
+    @apply max-w-[1120px] gap-0 overflow-hidden border-[#30363d] bg-[#1f1f1f] p-0 text-slate-100 shadow-[0_24px_80px_rgba(0,0,0,0.45)];
+    width: min(1120px, calc(100vw - 48px));
+    max-height: calc(100vh - 48px);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .preferences-modal .modal-title {
+    @apply border-b border-[#2b2b2b] bg-[#181818] px-6 py-4;
+    margin: 0;
+    padding: 18px 28px;
+  }
+
+  .preferences-modal .modal-title .eyebrow {
+    @apply text-[#8ab4f8];
+  }
+
+  .preferences-modal .modal-title h2 {
+    @apply mt-0 text-[20px] font-extrabold text-slate-50;
+  }
+
+  .preferences-modal .modal-close {
+    @apply text-slate-400 hover:bg-white/10 hover:text-white;
+  }
+
+  .preferences-grid {
+    @apply grid gap-3;
+  }
+
+  .preferences-layout {
+    @apply grid min-h-0 grid-cols-[250px_minmax(0,1fr)] gap-0 overflow-hidden;
+    height: min(680px, calc(100vh - 166px));
+  }
+
+  .preferences-nav {
+    @apply min-h-0 overflow-auto border-r border-[#2b2b2b] bg-[#181818] px-4 py-4;
+  }
+
+  .preferences-search {
+    @apply sticky top-0 z-10 mb-4 grid grid-cols-[16px_minmax(0,1fr)_20px] items-center gap-2 rounded border border-[#3c3c3c] bg-[#252526] px-2.5 py-2 text-slate-400 shadow-sm;
+  }
+
+  .preferences-search input {
+    @apply min-h-0 border-0 bg-transparent p-0 text-[12px] font-bold text-slate-100 outline-none placeholder:text-slate-500 focus:ring-0;
+  }
+
+  .preferences-search button {
+    @apply inline-grid h-5 w-5 place-items-center rounded text-slate-500 hover:bg-white/10 hover:text-white;
+  }
+
+  .preferences-nav-group {
+    @apply mb-2 grid gap-0.5;
+  }
+
+  .preferences-nav button {
+    @apply text-left transition;
+  }
+
+  .preferences-nav-parent {
+    @apply inline-flex w-full items-center gap-1 rounded px-2 py-1.5 text-[13px] font-extrabold text-slate-300 hover:bg-white/5 hover:text-white;
+  }
+
+  .preferences-nav-parent svg {
+    @apply shrink-0;
+  }
+
+  .preferences-nav button.child {
+    @apply grid gap-0.5 rounded border-l-2 border-transparent px-3 py-1.5 pl-7 text-slate-300 hover:bg-white/5 hover:text-white;
+  }
+
+  .preferences-nav button.active {
+    @apply border-[#007acc] bg-[#04395e] text-white hover:bg-[#04395e];
+  }
+
+  .preferences-nav span {
+    @apply text-[13px] font-extrabold;
+  }
+
+  .preferences-nav small {
+    @apply text-[11px] font-bold text-slate-500;
+  }
+
+  .preferences-nav button.active small {
+    @apply text-cyan-100;
+  }
+
+  .preferences-no-results {
+    @apply rounded border border-dashed border-[#3c3c3c] bg-[#252526] px-3 py-4 text-center text-[12px] font-bold text-slate-500;
+  }
+
+  .preferences-content {
+    @apply min-h-0 min-w-0 overflow-auto bg-[#1f1f1f] px-8 py-5;
+  }
+
+  .preferences-page {
+    @apply grid max-w-[860px] content-start gap-5 pb-8;
+  }
+
+  .preferences-page-header {
+    @apply sticky top-0 z-10 border-b border-[#2b2b2b] bg-[#1f1f1f]/95 py-2 backdrop-blur;
+  }
+
+  .preferences-page-header h3 {
+    @apply text-[26px] font-extrabold text-slate-50;
+  }
+
+  .preferences-page-header p {
+    @apply mt-1 max-w-[760px] text-[13px] font-bold leading-5 text-slate-400;
+  }
+
+  .preferences-modal input,
+  .preferences-modal select,
+  .preferences-modal textarea {
+    @apply border-[#3c3c3c] bg-[#2d2d2d] text-slate-100 placeholder:text-slate-500 shadow-none;
+  }
+
+  .preferences-modal input,
+  .preferences-modal select {
+    @apply min-h-10;
+    line-height: 1.35;
+  }
+
+  .preferences-modal select {
+    @apply py-0 pl-3 pr-9;
+    background-position: right 0.75rem center;
+  }
+
+  .preferences-modal select option {
+    @apply bg-[#2d2d2d] text-slate-100;
+  }
+
+  .preferences-modal input:focus,
+  .preferences-modal select:focus,
+  .preferences-modal textarea:focus {
+    @apply border-[#007acc] ring-2 ring-[#007acc]/25;
+  }
+
+  .preferences-modal input[type="range"] {
+    @apply bg-transparent accent-[#007acc];
+  }
+
+  .preferences-modal .modal-actions {
+    @apply m-0 shrink-0 border-t border-[#2b2b2b] bg-[#181818] px-6 py-3;
+  }
+
+  .preferences-modal .modal-actions .ghost {
+    @apply border-[#3c3c3c] bg-[#2d2d2d] text-slate-300 hover:bg-[#333333] hover:text-white;
+  }
+
+  .preferences-modal .modal-actions .primary {
+    @apply bg-[#007acc] text-white shadow-[0_8px_18px_rgba(0,122,204,0.2)] hover:bg-[#0e8bd8];
+  }
+
+  .setting-card {
+    @apply grid gap-2 border-b border-[#2b2b2b] pb-5;
+  }
+
+  .setting-card label {
+    @apply grid gap-2 text-[13px] font-extrabold text-slate-50;
+  }
+
+  .setting-card label > span {
+    @apply text-[12px] font-bold leading-5 text-slate-400;
+  }
+
+  .settings-grid.two-column {
+    @apply grid-cols-1 md:grid-cols-2;
+  }
+
+  .preferences-modal .setting-card select {
+    @apply h-10 min-h-10;
+  }
+
+  .inline-setting-row {
+    @apply mt-2 flex items-center gap-2;
+  }
+
+  .inline-setting-row input {
+    @apply max-w-[120px];
+  }
+
+  .shortcut-list {
+    @apply grid gap-2;
+  }
+
+  .shortcut-row {
+    @apply grid grid-cols-[minmax(0,1fr)_144px_34px] items-center gap-2 rounded border border-[#30363d] bg-[#252526] p-2.5;
+  }
+
+  .shortcut-copy {
+    @apply grid min-w-0 gap-0.5;
+  }
+
+  .shortcut-copy strong {
+    @apply text-[12px] font-extrabold text-slate-50;
+  }
+
+  .shortcut-copy span {
+    @apply text-[11px] font-bold leading-5 text-slate-400;
+  }
+
+  .shortcut-recorder,
+  .shortcut-reset {
+    @apply h-[30px] rounded border border-[#3c3c3c] bg-[#1e1e1e] text-slate-100;
+  }
+
+  .shortcut-recorder {
+    @apply justify-center font-mono text-[12px] font-extrabold;
+  }
+
+  .shortcut-recorder.recording {
+    @apply border-[#007acc] text-[#7cc7ff] ring-2 ring-[#007acc]/25;
+  }
+
+  .shortcut-reset {
+    @apply inline-flex items-center justify-center text-slate-400 hover:text-slate-100;
+  }
+
+  .release-notes-modal {
+    @apply max-w-[620px];
+  }
+
+  .release-notes-modal .eyebrow {
+    @apply inline-flex items-center gap-1;
+  }
+
+  .release-notes-body {
+    @apply rounded border border-[#30363d] bg-[#1b1b1b] p-4;
+  }
+
+  .release-notes-body ul {
+    @apply grid gap-2 pl-5;
+  }
+
+  .release-notes-body li {
+    @apply list-disc text-[13px] font-bold leading-6 text-slate-200;
+  }
+
+  .avro-schema-manager {
+    @apply flex min-h-full min-w-0 flex-col gap-3 pb-6;
+  }
+
+  .manager-header {
+    @apply flex items-start justify-between gap-3 rounded border border-[#30363d] bg-[#252526] px-3 py-2.5;
+  }
+
+  .manager-header div {
+    @apply grid gap-0.5;
+  }
+
+  .manager-header strong {
+    @apply text-[13px] font-extrabold text-slate-50;
+  }
+
+  .manager-header span {
+    @apply text-[12px] font-bold text-slate-400;
+  }
+
+  .manager-empty {
+    @apply grid min-h-[220px] place-items-center rounded border border-dashed border-[#3c3c3c] bg-[#252526] px-4 text-center text-[13px] font-bold text-slate-500;
+  }
+
+  .schema-manager-list {
+    @apply min-h-0 flex-1 overflow-auto rounded border border-[#30363d] bg-[#1b1b1b];
+  }
+
+  .schema-manager-row {
+    @apply grid grid-cols-[minmax(0,1.3fr)_120px_150px_auto] items-center gap-3 border-b border-[#2b2b2b] px-3 py-2.5 transition last:border-b-0 hover:bg-white/[0.04];
+  }
+
+  .schema-manager-main {
+    @apply grid min-w-0 gap-0.5;
+  }
+
+  .schema-manager-main strong {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] text-slate-100;
+  }
+
+  .schema-manager-main span {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-bold text-slate-500;
+  }
+
+  .schema-manager-pill {
+    @apply justify-self-start rounded border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[11px] font-extrabold text-cyan-200;
+  }
+
+  .schema-manager-date {
+    @apply text-[11px] font-bold text-slate-500;
+  }
+
+  .schema-manager-actions {
+    @apply flex justify-end gap-1.5;
+  }
+
+  .font-size-slider input {
+    @apply min-h-6 p-0 accent-brand;
+  }
+
+  .font-preview {
+    @apply grid gap-1 rounded border border-[#30363d] bg-[#252526] p-3 text-[13px] text-slate-100;
+    font-family: var(--app-mono-font-family);
+  }
+
+  .font-preview span {
+    @apply text-[12px] text-slate-400;
+  }
+
+  .format-template-editor {
+    @apply min-h-[92px];
+  }
+
+  .format-help {
+    @apply rounded border border-[#30363d] bg-[#252526] px-3 py-2 text-[12px] font-bold leading-5 text-slate-400;
+  }
+
+@media (max-width: 820px) {
+  .preferences-layout {
+    @apply h-[min(640px,calc(100vh-180px))] grid-cols-1;
+  }
+
+  .preferences-nav {
+    @apply max-h-44 border-r-0 border-b pb-2 pr-0;
+  }
+
+  .schema-manager-row {
+    @apply grid-cols-1 items-start;
+  }
+
+  .schema-manager-actions {
+    @apply justify-start;
+  }
+}

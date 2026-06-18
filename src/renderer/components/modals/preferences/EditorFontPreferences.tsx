@@ -4,8 +4,10 @@ import { fontOptions } from "../../../uiTypes";
 export function EditorFontPreferences(props: {
   fontFamily: string;
   fontSize: number;
+  fontWeight: number;
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onFontWeight: (fontWeight: number) => void;
 }) {
   return (
     <section className="preferences-page">
@@ -31,12 +33,24 @@ export function EditorFontPreferences(props: {
           <span>Controls the base font size in pixels.</span>
           <input type="number" min={11} max={16} value={props.fontSize} onChange={(event) => props.onFontSize(Number(event.target.value) || 13)} />
         </label>
+        <label>
+          Font Weight
+          <span>Controls the default UI and editor text weight.</span>
+          <select value={props.fontWeight} onChange={(event) => props.onFontWeight(Number(event.target.value))}>
+            <option value={400}>400</option>
+            <option value={500}>500</option>
+            <option value={600}>600</option>
+            <option value={700}>700</option>
+            <option value={800}>800</option>
+            <option value={900}>900</option>
+          </select>
+        </label>
         <label className="font-size-slider">
           Size preview
           <input type="range" min={11} max={16} value={props.fontSize} onChange={(event) => props.onFontSize(Number(event.target.value))} />
         </label>
       </div>
-      <div className="font-preview">
+      <div className="font-preview" style={{ fontWeight: props.fontWeight }}>
         <strong>proc-status-t</strong>
         <span>{"{\"system_time\":1780388670010,\"proc_id\":\"PR1001\"}"}</span>
       </div>

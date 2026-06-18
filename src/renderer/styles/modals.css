@@ -1,0 +1,271 @@
+.modal-backdrop {
+  @apply fixed inset-0 z-50 grid place-items-center bg-ink/55 p-6 backdrop-blur-sm;
+}
+
+.server-modal {
+  @apply grid max-h-[calc(100vh-48px)] w-full max-w-[460px] gap-4 overflow-auto rounded-lg border border-line bg-white p-5 shadow-soft;
+}
+
+.form-section,
+.auth-settings {
+  @apply grid gap-2 rounded-lg border border-line bg-slate-50 p-3;
+}
+
+.form-section-title {
+  @apply flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wide text-muted;
+}
+
+.schema-registry-section {
+  @apply bg-cyan-50/50;
+}
+
+.schema-registry-grid {
+  @apply grid grid-cols-[minmax(0,1fr)_120px] gap-2;
+}
+
+@media (max-width: 720px) {
+  .schema-registry-grid {
+    @apply grid-cols-1;
+  }
+}
+
+.checkbox-row {
+  @apply flex min-h-7 grid-cols-none items-center gap-2 text-[12px] font-extrabold text-slate-700;
+}
+
+.checkbox-row input {
+  @apply m-0 h-4 min-h-0 w-4 shrink-0 accent-brand;
+  padding: 0;
+}
+
+.auth-grid {
+  @apply mt-1 grid gap-2 border-t border-line pt-3;
+}
+
+.auth-grid label {
+  @apply text-[12px];
+}
+
+.auth-grid input {
+  @apply min-h-8 py-1.5 text-[12px];
+}
+
+.error-modal {
+  @apply max-w-[540px];
+}
+
+.avro-schema-modal {
+  @apply max-w-[720px];
+}
+
+.schema-meta {
+  @apply grid grid-cols-[72px_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md border border-line bg-slate-50 px-3 py-2 text-[12px];
+}
+
+.schema-meta span {
+  @apply font-extrabold uppercase tracking-wide text-muted;
+}
+
+.schema-meta strong {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap font-mono text-ink;
+}
+
+.schema-file-row {
+  @apply flex flex-wrap items-center gap-3 text-[12px] font-bold text-muted;
+}
+
+.schema-file-button {
+  @apply h-9 cursor-pointer;
+}
+
+.schema-file-button input {
+  @apply hidden;
+}
+
+.schema-drop-zone {
+  @apply grid gap-2 rounded-lg border border-dashed border-line bg-slate-50 p-3 text-[12px] font-extrabold text-slate-700 transition;
+}
+
+.schema-drop-zone.dragging {
+  @apply border-brand bg-teal-50 shadow-[0_0_0_2px_rgba(20,184,166,0.18)];
+}
+
+.schema-drop-zone textarea {
+  @apply min-h-[280px] resize-y rounded-md border border-line bg-white p-3 font-mono text-[12px] leading-5 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15;
+}
+
+.form-error {
+  @apply rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-extrabold text-red-700;
+}
+
+.error-summary {
+  @apply grid grid-cols-[36px_1fr] gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-red-900;
+}
+
+.error-mark {
+  @apply grid h-8 w-8 place-items-center rounded-full border border-red-300 text-xl font-extrabold text-red-600;
+}
+
+.error-summary strong {
+  @apply mb-2 block text-[12px];
+}
+
+.error-summary pre {
+  @apply max-h-[180px] overflow-auto whitespace-pre-wrap break-words rounded border border-red-100 bg-white/70 p-2 text-[12px] leading-5 text-red-950;
+}
+
+.modal-title {
+  @apply flex items-start justify-between gap-4;
+}
+
+.modal-title h2 {
+  @apply mt-1 text-xl;
+}
+
+.modal-close {
+  @apply inline-grid h-8 w-8 place-items-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-ink;
+}
+
+.modal-actions {
+  @apply mt-1 flex justify-end gap-2;
+}
+
+.settings-transfer-modal {
+  width: min(520px, calc(100vw - 48px));
+}
+
+.settings-transfer-description,
+.settings-transfer-help {
+  @apply m-0 text-[13px] leading-5 text-slate-500;
+}
+
+.settings-transfer-description {
+  @apply mb-4;
+}
+
+.settings-transfer-body {
+  @apply grid gap-3;
+}
+
+.settings-transfer-checkbox {
+  @apply flex items-center gap-2 text-sm font-extrabold text-ink;
+}
+
+.settings-transfer-passwords {
+  @apply grid gap-3;
+}
+
+.settings-transfer-error {
+  @apply mt-3 text-xs font-extrabold text-red-400;
+}
+
+.modal-backdrop {
+  @apply bg-black/55 backdrop-blur-sm;
+}
+
+.server-modal,
+.avro-schema-modal,
+.error-modal,
+.topic-action-modal {
+  @apply border-[#303030] bg-[#1f1f1f] text-[#d4d4d4] shadow-[0_24px_80px_rgba(0,0,0,0.45)];
+}
+
+.server-modal .modal-title,
+.avro-schema-modal .modal-title,
+.error-modal .modal-title,
+.topic-action-modal .modal-title {
+  @apply border-b border-[#2b2b2b] bg-[#181818] px-5 py-4;
+  margin: -1.25rem -1.25rem 0;
+}
+
+.server-modal .eyebrow,
+.avro-schema-modal .eyebrow,
+.error-modal .eyebrow,
+.topic-action-modal .eyebrow {
+  @apply text-[#8ab4f8];
+}
+
+.server-modal .modal-title h2,
+.avro-schema-modal .modal-title h2,
+.error-modal .modal-title h2,
+.topic-action-modal .modal-title h2 {
+  @apply text-[#f0f0f0];
+}
+
+.server-modal label,
+.avro-schema-modal label,
+.topic-action-modal label {
+  @apply text-[#d4d4d4];
+}
+
+.server-modal input,
+.server-modal select,
+.server-modal textarea,
+.avro-schema-modal input,
+.avro-schema-modal select,
+.avro-schema-modal textarea,
+.topic-action-modal input,
+.topic-action-modal select,
+.topic-action-modal textarea {
+  @apply border-[#3c3c3c] bg-[#1e1e1e] text-[#e6e6e6] placeholder:text-[#777777] shadow-none;
+  color-scheme: dark;
+}
+
+.server-modal input:focus,
+.server-modal select:focus,
+.server-modal textarea:focus,
+.avro-schema-modal input:focus,
+.avro-schema-modal select:focus,
+.avro-schema-modal textarea:focus,
+.topic-action-modal input:focus,
+.topic-action-modal select:focus,
+.topic-action-modal textarea:focus {
+  @apply border-[#3794ff]/80 ring-1 ring-[#3794ff]/20;
+}
+
+.form-section,
+.auth-settings,
+.schema-registry-section,
+.schema-drop-zone,
+.schema-meta {
+  @apply border-[#303030] bg-[#252526] text-[#d4d4d4];
+}
+
+.form-section-title,
+.schema-file-row,
+.schema-meta span {
+  @apply text-[#9da5b4];
+}
+
+.schema-meta strong {
+  @apply text-[#e6e6e6];
+}
+
+.schema-drop-zone.dragging {
+  @apply border-[#3794ff]/70 bg-[#1f2d38] shadow-none;
+}
+
+.schema-drop-zone textarea {
+  @apply border-[#3c3c3c] bg-[#111719] text-[#e6edf3];
+}
+
+.error-summary,
+.form-error {
+  @apply border-red-500/30 bg-red-500/10 text-red-100;
+}
+
+.error-summary pre {
+  @apply border-red-500/20 bg-[#1b1010] text-red-100;
+}
+
+.error-mark {
+  @apply border-red-500/40 bg-red-500/10 text-red-300;
+}
+
+.modal-close {
+  @apply text-[#9da5b4] hover:bg-white/10 hover:text-white;
+}
+
+.modal-actions {
+  @apply border-t border-[#2b2b2b] pt-3;
+}

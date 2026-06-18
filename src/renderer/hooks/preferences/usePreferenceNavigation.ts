@@ -22,9 +22,9 @@ const allPreferencePages = new Set<PreferencePage>(["language", "diagnostics", "
 const preferenceSearchEntries: Array<{ group: PreferenceGroup; page: PreferencePage; keywords: string }> = [
   { group: "application", page: "language", keywords: "application language locale korean english system auto" },
   { group: "application", page: "diagnostics", keywords: "application diagnostics log logs retention error report folder troubleshooting" },
-  { group: "editor", page: "editor-font", keywords: "editor font family size d2coding font" },
+  { group: "editor", page: "editor-font", keywords: "editor font family size weight d2coding 글꼴 폰트 크기 두께" },
   { group: "editor", page: "keyboard-shortcuts", keywords: "keyboard shortcut shortcuts hotkey split quick search command ctrl cmd" },
-  { group: "consume", page: "viewer-defaults", keywords: "consume viewer defaults message inspector raw tree preview key value format json text hex base64 encoding" },
+  { group: "consume", page: "viewer-defaults", keywords: "consume viewer defaults message inspector raw tree preview key value format json text hex base64 encoding font size weight 글꼴 폰트 크기 두께" },
   { group: "export", page: "export-log", keywords: "export log format download csv json" },
   { group: "avro", page: "avro-schemas", keywords: "avro schema schemas registry raw confluent" }
 ];

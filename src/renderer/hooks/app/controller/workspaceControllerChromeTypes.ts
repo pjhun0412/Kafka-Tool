@@ -22,6 +22,7 @@ export type ControllerChromeState = Pick<
     ChromeOverlayProps,
     | "fontFamily"
     | "fontSize"
+    | "fontWeight"
     | "language"
     | "resolvedLanguage"
     | "exportFormatTemplate"
@@ -48,6 +49,7 @@ export type ControllerChromeState = Pick<
     setFavoriteDropTarget: ChromeSidebarProps["onFavoriteDropTarget"];
     setFontFamily: ChromeOverlayProps["onFontFamily"];
     setFontSize: ChromeOverlayProps["onFontSize"];
+    setFontWeight: ChromeOverlayProps["onFontWeight"];
     setIsTopicSortMenuOpen: ChromeSidebarProps["onTopicSortMenuOpen"];
     setLanguage: ChromeOverlayProps["onLanguage"];
     setKeyboardShortcuts: ChromeOverlayProps["onKeyboardShortcuts"];

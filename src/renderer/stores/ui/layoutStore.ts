@@ -18,6 +18,7 @@ type LayoutStore = {
   messagePaneHeight: number;
   fontFamily: string;
   fontSize: number;
+  fontWeight: number;
   language: LanguagePreference;
   exportFormatTemplate: string;
   keyboardShortcuts: KeyboardShortcutMap;
@@ -30,6 +31,7 @@ type LayoutStore = {
   setMessagePaneHeight: (value: SetValue<number>) => void;
   setFontFamily: (value: SetValue<string>) => void;
   setFontSize: (value: SetValue<number>) => void;
+  setFontWeight: (value: SetValue<number>) => void;
   setLanguage: (value: SetValue<LanguagePreference>) => void;
   setExportFormatTemplate: (value: SetValue<string>) => void;
   setKeyboardShortcuts: (value: SetValue<AppKeyboardShortcutPreferences>) => void;
@@ -49,6 +51,7 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   messagePaneHeight: 230,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontSize: 13,
+  fontWeight: 600,
   language: DEFAULT_LANGUAGE,
   exportFormatTemplate: DEFAULT_EXPORT_FORMAT_TEMPLATE,
   keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
@@ -61,6 +64,9 @@ export const useLayoutStore = create<LayoutStore>((set) => ({
   setMessagePaneHeight: (messagePaneHeight) => set((current) => ({ messagePaneHeight: resolveValue(messagePaneHeight, current.messagePaneHeight) })),
   setFontFamily: (fontFamily) => set((current) => ({ fontFamily: resolveValue(fontFamily, current.fontFamily) })),
   setFontSize: (fontSize) => set((current) => ({ fontSize: resolveValue(fontSize, current.fontSize) })),
+  setFontWeight: (fontWeight) => set((current) => ({
+    fontWeight: Math.min(900, Math.max(400, Math.round(resolveValue(fontWeight, current.fontWeight) || 600)))
+  })),
   setLanguage: (language) => set((current) => ({ language: resolveValue(language, current.language) })),
   setExportFormatTemplate: (exportFormatTemplate) => set((current) => ({
     exportFormatTemplate: resolveValue(exportFormatTemplate, current.exportFormatTemplate)

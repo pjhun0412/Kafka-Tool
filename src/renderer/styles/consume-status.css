@@ -1,0 +1,147 @@
+.live-count {
+  @apply font-extrabold text-emerald-400;
+}
+
+.streaming-badge {
+  @apply invisible inline-flex min-h-[28px] min-w-[96px] items-center gap-2 rounded-full border border-transparent bg-transparent px-2.5 text-[12px] font-extrabold text-emerald-800;
+}
+
+.streaming-badge.active {
+  @apply visible border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
+}
+
+.streaming-badge span {
+  @apply h-2 w-2 rounded-full bg-emerald-500;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.recording-badge {
+  @apply inline-flex min-h-[28px] max-w-[220px] items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 text-[12px] font-extrabold text-red-700;
+}
+
+.auto-scroll-toggle {
+  @apply inline-flex min-h-[28px] items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2.5 text-[12px] font-extrabold text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+}
+
+.auto-scroll-toggle input {
+  @apply m-0 h-[14px] min-h-0 w-[14px] shrink-0 rounded accent-brand;
+  padding: 0;
+}
+
+.max-messages-control {
+  @apply inline-flex min-h-[28px] grid-cols-none items-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2 text-[12px] font-extrabold text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+  font-weight: var(--app-strong-font-weight);
+}
+
+.max-messages-control select {
+  @apply h-6 w-[104px] shrink-0 border-0 bg-[#252526] py-0 pl-1.5 pr-8 text-[12px] text-slate-100 ring-0;
+  color-scheme: dark;
+  font-weight: var(--app-strong-font-weight);
+}
+
+.max-messages-control select:focus {
+  @apply border-0 ring-0;
+}
+
+.max-messages-control select option {
+  @apply bg-[#252526] text-slate-100;
+  font-weight: var(--app-strong-font-weight);
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes consume-progress-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.message-list {
+  @apply grid min-h-0 content-start gap-2.5 overflow-auto;
+}
+
+.panel:has(.message-list),
+.consume-workspace {
+  @apply relative flex flex-col overflow-hidden;
+}
+
+.consume-workspace.querying {
+  @apply border-[#007acc]/70 shadow-[0_0_0_1px_rgba(0,122,204,0.38),0_12px_30px_rgba(0,0,0,0.28)];
+}
+
+.consume-query-progress {
+  @apply absolute left-0 right-0 top-0 z-40 h-[2px] overflow-hidden rounded-t-lg bg-[#264f78]/45;
+}
+
+.consume-query-progress::before {
+  content: "";
+  @apply absolute inset-y-0 left-0 w-1/3 bg-[#75beff];
+  animation: consume-progress-slide 1.15s ease-in-out infinite;
+}
+
+.pane-query-badge {
+  @apply ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[#007acc]/50 bg-[#102a3c] px-2.5 text-[11px] font-extrabold uppercase tracking-wide text-[#75beff];
+}
+
+.pane-local-toast {
+  @apply pointer-events-none absolute left-1/2 top-3 z-40 inline-flex min-h-9 max-w-[72%] -translate-x-1/2 items-center gap-2 rounded-md border border-[#007acc]/55 bg-[#252526]/95 px-3 text-[12px] font-extrabold text-slate-100 shadow-[0_14px_34px_rgba(0,0,0,0.32)];
+}
+
+.pane-local-toast::before {
+  content: "";
+  @apply absolute bottom-0 left-0 top-0 w-1 rounded-l-md bg-[#007acc];
+}
+
+.pane-local-toast.success {
+  @apply border-[#238636]/75 bg-[#1f2f24]/95 text-[#d7f7df];
+}
+
+.pane-local-toast.success::before {
+  @apply bg-[#238636];
+}
+
+.pane-local-toast.success svg {
+  @apply text-[#7ee787];
+}
+
+.pane-local-toast.error {
+  @apply border-[#f85149]/70 bg-[#352222]/95 text-[#ffdcd7];
+}
+
+.pane-local-toast.error::before {
+  @apply bg-[#f85149];
+}
+
+.pane-local-toast.error svg {
+  @apply text-[#ff7b72];
+}
+
+.pane-local-toast.loading {
+  @apply border-[#007acc]/70 bg-[#1e2530]/95 text-[#d6eaff];
+}
+
+.pane-local-toast svg,
+.pane-local-toast span {
+  @apply relative z-10;
+}
+
+.pane-local-toast svg {
+  @apply text-[#75beff];
+}
+
+.pane-local-toast span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}

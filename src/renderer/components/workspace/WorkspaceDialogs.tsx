@@ -26,21 +26,27 @@ export function WorkspaceDialogs(props: {
   onSaveServer: () => void;
   fontFamily: string;
   fontSize: number;
+  fontWeight: number;
   language: LanguagePreference;
   resolvedLanguage: AppLanguage;
   exportFormatTemplate: string;
   consumeDefaults: NonNullable<AppPreferences["consumeDefaults"]>;
   viewerPreferenceRetentionDays: number;
+  viewerFontSize: number;
+  viewerFontWeight: number;
   logRetentionDays: number;
   keyboardShortcuts: KeyboardShortcutMap;
   appVersion: string;
   manualAvroSchemaRows: ManualAvroSchemaRow[];
   onFontFamily: (fontFamily: string) => void;
   onFontSize: (fontSize: number) => void;
+  onFontWeight: (fontWeight: number) => void;
   onLanguage: (language: LanguagePreference) => void;
   onExportFormatTemplate: Dispatch<SetStateAction<string>>;
   onConsumeDefaults: (defaults: NonNullable<AppPreferences["consumeDefaults"]>) => void;
   onViewerPreferenceRetentionDays: (days: number) => void;
+  onViewerFontSize: (fontSize: number) => void;
+  onViewerFontWeight: (fontWeight: number) => void;
   onLogRetentionDays: (days: number) => void;
   onKeyboardShortcuts: Dispatch<SetStateAction<AppKeyboardShortcutPreferences>>;
   onLastSeenReleaseVersion: (version: string) => void;
@@ -171,11 +177,14 @@ export function WorkspaceDialogs(props: {
           matches={preferenceSearchMatches}
           fontFamily={props.fontFamily}
           fontSize={props.fontSize}
+          fontWeight={props.fontWeight}
           language={props.language}
           resolvedLanguage={props.resolvedLanguage}
           exportFormatTemplate={props.exportFormatTemplate}
           consumeDefaults={props.consumeDefaults}
           viewerPreferenceRetentionDays={props.viewerPreferenceRetentionDays}
+          viewerFontSize={props.viewerFontSize}
+          viewerFontWeight={props.viewerFontWeight}
           logRetentionDays={props.logRetentionDays}
           keyboardShortcuts={props.keyboardShortcuts}
           manualAvroSchemaRows={props.manualAvroSchemaRows}
@@ -184,10 +193,13 @@ export function WorkspaceDialogs(props: {
           onQuery={setPreferencesQuery}
           onFontFamily={props.onFontFamily}
           onFontSize={props.onFontSize}
+          onFontWeight={props.onFontWeight}
           onLanguage={props.onLanguage}
           onExportFormatTemplate={props.onExportFormatTemplate}
           onConsumeDefaults={props.onConsumeDefaults}
           onViewerPreferenceRetentionDays={props.onViewerPreferenceRetentionDays}
+          onViewerFontSize={props.onViewerFontSize}
+          onViewerFontWeight={props.onViewerFontWeight}
           onLogRetentionDays={props.onLogRetentionDays}
           onKeyboardShortcuts={props.onKeyboardShortcuts}
           onOpenManualAvroSchema={(serverId, topic) => {

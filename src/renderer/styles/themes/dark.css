@@ -1,0 +1,18 @@
+:root {
+  color: #d4d4d4;
+  background: #1e1e1e;
+
+  --color-app-bg: #1e1e1e;
+  --color-shell-bg: #181818;
+  --color-surface: #252526;
+  --color-surface-raised: #2d2d30;
+  --color-control-bg: #1e1e1e;
+  --color-control-bg-raised: #252526;
+  --color-border: #303030;
+  --color-border-strong: #3c3c3c;
+  --color-text: #e6e6e6;
+  --color-text-soft: #d4d4d4;
+  --color-text-muted: #9da5b4;
+  --color-accent: #3794ff;
+  --color-accent-strong: #007acc;
+}

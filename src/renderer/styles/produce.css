@@ -1,0 +1,32 @@
+.message {
+  @apply rounded-lg border border-line bg-slate-50 p-3;
+}
+
+.message-meta {
+  @apply mb-2 text-xs text-muted;
+}
+
+.produce-panel {
+  @apply grid content-start gap-3;
+}
+
+.produce-panel .headers-editor {
+  @apply min-h-[86px];
+}
+
+.produce-schema-notice {
+  @apply inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-extrabold text-cyan-800;
+}
+
+.produce-panel,
+.message {
+  @apply border-[#30363d] bg-[#252526] text-slate-100;
+}
+
+.produce-panel {
+  @apply shadow-[0_12px_30px_rgba(0,0,0,0.24)];
+}
+
+.produce-schema-notice {
+  @apply border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
+}

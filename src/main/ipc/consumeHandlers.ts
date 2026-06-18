@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow } from "electron";
 import type { Consumer } from "kafkajs";
 import {
   consumeOffsetBatch,
@@ -16,6 +16,7 @@ import type {
   StartConsumeRequest,
   StopConsumeRequest
 } from "../../shared/types.js";
+import { handleLogged } from "./ipcErrorBoundary.js";
 
 type LiveRecorderRegistry = ReturnType<typeof createLiveRecorderRegistry>;
 
@@ -34,23 +35,23 @@ export function registerConsumeHandlers({
   sendConsumeError,
   stopActiveConsumer
 }: ConsumeHandlerParams) {
-  ipcMain.handle("kafka:produce", async (_event, request: ProduceRequest): Promise<ProducedMessage[]> => {
+  handleLogged("kafka:produce", async (_event, request: ProduceRequest): Promise<ProducedMessage[]> => {
     return produceMessages(request);
   });
 
-  ipcMain.handle("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> => {
+  handleLogged("kafka:consume-offset", async (_event, request: ConsumeOffsetRequest): Promise<ConsumeOffsetResult> => {
     return consumeOffsetBatch(request);
   });
 
-  ipcMain.handle("kafka:consume-time-range", async (_event, request: ConsumeTimeRangeRequest) => {
+  handleLogged("kafka:consume-time-range", async (_event, request: ConsumeTimeRangeRequest) => {
     return consumeTimeRange(request);
   });
 
-  ipcMain.handle("kafka:consume-stop", async (_event, request?: StopConsumeRequest) => {
+  handleLogged("kafka:consume-stop", async (_event, request?: StopConsumeRequest) => {
     await stopActiveConsumer(request);
   });
 
-  ipcMain.handle("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
+  handleLogged("kafka:consume-start", async (_event, request: StartConsumeRequest) => {
     const consumerId = request.consumerId ?? "default";
     await stopActiveConsumer({ serverId: request.serverId, topic: request.topic, consumerId });
     return startLiveConsume({

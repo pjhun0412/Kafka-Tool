@@ -1,0 +1,183 @@
+.topic-settings-panel {
+  @apply relative flex flex-col overflow-hidden;
+}
+
+.topic-settings-toolbar {
+  @apply mb-2 flex shrink-0 items-center gap-2;
+}
+
+.topic-settings-toolbar input {
+  @apply h-9 w-full max-w-[420px] rounded border border-line bg-white px-3 text-[13px] font-semibold text-ink outline-none focus:border-brand focus:ring-2 focus:ring-cyan-100;
+}
+
+.topic-settings-toolbar button {
+  @apply inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-line bg-white px-3 text-[12px] font-extrabold text-slate-700 transition hover:border-brand/30 hover:bg-cyan-50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.topic-settings-table {
+  @apply min-h-0 flex-1 overflow-auto rounded-lg border border-line bg-white;
+}
+
+.topic-settings-row {
+  @apply grid min-h-10 grid-cols-[minmax(260px,0.9fr)_minmax(320px,1.1fr)_170px] items-center gap-3 border-b border-line px-3 text-[12px] font-bold text-ink;
+}
+
+.topic-settings-row strong,
+.topic-settings-row span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.topic-settings-row.readonly {
+  @apply text-slate-400;
+}
+
+.topic-settings-row input {
+  @apply h-8 min-w-0 rounded border border-line bg-white px-2 text-[12px] font-semibold text-ink outline-none focus:border-brand focus:ring-2 focus:ring-cyan-100;
+}
+
+.topic-settings-row button {
+  @apply inline-flex h-8 items-center justify-center gap-1 rounded border border-line bg-white px-2 text-[12px] font-extrabold text-slate-700 transition hover:border-brand/30 hover:bg-cyan-50 hover:text-ink;
+}
+
+.topic-settings-edit-layer {
+  @apply absolute inset-0 z-30 overflow-auto bg-white;
+}
+
+.topic-settings-edit-panel {
+  @apply flex min-h-full max-w-[880px] flex-col p-4;
+}
+
+.topic-settings-edit-header {
+  @apply mb-4 flex shrink-0 items-start justify-between gap-3;
+}
+
+.topic-settings-edit-header h3 {
+  @apply text-[18px] font-extrabold text-ink;
+}
+
+.topic-settings-edit-header span {
+  @apply mt-1 block max-w-[760px] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-bold text-muted;
+}
+
+.topic-settings-edit-header button {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded border border-line bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600;
+}
+
+.topic-settings-form {
+  @apply flex max-w-[780px] flex-col gap-3;
+}
+
+.topic-settings-form label {
+  @apply flex flex-col gap-1.5 text-[12px] font-extrabold text-slate-700;
+}
+
+.topic-settings-form input,
+.topic-settings-form select {
+  @apply h-10 rounded-md border border-line bg-white px-3 text-[13px] font-bold text-ink outline-none focus:border-brand focus:ring-2 focus:ring-cyan-100 disabled:bg-slate-100 disabled:text-muted;
+}
+
+.topic-settings-presets {
+  @apply -mt-1 flex flex-wrap gap-1.5;
+}
+
+.topic-settings-presets button,
+.topic-settings-custom-header button {
+  @apply inline-flex h-8 items-center gap-1 rounded-md border border-line bg-slate-50 px-2.5 text-[12px] font-extrabold text-slate-700 transition hover:border-brand/30 hover:bg-cyan-50 hover:text-ink;
+}
+
+.topic-settings-form-grid {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.topic-settings-custom-header {
+  @apply mt-2 flex items-center justify-between gap-2;
+}
+
+.topic-settings-custom-header strong {
+  @apply text-[13px] font-extrabold text-ink;
+}
+
+.topic-settings-custom-row {
+  @apply grid grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_36px] gap-2;
+}
+
+.topic-settings-custom-row input,
+.topic-settings-custom-row select {
+  @apply h-9 rounded-md border border-line bg-white px-3 text-[13px] font-bold text-ink outline-none focus:border-brand focus:ring-2 focus:ring-cyan-100;
+}
+
+.topic-settings-custom-row button {
+  @apply inline-flex h-9 items-center justify-center rounded-md border border-line bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600;
+}
+
+.topic-settings-edit-actions {
+  @apply mt-5 flex shrink-0 gap-2;
+}
+
+.topic-settings-edit-actions button {
+  @apply inline-flex h-10 items-center gap-1.5 rounded-md border border-line bg-white px-4 text-[13px] font-extrabold text-slate-700 transition hover:border-brand/30 hover:bg-cyan-50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.topic-settings-edit-actions button:last-child {
+  @apply border-brand bg-brand text-white hover:bg-cyan-700;
+}
+
+.topic-settings-heading {
+  @apply sticky top-0 z-10 bg-slate-50 text-[11px] font-extrabold uppercase text-muted;
+}
+
+.topic-settings-toolbar input,
+.topic-settings-table {
+  @apply border-[#303030] bg-[#1e1e1e] text-[#d8d8d8];
+}
+
+.topic-settings-toolbar input {
+  @apply border-[#3c3c3c] text-[#e6e6e6] focus:border-[#3794ff] focus:ring-[#3794ff]/20;
+}
+
+.topic-settings-row {
+  @apply border-[#303030] text-[#f0f0f0];
+}
+
+.topic-settings-row.readonly {
+  @apply text-[#5f7483];
+}
+
+.topic-settings-edit-layer {
+  @apply bg-[#151819];
+}
+
+.topic-settings-edit-header h3,
+.topic-settings-custom-header strong {
+  @apply text-[#f0f0f0];
+}
+
+.topic-settings-edit-header span,
+.topic-settings-form label {
+  @apply text-[#9da5b4];
+}
+
+.topic-settings-edit-header button,
+.topic-settings-form input,
+.topic-settings-form select,
+.topic-settings-custom-row input,
+.topic-settings-custom-row select,
+.topic-settings-custom-row button,
+.topic-settings-edit-actions button,
+.topic-settings-presets button,
+.topic-settings-custom-header button {
+  @apply border-[#3c3c3c] bg-[#1e1e1e] text-[#e6e6e6] shadow-none focus:border-[#3794ff] focus:ring-[#3794ff]/20 disabled:bg-[#252526] disabled:text-[#777777];
+}
+
+.topic-settings-presets button,
+.topic-settings-custom-header button {
+  @apply hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+}
+
+.topic-settings-edit-actions button:last-child {
+  @apply border-[#5f55d6] bg-[#5f55d6] text-white hover:bg-[#5147c7];
+}
+
+.topic-settings-heading {
+  @apply bg-[#1b1f20] text-[#80909d];
+}

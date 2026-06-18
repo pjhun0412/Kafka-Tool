@@ -74,10 +74,13 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
           <>
             <input className="small-input" type="number" min={0} value={props.offset} onChange={(event) => props.onOffset(event.target.value)} placeholder={t(language, "placeholder.offset")} />
             <input className="tiny-input" type="number" min={1} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
-            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title={t(language, "title.messageOrder")}>
-              <option value="asc">{t(language, "label.oldest")}</option>
-              <option value="desc">{t(language, "label.newest")}</option>
-            </select>
+            <label className="payload-format-control order-format-control" title={t(language, "title.messageOrder")}>
+              {t(language, "label.order")}
+              <select value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)}>
+                <option value="asc">{t(language, "label.oldest")}</option>
+                <option value="desc">{t(language, "label.newest")}</option>
+              </select>
+            </label>
           </>
         )}
         {props.mode === "timeRange" && (
@@ -85,10 +88,13 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
             <DateTimePicker value={props.timeStart} label={t(language, "label.startTime")} onChange={props.onTimeStart} />
             <DateTimePicker value={props.timeEnd} label={t(language, "label.endTime")} onChange={props.onTimeEnd} />
             <input className="tiny-input" type="number" min={1} value={props.limit} onChange={(event) => props.onLimit(Number(event.target.value))} />
-            <select className="order-select" value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)} title={t(language, "title.messageOrder")}>
-              <option value="asc">{t(language, "label.oldest")}</option>
-              <option value="desc">{t(language, "label.newest")}</option>
-            </select>
+            <label className="payload-format-control order-format-control" title={t(language, "title.messageOrder")}>
+              {t(language, "label.order")}
+              <select value={props.offsetOrder} onChange={(event) => props.onOffsetOrder(event.target.value as OffsetOrder)}>
+                <option value="asc">{t(language, "label.oldest")}</option>
+                <option value="desc">{t(language, "label.newest")}</option>
+              </select>
+            </label>
           </>
         )}
         {props.mode === "live" && (
@@ -166,7 +172,7 @@ export function ConsumeToolbar(props: ConsumeToolbarProps) {
         ) : (
           <Button variant="primary" onClick={props.onStart} disabled={props.isQuerying}>
             {isStartingLive ? <RefreshCw size={16} className="spin" /> : <Play size={16} />}
-            {isStartingLive ? t(language, "label.starting") : props.mode === "live" ? t(language, "label.start") : "Consume"}
+            {isStartingLive ? t(language, "label.consuming") : "Consume"}
           </Button>
         )}
         <ConsumeExportMenu

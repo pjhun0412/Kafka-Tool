@@ -1,0 +1,225 @@
+.topic-list {
+  @apply flex flex-1 flex-col overflow-hidden p-2.5;
+}
+
+.sidebar .topic-list {
+  @apply border-white/10 bg-white/[0.05] shadow-none;
+}
+
+.sidebar .topic-list h2 {
+  @apply text-slate-100;
+}
+
+.section-title {
+  @apply mb-2 flex shrink-0 items-center justify-between gap-2;
+}
+
+.section-title-actions {
+  @apply inline-flex items-center gap-2;
+}
+
+.section-title span,
+.count {
+  @apply text-[13px] text-muted;
+}
+
+.topic-title-actions {
+  @apply inline-flex items-center gap-2;
+}
+
+.topic-sort-wrap {
+  @apply relative;
+}
+
+.topic-sort-menu {
+  @apply absolute right-0 top-8 z-30 grid min-w-[174px] gap-1 rounded border border-[#3c3c3c] bg-[#252526] p-1.5 text-slate-100 shadow-soft;
+}
+
+.topic-sort-menu button {
+  @apply grid grid-cols-[16px_1fr] items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[12px] font-extrabold text-slate-300 transition hover:bg-white/10 hover:text-white;
+}
+
+.topic-sort-menu button.active {
+  @apply bg-brand/20 text-cyan-50;
+}
+
+.topic-refresh {
+  @apply inline-grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-cyan-100 disabled:opacity-50;
+}
+
+.topic-search {
+  @apply mb-1.5 shrink-0;
+}
+
+.topic-search-help,
+.topic-search-error {
+  @apply mb-1.5 shrink-0 px-1 text-[11px] font-bold leading-4;
+}
+
+.topic-search-help {
+  @apply text-slate-500;
+}
+
+.topic-search-error {
+  @apply rounded border border-red-400/25 bg-red-500/10 py-1 text-red-200;
+}
+
+.topic-search-history {
+  @apply mb-2 flex shrink-0 gap-1 overflow-x-auto pb-0.5;
+}
+
+.topic-search-history button {
+  @apply inline-flex max-w-[150px] shrink-0 items-center gap-1 rounded border border-[#3c3c3c] bg-[#2d2d2d] px-2 py-1 text-[11px] font-extrabold text-slate-300 shadow-sm transition hover:border-[#007acc]/60 hover:bg-[#094771] hover:text-white;
+}
+
+.topic-search-history button span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.topic-search-history button svg {
+  @apply shrink-0 rounded text-slate-500 hover:bg-white/10 hover:text-red-300;
+}
+
+.topic-filter-row {
+  @apply mb-2 shrink-0;
+}
+
+.topic-filter-row select {
+  @apply h-8 border-[#3c3c3c] bg-[#181818] py-1 text-[12px] font-extrabold text-slate-100 shadow-none hover:border-[#4a4a4a] hover:bg-[#1f1f1f] focus:border-[#007acc] focus:bg-[#1f1f1f] focus:ring-[#007acc]/25;
+}
+
+.topic-filter-row option {
+  @apply bg-[#101b21] text-slate-100;
+}
+
+.topic-scroll {
+  @apply min-h-0 flex-1 overflow-auto pr-1;
+}
+
+.topic {
+  @apply mb-1.5 grid w-full grid-cols-[22px_1fr] items-center gap-1 rounded border border-transparent bg-slate-50 px-2 py-2 text-left text-slate-700 ring-1 ring-transparent transition hover:bg-slate-100;
+}
+
+.sidebar .topic {
+  @apply relative bg-transparent text-slate-200 hover:border-transparent hover:bg-[#2a2d2e];
+}
+
+.sidebar .topic.dragging {
+  @apply opacity-50 ring-1 ring-brand;
+}
+
+.sidebar .topic.drop-before::before,
+.sidebar .topic.drop-after::after {
+  content: "";
+  @apply absolute left-2 right-2 z-10 h-0.5 rounded-full bg-brand;
+}
+
+.sidebar .topic.drop-before::before {
+  @apply -top-1;
+}
+
+.sidebar .topic.drop-after::after {
+  @apply -bottom-1;
+}
+
+.topic.active {
+  @apply bg-cyan-50 text-ink ring-2 ring-brand;
+}
+
+.sidebar .topic.active {
+  @apply border-transparent bg-[#094771] text-white shadow-none ring-0;
+}
+
+.sidebar .topic small {
+  @apply text-slate-400;
+}
+
+.sidebar .topic.active small {
+  @apply text-[#c5e4ff];
+}
+
+.topic strong,
+.topic small {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.topic-copy {
+  @apply min-w-0;
+}
+
+.topic-favorite {
+  @apply inline-grid h-5 w-5 place-items-center self-center rounded-md text-slate-500 transition hover:bg-white/10 hover:text-yellow-300;
+}
+
+.topic-favorite.favorite {
+  @apply text-yellow-300;
+}
+
+.sidebar .topic .topic-favorite.favorite {
+  @apply text-yellow-300;
+}
+
+.topic.active .topic-favorite {
+  @apply text-yellow-200;
+}
+
+.topic.active .topic-favorite.favorite {
+  @apply text-yellow-200;
+}
+
+.sidebar .topic.active .topic-favorite.favorite {
+  @apply text-yellow-200;
+}
+
+.favorite-topic-section {
+  @apply mb-2 max-h-[34%] shrink-0 overflow-auto border-b border-[#2b2b2b] pb-2;
+}
+
+.favorite-topic-section.fill-available {
+  max-height: none;
+  @apply min-h-0 flex-1 shrink overflow-auto;
+}
+
+.favorite-topic-title {
+  @apply sticky top-0 z-10 mb-1 bg-[#181818] px-1 py-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-500;
+}
+
+.topic strong {
+  @apply flex min-w-0 items-center gap-1.5 text-[13px];
+}
+
+.topic strong > span:first-child {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.topic-avro-badge {
+  @apply shrink-0 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-1.5 py-0.5 text-[10px] font-extrabold uppercase text-cyan-200;
+}
+
+.topic.active .topic-avro-badge {
+  @apply border-white/30 bg-white/15 text-white;
+}
+
+.topic small {
+  @apply text-[11px];
+}
+
+.sidebar .topic-list {
+  @apply border-[#2b2b2b] bg-[#1f1f1f] shadow-none;
+}
+
+.topic-filter-row select {
+  @apply border-[#3c3c3c] bg-[#181818] text-slate-100 placeholder:text-slate-500 hover:bg-[#1f1f1f] focus:border-[#007acc] focus:ring-[#007acc]/25;
+}
+
+.sidebar .topic {
+  @apply rounded border-transparent bg-transparent text-slate-200 hover:bg-[#2a2d2e];
+}
+
+.sidebar .topic.active {
+  @apply bg-[#37373d] text-slate-100 shadow-[inset_3px_0_0_#3794ff] ring-0;
+}
+
+.topic-search-history button {
+  @apply border-[#3c3c3c] bg-[#2d2d2d] text-slate-300 hover:bg-[#333333] hover:text-slate-100;
+}

@@ -195,6 +195,8 @@ export type AppPreferences = {
   }>;
   viewerPreferences?: Partial<{
     retentionDays: number;
+    fontSize: number;
+    fontWeight: number;
     byServer: Record<string, Record<string, {
       inspectorMode?: "raw" | "tree" | "preview";
       keyFormat?: "text" | "hex" | "base64";
@@ -227,6 +229,7 @@ export type AppPreferences = {
   appearance?: Partial<{
     fontFamily: string;
     fontSize: number;
+    fontWeight: number;
     language: "auto" | "ko" | "en";
   }>;
   keyboardShortcuts?: AppKeyboardShortcutPreferences;

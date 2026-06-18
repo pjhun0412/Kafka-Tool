@@ -1,4 +1,3 @@
-import { ipcMain } from "electron";
 import type {
   ConsumerGroupLagDetail,
   ConsumerGroupMutationRequest,
@@ -9,17 +8,18 @@ import {
   listConsumerGroups,
   loadConsumerGroupLag
 } from "./consumerGroupQueries.js";
+import { handleLogged } from "./ipcErrorBoundary.js";
 
 export function registerConsumerGroupIpcHandlers() {
-  ipcMain.handle("kafka:groups", async (_event, serverId: string): Promise<ConsumerGroupSummary[]> => {
+  handleLogged("kafka:groups", async (_event, serverId: string): Promise<ConsumerGroupSummary[]> => {
     return listConsumerGroups(serverId);
   });
 
-  ipcMain.handle("kafka:groups-delete", async (_event, request: ConsumerGroupMutationRequest): Promise<void> => {
+  handleLogged("kafka:groups-delete", async (_event, request: ConsumerGroupMutationRequest): Promise<void> => {
     await deleteConsumerGroups(request);
   });
 
-  ipcMain.handle("kafka:group-lag", async (_event, serverId: string, groupId: string): Promise<ConsumerGroupLagDetail> => {
+  handleLogged("kafka:group-lag", async (_event, serverId: string, groupId: string): Promise<ConsumerGroupLagDetail> => {
     return loadConsumerGroupLag(serverId, groupId);
   });
 }

@@ -1,0 +1,75 @@
+.topic-action-modal {
+  @apply max-w-[560px];
+}
+
+.topic-create-modal {
+  @apply max-w-[680px];
+}
+
+.topic-create-grid {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.topic-create-retention {
+  @apply gap-2;
+}
+
+.topic-create-retention > span {
+  @apply text-[12px] font-bold text-muted;
+}
+
+.topic-create-presets {
+  @apply flex flex-wrap gap-2;
+}
+
+.topic-create-presets button {
+  @apply min-h-7 rounded-md border border-line bg-white/[0.06] px-2 text-[12px] font-extrabold text-slate-100 hover:border-brand/60 hover:bg-brand/15;
+}
+
+.topic-create-size-grid {
+  @apply grid-cols-[minmax(150px,0.7fr)_minmax(220px,1fr)];
+}
+
+.topic-create-configs {
+  @apply gap-3;
+}
+
+.topic-create-configs .form-section-title {
+  @apply items-center justify-between;
+}
+
+.topic-create-config-row {
+  @apply grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px] items-end gap-2;
+}
+
+.topic-create-config-row .icon-button {
+  @apply h-8 w-8;
+}
+
+.muted-help {
+  @apply m-0 text-[12px] text-muted;
+}
+
+.topic-action-warning {
+  @apply grid gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-950;
+}
+
+.topic-action-warning p {
+  @apply m-0 text-amber-900;
+}
+
+.topic-action-list {
+  @apply max-h-36 overflow-auto rounded border border-amber-200 bg-white/60 p-2;
+}
+
+.topic-action-list span {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap py-0.5 font-mono text-[11px];
+}
+
+.topic-action-warning {
+  @apply border-[#30363d] bg-[#252526] text-slate-100;
+}
+
+.topic-action-list span {
+  @apply border-[#3c3c3c] bg-[#2d2d2d] text-[#9cdcfe];
+}

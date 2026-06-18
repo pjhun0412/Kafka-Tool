@@ -80,6 +80,7 @@ export function useSettingsTransferActions({
     setMessagePaneHeight: state.setMessagePaneHeight,
     setFontFamily: state.setFontFamily,
     setFontSize: state.setFontSize,
+    setFontWeight: state.setFontWeight,
     setExportFormatTemplate: state.setExportFormatTemplate,
     setKeyboardShortcuts: state.setKeyboardShortcuts,
     setLogRetentionDays: state.setLogRetentionDays,

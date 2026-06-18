@@ -1,4 +1,3 @@
-import { ipcMain } from "electron";
 import type {
   BrokerConfigUpdateRequest,
   BrokerDetail,
@@ -10,17 +9,18 @@ import {
   updateBrokerConfig
 } from "./brokerConfigs.js";
 import { loadBrokerSummaries } from "./brokerQueries.js";
+import { handleLogged } from "./ipcErrorBoundary.js";
 
 export function registerBrokerIpcHandlers() {
-  ipcMain.handle("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
+  handleLogged("kafka:brokers", async (_event, serverId: string): Promise<BrokerSummary[]> => {
     return withAdmin(serverId, loadBrokerSummaries);
   });
 
-  ipcMain.handle("kafka:broker-detail", async (_event, serverId: string, brokerId: number): Promise<BrokerDetail> => {
+  handleLogged("kafka:broker-detail", async (_event, serverId: string, brokerId: number): Promise<BrokerDetail> => {
     return withAdmin(serverId, (admin) => loadBrokerDetail(admin, brokerId));
   });
 
-  ipcMain.handle("kafka:broker-config-update", async (_event, request: BrokerConfigUpdateRequest): Promise<BrokerDetail> => {
+  handleLogged("kafka:broker-config-update", async (_event, request: BrokerConfigUpdateRequest): Promise<BrokerDetail> => {
     return updateBrokerConfig(request);
   });
 }

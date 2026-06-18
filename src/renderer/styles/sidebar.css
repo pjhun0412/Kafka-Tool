@@ -1,0 +1,236 @@
+.sidebar {
+  @apply flex min-h-0 flex-col gap-2 overflow-hidden bg-[#181818] px-3.5 py-3 text-slate-50;
+  background:
+    linear-gradient(180deg, #181818 0%, #1b1b1b 46%, #181818 100%);
+  box-shadow: inset -1px 0 0 #2b2b2b;
+}
+
+.app-shell.sidebar-collapsed .sidebar,
+.app-shell.sidebar-collapsed .sidebar-resizer {
+  @apply hidden;
+}
+
+.sidebar-resizer {
+  @apply relative z-30 h-full cursor-col-resize bg-transparent transition hover:bg-brand/20;
+}
+
+.sidebar-resizer::after {
+  content: "";
+  @apply absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-slate-300/50;
+}
+
+.sidebar-stack-resizer {
+  @apply relative h-2 shrink-0 cursor-row-resize rounded transition hover:bg-brand/25;
+}
+
+.sidebar-stack-resizer::after {
+  content: "";
+  @apply absolute left-3 right-3 top-1/2 h-px -translate-y-1/2 bg-white/15;
+}
+
+.brand {
+  @apply flex items-center gap-2.5 rounded-lg px-1 py-1;
+}
+
+.brand svg {
+  @apply rounded-lg bg-[#094771] p-1 text-[#75beff] ring-1 ring-[#007acc]/30;
+}
+
+.brand strong {
+  @apply block text-lg font-extrabold;
+}
+
+.brand span,
+.eyebrow,
+small {
+  @apply text-xs text-slate-400;
+}
+
+.brand > div {
+  @apply min-w-0 flex-1;
+}
+
+.sidebar-panel {
+  @apply min-h-0 overflow-hidden rounded-md border border-[#2b2b2b] bg-[#1f1f1f] shadow-none;
+}
+
+.server-panel {
+  @apply flex min-h-[170px] shrink-0 flex-col;
+}
+
+.sidebar-panel-title {
+  @apply grid shrink-0 grid-cols-[0.9fr_1.35fr] border-b border-[#2b2b2b] bg-[#2d2d2d] px-3 py-2 text-[11px] font-extrabold uppercase text-slate-300;
+}
+
+.server-panel .sidebar-panel-title span:nth-child(2) {
+  @apply overflow-hidden whitespace-nowrap text-transparent;
+}
+
+.server-panel .sidebar-panel-title span:nth-child(2)::before {
+  content: "Server";
+  @apply text-slate-300;
+}
+
+.server-list {
+  @apply grid min-h-0 content-start gap-1 overflow-auto p-1;
+}
+
+.search-box {
+  @apply relative shrink-0;
+}
+
+.search-box input {
+  @apply h-9 pr-8 shadow-inner;
+}
+
+.search-box button {
+  @apply absolute right-1.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded text-slate-500 transition hover:bg-white/10 hover:text-slate-100;
+}
+
+.sidebar .search-box input {
+  @apply border-[#3c3c3c] bg-[#181818] text-slate-100 placeholder:text-slate-500 shadow-none hover:border-[#4a4a4a] hover:bg-[#1f1f1f] focus:border-[#007acc] focus:bg-[#1f1f1f] focus:ring-[#007acc]/25;
+}
+
+.server-search {
+  @apply mx-2 mt-2 w-[calc(100%-1rem)];
+}
+
+.server {
+  @apply relative grid min-h-[38px] w-full grid-cols-[0.9fr_1.35fr] items-center rounded border border-transparent px-2 py-1.5 text-left text-inherit transition hover:border-transparent hover:bg-[#2a2d2e];
+}
+
+.server.active {
+  @apply border-transparent bg-[#37373d] shadow-[inset_3px_0_0_#007acc] ring-0;
+}
+
+.server.dragging {
+  @apply opacity-50 ring-1 ring-brand;
+}
+
+.server.drop-before::before,
+.server.drop-after::after {
+  content: "";
+  @apply absolute left-2 right-2 z-10 h-0.5 rounded-full bg-brand;
+}
+
+.server.drop-before::before {
+  @apply -top-1;
+}
+
+.server.drop-after::after {
+  @apply -bottom-1;
+}
+
+.server span {
+  @apply min-w-0;
+}
+
+.server-name {
+  @apply flex items-center gap-2;
+}
+
+.connection-dot {
+  @apply grid h-4 w-4 shrink-0 place-items-center rounded-full bg-[#2d2d2d] text-slate-500 ring-1 ring-[#4a4a4a];
+}
+
+.connection-dot.connected {
+  @apply bg-emerald-400/10 text-emerald-400 ring-emerald-300/20;
+}
+
+.connection-dot.failed {
+  @apply bg-red-500/10 text-red-400 ring-red-300/25;
+}
+
+.connection-dot svg {
+  @apply block h-3.5 w-3.5;
+}
+
+.connection-dot.failed::before {
+  content: "x";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+.connection-dot.failed::after {
+  content: none;
+  display: none;
+}
+
+.server strong,
+.server small {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.server strong {
+  @apply text-[12px] font-extrabold;
+}
+
+.server-host small {
+  @apply text-[11px] text-slate-400;
+}
+
+.context-menu {
+  @apply fixed z-[70] grid min-w-[150px] overflow-hidden rounded-lg border border-line bg-white p-1.5 text-[12px] font-extrabold text-slate-700 shadow-[0_18px_44px_rgba(15,23,42,0.18)];
+}
+
+.context-menu button {
+  @apply inline-flex items-center gap-2 rounded-md px-2.5 py-2 text-left transition hover:bg-cyan-50 hover:text-ink;
+}
+
+.context-menu .danger-item {
+  @apply text-red-600 hover:bg-red-50;
+}
+
+.topic-context-menu {
+  @apply min-w-[170px];
+}
+
+.sidebar {
+  @apply bg-[#181818] text-slate-100;
+  background: #181818;
+  box-shadow: inset -1px 0 0 #2b2b2b;
+}
+
+.sidebar-panel,
+.sidebar .topic-list {
+  @apply border-[#2b2b2b] bg-[#1f1f1f] shadow-none;
+}
+
+.sidebar-panel-title {
+  @apply border-[#2b2b2b] bg-[#2d2d2d] text-slate-300;
+}
+
+.server {
+  @apply rounded border-transparent bg-transparent text-slate-200 hover:bg-[#2a2d2e];
+}
+
+.server.active {
+  @apply bg-[#37373d] text-slate-100 shadow-[inset_3px_0_0_#3794ff] ring-0;
+}
+
+.brand svg {
+  @apply bg-[#264f78] text-[#9cdcfe] ring-[#3794ff]/25;
+}
+
+.icon-button.add-server {
+  @apply bg-[#2d2d2d] text-[#9cdcfe] ring-[#3c3c3c] hover:bg-[#333333] hover:ring-[#3794ff];
+}
+
+.context-menu .danger-item {
+  @apply text-red-300 hover:bg-red-500/10 hover:text-red-100;
+}
+
+.context-menu button:hover {
+  @apply bg-white/[0.06] text-white;
+}
+
+.context-menu button {
+  @apply text-slate-300 hover:bg-[#333333] hover:text-white;
+}

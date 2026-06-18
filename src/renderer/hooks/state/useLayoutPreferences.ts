@@ -19,6 +19,8 @@ export function useLayoutPreferences() {
     setFontFamily,
     fontSize,
     setFontSize,
+    fontWeight,
+    setFontWeight,
     language,
     setLanguage,
     exportFormatTemplate,
@@ -44,6 +46,8 @@ export function useLayoutPreferences() {
     setFontFamily: state.setFontFamily,
     fontSize: state.fontSize,
     setFontSize: state.setFontSize,
+    fontWeight: state.fontWeight,
+    setFontWeight: state.setFontWeight,
     language: state.language,
     setLanguage: state.setLanguage,
     exportFormatTemplate: state.exportFormatTemplate,
@@ -64,7 +68,10 @@ export function useLayoutPreferences() {
     document.documentElement.style.setProperty("--app-font-family", safeFontFamily);
     document.documentElement.style.setProperty("--app-mono-font-family", safeFontFamily);
     document.documentElement.style.setProperty("--app-font-size", `${Math.min(16, Math.max(11, fontSize))}px`);
-  }, [fontFamily, fontSize]);
+    const resolvedFontWeight = Math.min(900, Math.max(400, fontWeight));
+    document.documentElement.style.setProperty("--app-font-weight", String(resolvedFontWeight));
+    document.documentElement.style.setProperty("--app-strong-font-weight", String(Math.min(900, Math.max(600, resolvedFontWeight))));
+  }, [fontFamily, fontSize, fontWeight]);
 
   function startSidebarResize(event: React.PointerEvent<Element>) {
     event.preventDefault();
@@ -112,6 +119,8 @@ export function useLayoutPreferences() {
     setFontFamily,
     fontSize,
     setFontSize,
+    fontWeight,
+    setFontWeight,
     language,
     setLanguage,
     resolvedLanguage,

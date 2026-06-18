@@ -32,6 +32,8 @@ type PersistedPreferenceParams = {
   setFontFamily: (fontFamily: string) => void;
   fontSize: number;
   setFontSize: (fontSize: number) => void;
+  fontWeight: number;
+  setFontWeight: (fontWeight: number) => void;
   language: LanguagePreference;
   setLanguage: (language: LanguagePreference) => void;
   exportFormatTemplate: string;
@@ -79,6 +81,8 @@ export function usePersistedPreferences({
   setFontFamily,
   fontSize,
   setFontSize,
+  fontWeight,
+  setFontWeight,
   language,
   setLanguage,
   exportFormatTemplate,
@@ -123,6 +127,9 @@ export function usePersistedPreferences({
       if (typeof preferences.appearance?.fontSize === "number") {
         setFontSize(preferences.appearance.fontSize);
       }
+      if (typeof preferences.appearance?.fontWeight === "number") {
+        setFontWeight(preferences.appearance.fontWeight);
+      }
       setLanguage(normalizeLanguagePreference(preferences.appearance?.language));
       if (typeof preferences.exportFormatTemplate === "string") {
         setExportFormatTemplate(preferences.exportFormatTemplate);
@@ -150,6 +157,7 @@ export function usePersistedPreferences({
     setFavoriteTopicsByServer,
     setFontFamily,
     setFontSize,
+    setFontWeight,
     setAppVersion,
     setLanguage,
     setKeyboardShortcuts,
@@ -184,6 +192,7 @@ export function usePersistedPreferences({
       appearance: {
         fontFamily,
         fontSize,
+        fontWeight,
         language
       },
       keyboardShortcuts,
@@ -209,6 +218,7 @@ export function usePersistedPreferences({
     messagePaneHeight,
     fontFamily,
     fontSize,
+    fontWeight,
     language,
     keyboardShortcuts,
     logRetentionDays,
