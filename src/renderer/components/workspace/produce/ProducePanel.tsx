@@ -1,11 +1,19 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Braces, Play, Send, Square } from "lucide-react";
-import type { ManualAvroSchema } from "../../../../shared/types";
+import { Braces, Eye, Play, Save, Send, Square, Trash2 } from "lucide-react";
+import type { ManualAvroSchema, ProduceTemplatePreference } from "../../../../shared/types";
 import type { ProduceDraftOverride } from "../../../hooks/actions/useProduceActions";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
-import { formatProduceElapsed, getProduceTemplateExamples, parseProduceDurationMs, renderProduceTemplateDraft, type ProduceTemplateDraft } from "../../../produceTemplate";
+import {
+  formatProduceElapsed,
+  getProduceTemplateExamples,
+  parseProduceDurationMs,
+  renderProduceTemplateDraft,
+  validateProduceTemplateDraft,
+  type ProduceTemplateDraft,
+  type ProduceTemplateIssue
+} from "../../../produceTemplate";
 import { parseProduceHeaders, validateJsonLikeValue } from "../../../utils";
 
 type ProduceIntervalRequest = {
@@ -16,24 +24,20 @@ type ProduceIntervalRequest = {
   durationText: string;
 };
 
-type ProduceIntervalConfig = {
-  durationText: string;
-  intervalMs: number;
-  mode: "single" | "interval";
-  stopMode: "count" | "duration";
-  totalCount: number;
-};
+type ProduceIntervalConfig = ProduceTemplatePreference["intervalConfig"];
 
 export function ProducePanel(props: {
   topic: string;
   keyText: string;
   headers: string;
   value: string;
+  templates: ProduceTemplatePreference[];
   hasAvroSchema: boolean;
   avroEncoding?: ManualAvroSchema["encoding"];
   onKey: (value: string) => void;
   onHeaders: (value: string) => void;
   onValue: (value: string) => void;
+  onTemplates: (templates: ProduceTemplatePreference[]) => void;
   onProduce: () => void;
   onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
   intervalConfig: ProduceIntervalConfig;
@@ -50,6 +54,11 @@ export function ProducePanel(props: {
   const language = useAppLanguage();
   const [intervalError, setIntervalError] = useState("");
   const [isConfirmingInterval, setIsConfirmingInterval] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateName, setTemplateName] = useState("");
+  const [templateMessage, setTemplateMessage] = useState("");
+  const [pendingDeleteTemplateId, setPendingDeleteTemplateId] = useState("");
+  const [isRenderedPreviewOpen, setIsRenderedPreviewOpen] = useState(false);
   const { durationText, intervalMs, mode, stopMode, totalCount } = props.intervalConfig;
 
   const draft = useMemo<ProduceTemplateDraft>(() => ({
@@ -57,6 +66,10 @@ export function ProducePanel(props: {
     headers: props.headers,
     value: props.value
   }), [props.headers, props.keyText, props.value]);
+  const sortedTemplates = useMemo(
+    () => [...props.templates].sort((left, right) => right.updatedAt - left.updatedAt),
+    [props.templates]
+  );
   const intervalPlan = useMemo(() => {
     const delay = Math.max(100, Math.floor(intervalMs || 100));
     const count = Math.max(1, Math.min(100000, Math.floor(totalCount || 1)));
@@ -68,13 +81,102 @@ export function ProducePanel(props: {
     const valueToValidate = mode === "interval" ? renderProduceTemplateDraft(draft, 1).value : props.value;
     return getJsonValueIssue(valueToValidate);
   }, [draft, mode, props.value]);
+  const renderedPreview = useMemo(
+    () => renderProduceTemplateDraft(draft, 1),
+    [draft]
+  );
+  const templateIssues = useMemo(() => validateProduceTemplateDraft(draft), [draft]);
 
   useEffect(() => {
     setIsConfirmingInterval(false);
   }, [mode, props.topic]);
 
+  useEffect(() => {
+    if (!selectedTemplateId) return;
+    if (sortedTemplates.some((template) => template.id === selectedTemplateId)) return;
+    setSelectedTemplateId("");
+    setTemplateName("");
+  }, [selectedTemplateId, sortedTemplates]);
+
+  useEffect(() => {
+    if (!templateMessage) return;
+    const timer = window.setTimeout(() => setTemplateMessage(""), 1800);
+    return () => window.clearTimeout(timer);
+  }, [templateMessage]);
+
+  useEffect(() => {
+    if (!pendingDeleteTemplateId) return;
+    const timer = window.setTimeout(() => setPendingDeleteTemplateId(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [pendingDeleteTemplateId]);
+
+  useEffect(() => {
+    setIsRenderedPreviewOpen(false);
+  }, [props.topic]);
+
   function updateIntervalConfig(patch: Partial<ProduceIntervalConfig>) {
     props.onIntervalConfig((current) => ({ ...current, ...patch }));
+  }
+
+  function applyTemplate(templateId: string) {
+    setSelectedTemplateId(templateId);
+    const template = sortedTemplates.find((item) => item.id === templateId);
+    if (!template) {
+      setTemplateName("");
+      return;
+    }
+    props.onKey(template.draft.key);
+    props.onHeaders(template.draft.headers);
+    props.onValue(template.draft.value);
+    props.onIntervalConfig(template.intervalConfig);
+    setTemplateName(template.name);
+    setTemplateMessage(t(language, "produceTemplate.loaded", { name: template.name }));
+  }
+
+  function saveCurrentTemplate() {
+    const name = templateName.trim();
+    if (!props.topic) {
+      setTemplateMessage(t(language, "label.topicRequired"));
+      return;
+    }
+    if (!name) {
+      setTemplateMessage(t(language, "produceTemplate.nameRequired"));
+      return;
+    }
+    const now = Date.now();
+    const selectedTemplate = selectedTemplateId
+      ? sortedTemplates.find((item) => item.id === selectedTemplateId)
+      : undefined;
+    const duplicateTemplate = sortedTemplates.find((item) => item.name.trim().toLowerCase() === name.toLowerCase());
+    const existingId = selectedTemplate?.id ?? duplicateTemplate?.id ?? "";
+    const nextTemplate: ProduceTemplatePreference = {
+      id: existingId || createTemplateId(),
+      name,
+      draft,
+      intervalConfig: props.intervalConfig,
+      updatedAt: now
+    };
+    const withoutCurrent = props.templates.filter((item) => item.id !== nextTemplate.id);
+    props.onTemplates([...withoutCurrent, nextTemplate].sort((left, right) => right.updatedAt - left.updatedAt));
+    setSelectedTemplateId(nextTemplate.id);
+    setPendingDeleteTemplateId("");
+    setTemplateMessage(t(language, existingId ? "produceTemplate.updated" : "produceTemplate.saved", { name }));
+  }
+
+  function deleteSelectedTemplate() {
+    if (!selectedTemplateId) return;
+    const selected = sortedTemplates.find((item) => item.id === selectedTemplateId);
+    if (!selected) return;
+    if (pendingDeleteTemplateId !== selectedTemplateId) {
+      setPendingDeleteTemplateId(selectedTemplateId);
+      setTemplateMessage(t(language, "produceTemplate.deleteConfirm", { name: selected.name }));
+      return;
+    }
+    props.onTemplates(props.templates.filter((item) => item.id !== selectedTemplateId));
+    setSelectedTemplateId("");
+    setTemplateName("");
+    setPendingDeleteTemplateId("");
+    setTemplateMessage(t(language, "produceTemplate.deleted", { name: selected.name }));
   }
 
   async function startIntervalProduce() {
@@ -84,6 +186,10 @@ export function ProducePanel(props: {
     }
     if (stopMode === "duration" && intervalPlan.durationMs <= 0) {
       setIntervalError("Duration must be like 30s, 5m, 1h, or 1m30s.");
+      return;
+    }
+    if (templateIssues.length > 0) {
+      setIntervalError(formatTemplateIssue(templateIssues[0], language));
       return;
     }
     setIsConfirmingInterval(false);
@@ -104,6 +210,10 @@ export function ProducePanel(props: {
     }
     if (stopMode === "duration" && intervalPlan.durationMs <= 0) {
       setIntervalError("Duration must be like 30s, 5m, 1h, or 1m30s.");
+      return;
+    }
+    if (templateIssues.length > 0) {
+      setIntervalError(formatTemplateIssue(templateIssues[0], language));
       return;
     }
     if (valueIssue) {
@@ -180,6 +290,33 @@ export function ProducePanel(props: {
             )}
           </div>
         )}
+        <div className="produce-template-toolbar">
+          <span className="produce-template-toolbar-label">{t(language, "produceTemplate.template")}</span>
+          <select value={selectedTemplateId} onChange={(event) => applyTemplate(event.target.value)} aria-label={t(language, "produceTemplate.select")}>
+            <option value="">{t(language, "produceTemplate.select")}</option>
+            {sortedTemplates.map((template) => (
+              <option key={template.id} value={template.id}>{template.name}</option>
+            ))}
+          </select>
+          <input
+            value={templateName}
+            onChange={(event) => setTemplateName(event.target.value)}
+            placeholder={t(language, "produceTemplate.namePlaceholder")}
+          />
+          <button type="button" className="ghost compact icon-only" onClick={saveCurrentTemplate} title={t(language, "produceTemplate.save")}>
+            <Save size={13} />
+          </button>
+          <button
+            type="button"
+            className="ghost compact icon-only danger-text"
+            onClick={deleteSelectedTemplate}
+            disabled={!selectedTemplateId}
+            title={pendingDeleteTemplateId === selectedTemplateId ? t(language, "produceTemplate.deleteConfirmShort") : t(language, "produceTemplate.delete")}
+          >
+            <Trash2 size={13} />
+          </button>
+          {templateMessage && <span className="produce-template-message">{templateMessage}</span>}
+        </div>
       </div>
       {props.hasAvroSchema && (
         <div className="produce-schema-notice">
@@ -190,13 +327,57 @@ export function ProducePanel(props: {
       <label>{t(language, "label.key")}<input value={props.keyText} onChange={(event) => props.onKey(event.target.value)} placeholder={t(language, "placeholder.optionalKey")} /></label>
       <label>{t(language, "label.headers")}<textarea className="headers-editor" value={props.headers} onChange={(event) => props.onHeaders(event.target.value)} placeholder="{ }" /></label>
       <label>
-        {t(language, "label.value")}
+        <span className="produce-value-label-row">
+          <span>{t(language, "label.value")}</span>
+          <span className="produce-value-actions">
+            <button
+              type="button"
+              className={isRenderedPreviewOpen ? "ghost compact active" : "ghost compact"}
+              onClick={() => setIsRenderedPreviewOpen((current) => !current)}
+              title={t(language, "produce.renderPreview")}
+            >
+              <Eye size={13} /> {t(language, "label.preview")}
+            </button>
+          </span>
+        </span>
         <textarea
           className={valueIssue ? "invalid" : undefined}
           value={props.value}
           onChange={(event) => props.onValue(event.target.value)}
         />
       </label>
+      {isRenderedPreviewOpen && (
+        <div className="produce-render-preview">
+          <div className="produce-render-preview-title">
+            <span>{t(language, "produce.renderedPreview")}</span>
+            <button type="button" className="ghost compact" onClick={() => setIsRenderedPreviewOpen(false)}>{t(language, "title.close")}</button>
+          </div>
+          {templateIssues.length > 0 && (
+            <div className="produce-template-issues">
+              <strong>{t(language, "produce.dynamicFieldIssues")}</strong>
+              {templateIssues.map((issue, index) => (
+                <span key={`${issue.field}-${issue.token}-${index}`}>
+                  {formatTemplateIssue(issue, language)}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="produce-render-preview-grid">
+            <div className="produce-render-preview-field">
+              <span>{t(language, "label.key")}</span>
+              <pre><code>{renderedPreview.key || t(language, "label.noKey")}</code></pre>
+            </div>
+            <div className="produce-render-preview-field">
+              <span>{t(language, "label.headers")}</span>
+              <pre><code>{renderedPreview.headers.trim() ? tryPrettyJson(renderedPreview.headers) : "{ }"}</code></pre>
+            </div>
+            <div className="produce-render-preview-field">
+              <span>{t(language, "label.value")}</span>
+              <pre><code>{renderedPreview.value ? tryPrettyJson(renderedPreview.value) : t(language, "label.emptyValue")}</code></pre>
+            </div>
+          </div>
+        </div>
+      )}
       {valueIssue && (
         <div className="produce-value-error">
           <span>{valueIssue.message}</span>
@@ -270,6 +451,23 @@ export function ProducePanel(props: {
       )}
     </section>
   );
+}
+
+function createTemplateId() {
+  return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function tryPrettyJson(value: string) {
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
+
+function formatTemplateIssue(issue: ProduceTemplateIssue, language: ReturnType<typeof useAppLanguage>) {
+  const fieldKey = issue.field === "key" ? "label.key" : issue.field === "headers" ? "label.headers" : "label.value";
+  return `${t(language, fieldKey)} ${issue.token}: ${issue.message}`;
 }
 
 function getJsonValueIssue(value: string) {

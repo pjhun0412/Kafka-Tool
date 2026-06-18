@@ -21,6 +21,7 @@ export type ImportedPreferenceSetters = {
   setViewerPreferences: Dispatch<SetStateAction<Required<ViewerPreferences>>>;
   setConsumeDefaultsByServer: Dispatch<SetStateAction<AppPreferences["consumeDefaultsByServer"]>>;
   setManualAvroSchemasByServer: Dispatch<SetStateAction<Record<string, Record<string, ManualAvroSchema>>>>;
+  setProduceTemplatesByServer: Dispatch<SetStateAction<NonNullable<AppPreferences["produceTemplatesByServer"]>>>;
   setSidebarWidth: Dispatch<SetStateAction<number>>;
   setServerPanelHeight: Dispatch<SetStateAction<number>>;
   setMessagePaneHeight: Dispatch<SetStateAction<number>>;
@@ -64,6 +65,7 @@ export function applyImportedPreferences(preferences: AppPreferences, setters: I
   setters.setViewerPreferences(pruneViewerPreferences(preferences.viewerPreferences));
   setters.setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
   setters.setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
+  setters.setProduceTemplatesByServer(preferences.produceTemplatesByServer ?? {});
   if (typeof preferences.layout?.sidebarWidth === "number") setters.setSidebarWidth(preferences.layout.sidebarWidth);
   if (typeof preferences.layout?.serverPanelHeight === "number") setters.setServerPanelHeight(preferences.layout.serverPanelHeight);
   if (typeof preferences.layout?.messagePaneHeight === "number") setters.setMessagePaneHeight(preferences.layout.messagePaneHeight);

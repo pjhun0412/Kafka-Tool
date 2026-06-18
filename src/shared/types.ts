@@ -177,6 +177,24 @@ export type AppKeyboardShortcutPreferences = Partial<Record<
   string
 >>;
 
+export type ProduceTemplatePreference = {
+  id: string;
+  name: string;
+  draft: {
+    key: string;
+    headers: string;
+    value: string;
+  };
+  intervalConfig: {
+    durationText: string;
+    intervalMs: number;
+    mode: "single" | "interval";
+    stopMode: "count" | "duration";
+    totalCount: number;
+  };
+  updatedAt: number;
+};
+
 export type AppPreferences = {
   favoriteTopicsByServer: Record<string, string[]>;
   consumeDefaults?: Partial<{
@@ -220,6 +238,7 @@ export type AppPreferences = {
     payloadEncoding: "utf-8" | "euc-kr";
   }>>;
   manualAvroSchemasByServer?: Record<string, Record<string, ManualAvroSchema>>;
+  produceTemplatesByServer?: Record<string, Record<string, ProduceTemplatePreference[]>>;
   layout?: Partial<{
     sidebarWidth: number;
     serverPanelHeight: number;

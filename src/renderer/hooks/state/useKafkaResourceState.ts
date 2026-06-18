@@ -64,6 +64,8 @@ export function useKafkaPreferenceResourceState() {
     setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
     manualAvroSchemasByServer: state.manualAvroSchemasByServer,
     setManualAvroSchemasByServer: state.setManualAvroSchemasByServer,
+    produceTemplatesByServer: state.produceTemplatesByServer,
+    setProduceTemplatesByServer: state.setProduceTemplatesByServer,
     preferencesLoaded: state.preferencesLoaded,
     setPreferencesLoaded: state.setPreferencesLoaded
   })));

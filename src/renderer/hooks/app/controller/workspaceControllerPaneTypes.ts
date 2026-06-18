@@ -1,4 +1,6 @@
+import type React from "react";
 import type { useWorkspacePaneCompositions } from "../workspace/useWorkspacePaneCompositions";
+import type { ProduceTemplatePreference } from "../../../../shared/types";
 
 type PaneCompositionParams = Parameters<typeof useWorkspacePaneCompositions>[0];
 type PrimaryCallbacks = PaneCompositionParams["primaryCallbacks"];
@@ -48,6 +50,8 @@ export type WorkspacePaneResources = {
   selectedTopicRows: PrimaryPane["selectedTopics"];
   servers: PrimaryPane["servers"];
   sortedTopics: PrimaryPane["topics"];
+  produceTemplatesByServer: Record<string, Record<string, ProduceTemplatePreference[]>>;
+  setProduceTemplatesByServer: React.Dispatch<React.SetStateAction<Record<string, Record<string, ProduceTemplatePreference[]>>>>;
   topicDetail: PrimaryPane["detail"];
   topicGridSortingByServer: Record<string, PrimaryPane["topicSorting"]>;
   updateTopicGridSortingForServer: (serverId: string, updater: TopicSortingUpdater) => void;

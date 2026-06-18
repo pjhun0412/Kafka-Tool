@@ -7,6 +7,7 @@ import type {
   ConsumerGroupSummary,
   ManualAvroSchema,
   MessageExportFormat,
+  ProduceTemplatePreference,
   ServerProfile,
   TopicDetail,
   TopicSummary
@@ -57,6 +58,7 @@ export function PrimaryWorkspacePane(props: {
   produceKey: string;
   produceHeaders: string;
   produceValue: string;
+  produceTemplates: ProduceTemplatePreference[];
   paneToast: PaneToastState;
   language: AppLanguage;
   hasAvroSchema: (topic: string) => boolean;
@@ -100,6 +102,7 @@ export function PrimaryWorkspacePane(props: {
   onProduceKey: (value: string) => void;
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
+  onProduceTemplates: (templates: ProduceTemplatePreference[]) => void;
   onProduce: () => void;
   onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
 }) {
@@ -218,6 +221,7 @@ export function PrimaryWorkspacePane(props: {
           produceKey={props.produceKey}
           produceHeaders={props.produceHeaders}
           produceValue={props.produceValue}
+          produceTemplates={props.produceTemplates}
           onOpenTopic={props.onOpenTopic}
           onSelectTopic={props.onSelectTopic}
           onToggleTopicSelected={props.onToggleTopicSelected}
@@ -245,6 +249,7 @@ export function PrimaryWorkspacePane(props: {
           onProduceKey={props.onProduceKey}
           onProduceHeaders={props.onProduceHeaders}
           onProduceValue={props.onProduceValue}
+          onProduceTemplates={props.onProduceTemplates}
           onProduce={props.onProduce}
           onProduceDraft={props.onProduceDraft}
           onProduceIntervalActivity={setProduceIntervalActivity}

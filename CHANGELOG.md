@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.3
+
+### Added
+
+- Added Interval Produce with Count or Duration limits.
+- Added dynamic Produce fields for Key, Headers, and Value.
+- Added rendered Produce Preview for Key, Headers, and Value.
+- Added per-topic Produce templates saved in app preferences.
+
+### Improved
+
+- Block Interval Produce when dynamic field syntax is invalid.
+- Updated README and in-app Release Notes for Produce enhancements.
+
 ## 2.0.2
 
 ### Added

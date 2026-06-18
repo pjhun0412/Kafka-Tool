@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { AppPreferences, KafkaApi, ManualAvroSchema } from "../../../shared/types";
+import type { AppPreferences, KafkaApi, ManualAvroSchema, ProduceTemplatePreference } from "../../../shared/types";
 import { INTER_FONT_FAMILY, LEGACY_DEFAULT_FONT_FAMILY, LEGACY_INTER_FONT_FAMILY } from "../../fontConfig";
 import { normalizeLanguagePreference, type LanguagePreference } from "../../i18n";
 import { useReleaseNotesStore } from "../../stores/ui/releaseNotesStore";
@@ -18,6 +18,8 @@ type PersistedPreferenceParams = {
   setConsumeDefaultsByServer: (value: AppPreferences["consumeDefaultsByServer"]) => void;
   manualAvroSchemasByServer: Record<string, Record<string, ManualAvroSchema>>;
   setManualAvroSchemasByServer: (value: Record<string, Record<string, ManualAvroSchema>>) => void;
+  produceTemplatesByServer: Record<string, Record<string, ProduceTemplatePreference[]>>;
+  setProduceTemplatesByServer: (value: Record<string, Record<string, ProduceTemplatePreference[]>>) => void;
   preferencesLoaded: boolean;
   setPreferencesLoaded: (loaded: boolean) => void;
   sidebarWidth: number;
@@ -67,6 +69,8 @@ export function usePersistedPreferences({
   setConsumeDefaultsByServer,
   manualAvroSchemasByServer,
   setManualAvroSchemasByServer,
+  produceTemplatesByServer,
+  setProduceTemplatesByServer,
   preferencesLoaded,
   setPreferencesLoaded,
   sidebarWidth,
@@ -109,6 +113,7 @@ export function usePersistedPreferences({
       setViewerPreferences(pruneViewerPreferences(preferences.viewerPreferences));
       setConsumeDefaultsByServer(preferences.consumeDefaultsByServer ?? {});
       setManualAvroSchemasByServer(preferences.manualAvroSchemasByServer ?? {});
+      setProduceTemplatesByServer(preferences.produceTemplatesByServer ?? {});
       if (typeof preferences.layout?.sidebarWidth === "number") {
         setSidebarWidth(preferences.layout.sidebarWidth);
       }
@@ -162,6 +167,7 @@ export function usePersistedPreferences({
     setLanguage,
     setKeyboardShortcuts,
     setLogRetentionDays,
+    setProduceTemplatesByServer,
     setLastSeenReleaseVersion,
     setManualAvroSchemasByServer,
     setMessagePaneHeight,
@@ -183,6 +189,7 @@ export function usePersistedPreferences({
       viewerPreferences: pruneViewerPreferences(viewerPreferences),
       consumeDefaultsByServer,
       manualAvroSchemasByServer,
+      produceTemplatesByServer,
       layout: {
         sidebarWidth,
         sidebarCollapsed,
@@ -212,6 +219,7 @@ export function usePersistedPreferences({
     viewerPreferences,
     consumeDefaultsByServer,
     manualAvroSchemasByServer,
+    produceTemplatesByServer,
     sidebarWidth,
     sidebarCollapsed,
     serverPanelHeight,

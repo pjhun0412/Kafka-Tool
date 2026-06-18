@@ -7,6 +7,7 @@ import type {
   ConsumerGroupSummary,
   ManualAvroSchema,
   MessageExportFormat,
+  ProduceTemplatePreference,
   TopicDetail,
   TopicSummary
 } from "../../../shared/types";
@@ -46,6 +47,7 @@ type WorkspacePaneContentProps = {
   produceKey: string;
   produceHeaders: string;
   produceValue: string;
+  produceTemplates: ProduceTemplatePreference[];
   onOpenTopic: (topic: string) => void;
   onSelectTopic: (topic: string) => void;
   onToggleTopicSelected: (topic: string) => void;
@@ -73,6 +75,7 @@ type WorkspacePaneContentProps = {
   onProduceKey: (value: string) => void;
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
+  onProduceTemplates: (templates: ProduceTemplatePreference[]) => void;
   onProduce: () => void;
   onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
   onProduceIntervalActivity?: (topic: string, running: boolean) => void;
@@ -294,11 +297,13 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           keyText={props.produceKey}
           headers={props.produceHeaders}
           value={props.produceValue}
+          templates={props.produceTemplates}
           hasAvroSchema={Boolean(props.manualAvroSchemas[props.topic])}
           avroEncoding={props.manualAvroSchemas[props.topic]?.encoding}
           onKey={props.onProduceKey}
           onHeaders={props.onProduceHeaders}
           onValue={props.onProduceValue}
+          onTemplates={props.onProduceTemplates}
           onProduce={props.onProduce}
           onProduceDraft={props.onProduceDraft}
           intervalConfig={produceIntervalConfig}

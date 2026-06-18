@@ -7,6 +7,7 @@ import type {
   ConsumerGroupSummary,
   ManualAvroSchema,
   MessageExportFormat,
+  ProduceTemplatePreference,
   ServerProfile,
   TopicSummary
 } from "../../../../shared/types";
@@ -75,10 +76,12 @@ export function SplitWorkspacePane(props: {
   produceKey: string;
   produceHeaders: string;
   produceValue: string;
+  produceTemplates: ProduceTemplatePreference[];
   topicActivities: Record<string, { intervalProduce?: boolean; live?: boolean }>;
   onProduceKey: (value: string) => void;
   onProduceHeaders: (value: string) => void;
   onProduceValue: (value: string) => void;
+  onProduceTemplates: (templates: ProduceTemplatePreference[]) => void;
   onProduce: () => void;
   onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
   paneToast: PaneToastState;
@@ -173,6 +176,7 @@ export function SplitWorkspacePane(props: {
         produceKey={props.produceKey}
         produceHeaders={props.produceHeaders}
         produceValue={props.produceValue}
+        produceTemplates={props.produceTemplates}
         onOpenTopic={props.onOpenTopic}
         onSelectTopic={props.onTopic}
         onToggleTopicSelected={props.onToggleTopicSelected}
@@ -200,6 +204,7 @@ export function SplitWorkspacePane(props: {
         onProduceKey={props.onProduceKey}
         onProduceHeaders={props.onProduceHeaders}
         onProduceValue={props.onProduceValue}
+        onProduceTemplates={props.onProduceTemplates}
         onProduce={props.onProduce}
         onProduceDraft={props.onProduceDraft}
         onProduceIntervalActivity={setProduceIntervalActivity}

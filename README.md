@@ -8,15 +8,15 @@ It is built for developers and operators who need to register Kafka clusters, br
 
 ## Version
 
-Current release: `2.0.2`
+Current release: `2.0.3`
 
-## 2.0.2 Patch Notes
+## 2.0.3 Patch Notes
 
-- Added editable in-app keyboard shortcuts in Preferences.
-- Added a What’s New dialog that appears once after an app version changes.
-- Added a Help menu entry for reopening Release Notes.
-- Improved shortcut handling for macOS and Windows/Linux by using Cmd/Ctrl-aware bindings.
-- Updated Help content for Shortcuts and Split tabs in English and Korean.
+- Added Interval Produce with Count or Duration limits.
+- Added dynamic Produce fields for Key, Headers, and Value: `${seq}`, `${random}`, `${float}`, `${choice}`, `${timestamp}`, `${date}`, `${now}`, and `${uuid}`.
+- Added Produce Preview for the rendered Key, Headers, and Value before publishing.
+- Added per-topic Produce templates with save, load, update, and delete support.
+- Added dynamic field validation before Interval Produce starts.
 
 ## Documentation
 
@@ -36,12 +36,13 @@ Current release: `2.0.2`
 - [x] Key/Value payload display as `Text`, `JSON`, `Hex`, or `Base64`
 - [x] Message Viewer with `Raw`, `Tree`, and `Preview` modes
 - [x] Live message recording to `JSONL` files
-- [x] Produce messages with key, headers, and value
+- [x] Produce messages with key, headers, value, templates, and Interval Produce
+- [x] Dynamic Produce fields for repeated test data
 - [x] Avro decoding with Schema Registry or manually registered topic schemas
 - [x] Split workspace panes for side-by-side Topic workflows
 - [x] Fast global search with `Ctrl+P` / `Ctrl+K`
 - [x] Editable in-app keyboard shortcuts
-- [x] What’s New / Release Notes after updates
+- [x] Release Notes after updates
 - [x] Virtualized grids for large result sets
 - [x] Korean/English UI language support
 - [x] Local font support with `Inter` and `Noto Sans KR`
@@ -62,6 +63,33 @@ Large offset queries are paged automatically when the requested limit is greater
 Key and Value can be viewed and exported as `Text`, `JSON`, `Hex`, or `Base64`. Kafka Tool keeps raw payload bytes only up to a fixed per-message limit to protect memory during large consumes. Larger payloads still display as text when KafkaJS can decode them, but raw-only views such as hex/base64 show an explicit retained-bytes warning.
 
 Live Record writes messages directly to a `JSONL` file stream. It is intended for long-running captures without keeping the entire captured dataset in renderer memory.
+
+## Produce
+
+Produce supports single-message publishing and Interval Produce.
+
+Interval Produce requires either a `Count` or `Duration` limit. It does not provide an unlimited mode. Before it starts, Kafka Tool shows a confirmation with the topic, interval, stop condition, and estimated maximum message count.
+
+Dynamic fields can be used in `Key`, `Headers`, and `Value`:
+
+| Syntax | Description |
+| --- | --- |
+| `${seq}` | Sequential values starting at 1 |
+| `${seq:1..10}` | Sequential values that wrap inside a range |
+| `VMS${seq:1..100\|pad=7}` | Padded IDs such as `VMS0000001` |
+| `${random:1..100}` | Random integer in a range |
+| `${float:0..1\|fixed=2}` | Random decimal with fixed digits |
+| `${choice:READY\|RUNNING\|ERROR}` | Randomly picks one value |
+| `${timestamp}` | Current epoch milliseconds |
+| `${timestamp:s}` | Current epoch seconds |
+| `${date:yyyy-MM-dd HH:mm:ss}` | Formatted local date/time |
+| `${now}` | Current ISO date/time |
+| `${uuid}` | Random UUID |
+| `\${uuid}` | Escaped literal token |
+
+Produce Preview shows the rendered Key, Headers, and Value before publishing. Invalid dynamic field syntax is shown in Preview and blocks Interval Produce.
+
+Per-topic Produce templates are saved in app preferences and are included in settings export/import.
 
 ## Shortcuts
 

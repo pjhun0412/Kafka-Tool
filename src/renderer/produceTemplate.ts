@@ -4,6 +4,12 @@ export type ProduceTemplateDraft = {
   value: string;
 };
 
+export type ProduceTemplateIssue = {
+  field: keyof ProduceTemplateDraft;
+  message: string;
+  token: string;
+};
+
 const tokenPattern = /\\?\$\{([^}]+)\}/g;
 
 type ParsedOptions = Record<string, string>;
@@ -43,6 +49,41 @@ function parseFloatRange(expression: string) {
     end: Number(endText),
     options: parseOptions(optionText)
   };
+}
+
+function getTokenIssue(token: string) {
+  const [kind, ...rest] = token.split(":");
+  const expression = rest.join(":");
+  const normalizedKind = kind.trim().toLowerCase();
+
+  if (!normalizedKind) return "Token name is empty.";
+  if (normalizedKind === "seq") {
+    return expression && !parseRange(expression)
+      ? "Use ${seq} or ${seq:start..end|pad=n}."
+      : "";
+  }
+  if (normalizedKind === "number" || normalizedKind === "random") {
+    return parseRange(expression) ? "" : "Use a numeric range such as ${random:1..100}.";
+  }
+  if (normalizedKind === "float") {
+    return parseFloatRange(expression) ? "" : "Use a decimal range such as ${float:0..1|fixed=2}.";
+  }
+  if (normalizedKind === "choice") {
+    return expression.split("|").filter(Boolean).length > 0
+      ? ""
+      : "Provide choices separated by |, such as ${choice:A|B|C}.";
+  }
+  if (normalizedKind === "timestamp") {
+    return !expression || expression === "s" || expression === "seconds"
+      ? ""
+      : "Use ${timestamp} or ${timestamp:s}.";
+  }
+  if (normalizedKind === "date") return "";
+  if (normalizedKind === "now") return "";
+  if (normalizedKind === "uuid") {
+    return expression ? "Use ${uuid} without options." : "";
+  }
+  return `Unknown dynamic field: ${kind.trim() || token}.`;
 }
 
 function formatPadded(value: number, pad: number) {
@@ -136,6 +177,19 @@ export function renderProduceTemplateDraft(draft: ProduceTemplateDraft, iteratio
     headers: renderProduceTemplateText(draft.headers, iteration),
     value: renderProduceTemplateText(draft.value, iteration)
   };
+}
+
+export function validateProduceTemplateDraft(draft: ProduceTemplateDraft): ProduceTemplateIssue[] {
+  return (Object.keys(draft) as Array<keyof ProduceTemplateDraft>).flatMap((field) => {
+    const issues: ProduceTemplateIssue[] = [];
+    for (const match of draft[field].matchAll(tokenPattern)) {
+      const [rawToken, token] = match;
+      if (rawToken.startsWith("\\")) continue;
+      const message = getTokenIssue(token);
+      if (message) issues.push({ field, message, token: `\${${token}}` });
+    }
+    return issues;
+  });
 }
 
 export function getProduceTemplateHints() {

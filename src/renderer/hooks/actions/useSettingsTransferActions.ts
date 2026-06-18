@@ -61,7 +61,8 @@ export function useSettingsTransferActions({
     setConsumeDefaults: state.setConsumeDefaults,
     setViewerPreferences: state.setViewerPreferences,
     setConsumeDefaultsByServer: state.setConsumeDefaultsByServer,
-    setManualAvroSchemasByServer: state.setManualAvroSchemasByServer
+    setManualAvroSchemasByServer: state.setManualAvroSchemasByServer,
+    setProduceTemplatesByServer: state.setProduceTemplatesByServer
   })));
   const brokerResourceSetters = useBrokerResourceStore(useShallow((state) => ({
     setBrokersByServer: state.setBrokersByServer,
@@ -100,6 +101,7 @@ export function useSettingsTransferActions({
       setViewerPreferences: kafkaPreferenceSetters.setViewerPreferences,
       setConsumeDefaultsByServer: kafkaPreferenceSetters.setConsumeDefaultsByServer,
       setManualAvroSchemasByServer: kafkaPreferenceSetters.setManualAvroSchemasByServer,
+      setProduceTemplatesByServer: kafkaPreferenceSetters.setProduceTemplatesByServer,
       ...layoutPreferenceSetters
     });
     resetWorkspaceAfterSettingsImport(result, {

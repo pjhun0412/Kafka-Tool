@@ -238,6 +238,7 @@ export const defaultPreferences: AppPreferences = {
   },
   consumeDefaultsByServer: {},
   manualAvroSchemasByServer: {},
+  produceTemplatesByServer: {},
   layout: {},
   appearance: {
     fontFamily: "Inter, 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -304,6 +305,7 @@ export function normalizePreferences(preferences?: Partial<AppPreferences>): App
     viewerPreferences: preferences?.viewerPreferences ?? defaultPreferences.viewerPreferences,
     consumeDefaultsByServer: preferences?.consumeDefaultsByServer ?? {},
     manualAvroSchemasByServer: preferences?.manualAvroSchemasByServer ?? {},
+    produceTemplatesByServer: preferences?.produceTemplatesByServer ?? {},
     layout: preferences?.layout ?? {},
     appearance: preferences?.appearance ?? defaultPreferences.appearance,
     keyboardShortcuts: preferences?.keyboardShortcuts ?? {},
@@ -330,6 +332,7 @@ export function mergePreferences(current: AppPreferences, next: AppPreferences):
     },
     consumeDefaultsByServer: next.consumeDefaultsByServer ?? current.consumeDefaultsByServer,
     manualAvroSchemasByServer: next.manualAvroSchemasByServer ?? current.manualAvroSchemasByServer,
+    produceTemplatesByServer: next.produceTemplatesByServer ?? current.produceTemplatesByServer,
     layout: {
       ...(current.layout ?? {}),
       ...(next.layout ?? {})

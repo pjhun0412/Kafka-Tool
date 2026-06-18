@@ -13,7 +13,9 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
     favoriteTopicNames,
     groupLagByServer,
     manualAvroSchemasByServer,
+    produceTemplatesByServer,
     selectedTopicRows,
+    setProduceTemplatesByServer,
     sortedTopics,
     topicGridSortingByServer,
     updateTopicGridSortingForServer
@@ -119,9 +121,17 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
       messagePaneHeight: splitConsumeState.messagePaneHeight ?? messagePaneHeight,
       active: activeWorkspacePane === "split",
       manualAvroSchemas: manualAvroSchemasByServer[visibleSplitPane.serverId] ?? {},
+      produceTemplates: produceTemplatesByServer[visibleSplitPane.serverId]?.[visibleSplitPane.topic] ?? [],
       produceKey: splitProduceDraft.key,
       produceHeaders: splitProduceDraft.headers,
       produceValue: splitProduceDraft.value,
+      onProduceTemplates: (templates) => setProduceTemplatesByServer((current) => ({
+        ...current,
+        [visibleSplitPane.serverId]: {
+          ...(current[visibleSplitPane.serverId] ?? {}),
+          [visibleSplitPane.topic]: templates
+        }
+      })),
       topicActivities: Object.fromEntries(
         visibleSplitPane.topicTabs.map((topic) => [
           topic,

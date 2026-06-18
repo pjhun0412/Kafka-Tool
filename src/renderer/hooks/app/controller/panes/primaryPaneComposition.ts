@@ -27,8 +27,10 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
     manualAvroTopicNames,
     openedTopicTabs,
     previewTopic,
+    produceTemplatesByServer,
     selectedTopicRows,
     servers,
+    setProduceTemplatesByServer,
     sortedTopics,
     topicDetail,
     topicGridSortingByServer,
@@ -162,9 +164,17 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
       isQuerying: isConsumeTaskActive("primary", selectedServerId, selectedTopic),
       messagePaneHeight: selectedConsumeState.messagePaneHeight ?? messagePaneHeight,
       manualAvroSchemas: manualAvroSchemasByServer[selectedServerId] ?? {},
+      produceTemplates: produceTemplatesByServer[selectedServerId]?.[selectedTopic] ?? [],
       produceKey: selectedProduceDraft.key,
       produceHeaders: selectedProduceDraft.headers,
       produceValue: selectedProduceDraft.value,
+      onProduceTemplates: (templates) => setProduceTemplatesByServer((current) => ({
+        ...current,
+        [selectedServerId]: {
+          ...(current[selectedServerId] ?? {}),
+          [selectedTopic]: templates
+        }
+      })),
       paneToast: primaryPaneToast,
       language,
       hasAvroSchema: (topic: string) => manualAvroTopicNames.has(topic),

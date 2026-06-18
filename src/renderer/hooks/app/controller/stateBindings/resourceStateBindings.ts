@@ -44,6 +44,8 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     setConsumeDefaultsByServer,
     manualAvroSchemasByServer,
     setManualAvroSchemasByServer,
+    produceTemplatesByServer,
+    setProduceTemplatesByServer,
     preferencesLoaded,
     setPreferencesLoaded
   } = resourceState.preferences;
@@ -71,6 +73,7 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     setGroupLagByServer,
     setGroupsByServer,
     setManualAvroSchemasByServer,
+    setProduceTemplatesByServer,
     setOpenedTopicTabsByServer,
     setPreviewTopicByServer,
     setPreferencesLoaded,
@@ -87,6 +90,7 @@ export function createResourceStateBindings(appState: AppStateComposition) {
     topicDetailByServer,
     topicDetailCacheByServer,
     topicGridSortingByServer,
+    produceTemplatesByServer,
     topicsByServer,
     topicViewByServer,
     viewByServer
