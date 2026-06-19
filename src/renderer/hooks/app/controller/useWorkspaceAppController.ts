@@ -210,7 +210,7 @@ export function useWorkspaceAppController() {
     },
     stopConsume
   }));
-  const { closeSplitPane, moveSplitTopicToPrimary, openSplitForTopic, promoteSplitPaneToPrimary } = splitActions;
+  const { closeSplitPane, closeSplitTopicTab, moveSplitTopicToPrimary, openSplitForTopic, promoteSplitPaneToPrimary } = splitActions;
   const topicOperationActions = useWorkspaceControllerTopicOperations(createWorkspaceTopicOperationParams({
     state: controllerState,
     derived: {
@@ -248,6 +248,7 @@ export function useWorkspaceAppController() {
     actions: {
       closeQuickSearch,
       closeSplitPane,
+      closeSplitTopicTab,
       ensureServerConnected,
       getWorkspaceTargetForServer,
       isTopicStreaming,

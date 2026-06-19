@@ -87,7 +87,7 @@ export function createApplicationMenu(options: {
         },
         { type: "separator" },
         process.platform === "darwin"
-          ? { label: labels.close, role: "close" }
+          ? { label: labels.close, click: () => options.getWindow()?.close() }
           : { label: labels.quit, click: () => app.quit() }
       ]
     },

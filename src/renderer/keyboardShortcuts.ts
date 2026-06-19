@@ -9,6 +9,7 @@ export type KeyboardShortcutId =
   | "sendTopicToLeftPane"
   | "focusPrimaryPane"
   | "focusSplitPane"
+  | "closeActiveTopicTab"
   | "closeSplitPane";
 
 export type KeyboardShortcutMap = Record<KeyboardShortcutId, string>;
@@ -62,6 +63,12 @@ export const keyboardShortcutDefinitions: KeyboardShortcutDefinition[] = [
     labelKey: "shortcuts.focusSplitPane.label",
     descriptionKey: "shortcuts.focusSplitPane.description",
     defaultBinding: "Mod+2"
+  },
+  {
+    id: "closeActiveTopicTab",
+    labelKey: "shortcuts.closeActiveTopicTab.label",
+    descriptionKey: "shortcuts.closeActiveTopicTab.description",
+    defaultBinding: "Mod+W"
   },
   {
     id: "closeSplitPane",

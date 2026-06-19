@@ -9,6 +9,7 @@
 - Added rendered Produce Preview for Key, Headers, and Value.
 - Added per-topic Produce templates saved in app preferences.
 - Added left/right pane move shortcuts for Topic tabs.
+- Added a shortcut for closing the current Topic tab in the active pane.
 
 ### Improved
 

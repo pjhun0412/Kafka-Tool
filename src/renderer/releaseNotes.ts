@@ -10,25 +10,33 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
     ko: {
       title: "Kafka Tool 2.0.3",
       items: [
-        "Produce에 Interval 발행 모드를 추가해 Count 또는 Duration 제한 안에서 반복 발행할 수 있습니다.",
-        "Key, Headers, Value에서 ${seq}, ${random}, ${date}, ${uuid} 같은 동적 필드를 사용할 수 있습니다.",
-        "Produce Preview에서 실제 발행될 Key, Headers, Value 렌더링 결과를 함께 확인할 수 있습니다.",
-        "토픽별 Produce 템플릿 저장, 불러오기, 업데이트, 삭제를 지원합니다.",
-        "잘못된 동적 필드 문법과 Count/Duration 종료 조건을 Interval 시작 전에 확인합니다.",
-        "Ctrl/Cmd+→, Ctrl/Cmd+← 단축키로 Topic을 좌우 pane 사이에서 빠르게 이동할 수 있습니다.",
-        "Topic/Consumer 그리드 셀 정렬을 다듬어 목록을 더 편하게 볼 수 있습니다."
+        "스마트 자동 발행 (Interval Produce)",
+        "정해진 주기(Every)마다 메시지를 연속으로 발행할 수 있습니다.",
+        "지정한 횟수(Count) 또는 시간(Duration)에 도달하면 안전하게 자동 종료됩니다.",
+        "유효하지 않은 문법이나 종료 조건은 시작 전 시스템이 미리 검증합니다.",
+        "동적 치환 템플릿 엔진",
+        "Key, Headers, Value에 ${seq}, ${random}, ${date}, ${uuid} 등의 특수 문법을 사용하여 매번 다른 데이터를 생성할 수 있습니다.",
+        "Preview 버튼을 통해 실제 변수가 치환되어 발행될 렌더링 결과를 미리 확인할 수 있습니다.",
+        "자주 쓰는 메시지 규격을 토픽별로 저장하고, 불러오고, 관리할 수 있습니다.",
+        "UX 및 단축키 개선",
+        "Ctrl/Cmd+Right, Ctrl/Cmd+Left로 Topic 탭을 좌우 pane 사이에서 이동할 수 있습니다.",
+        "Ctrl/Cmd+W로 활성화된 pane의 현재 Topic 탭을 닫을 수 있습니다."
       ]
     },
     en: {
       title: "Kafka Tool 2.0.3",
       items: [
-        "Added Interval Produce with Count or Duration limits for repeated message publishing.",
-        "Added dynamic fields such as ${seq}, ${random}, ${date}, and ${uuid} for Key, Headers, and Value.",
-        "Produce Preview now shows the rendered Key, Headers, and Value before publishing.",
-        "Added per-topic Produce templates with save, load, update, and delete support.",
-        "Invalid dynamic field syntax and Count/Duration stop conditions are checked before Interval Produce starts.",
-        "Ctrl/Cmd+Right and Ctrl/Cmd+Left can now move Topics between left and right panes.",
-        "Refined Topic and Consumer grid cell alignment for easier scanning."
+        "Smart automatic publishing (Interval Produce)",
+        "Messages can be published repeatedly at a fixed Every interval.",
+        "Publishing stops safely when the selected Count or Duration limit is reached.",
+        "Invalid syntax and stop conditions are validated before Interval Produce starts.",
+        "Dynamic replacement template engine",
+        "Key, Headers, and Value can use ${seq}, ${random}, ${date}, ${uuid}, and other fields to generate changing data.",
+        "Preview shows the rendered result before publishing.",
+        "Frequently used message shapes can be saved, loaded, and managed per Topic.",
+        "UX and shortcut improvements",
+        "Ctrl/Cmd+Right and Ctrl/Cmd+Left can move Topic tabs between left and right panes.",
+        "Ctrl/Cmd+W closes the current Topic tab in the active pane."
       ]
     }
   },

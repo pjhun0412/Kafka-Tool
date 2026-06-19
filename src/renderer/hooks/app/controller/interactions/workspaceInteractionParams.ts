@@ -16,6 +16,7 @@ type InteractionDerived = Pick<
 type InteractionActions = Pick<
   WorkspaceControllerInteractionsParams["quickSearch"],
   | "closeQuickSearch"
+  | "closeSplitTopicTab"
   | "closeSplitPane"
   | "ensureServerConnected"
   | "getWorkspaceTargetForServer"
@@ -96,6 +97,7 @@ export function createWorkspaceInteractionParams({
       setViewByServer: state.setViewByServer,
       isQuickSearchOpen: derived.isQuickSearchOpen,
       openQuickSearch: actions.openQuickSearch,
+      closeSplitTopicTab: actions.closeSplitTopicTab,
       closeSplitPane: actions.closeSplitPane,
       setActiveWorkspacePane: state.setActiveWorkspacePane,
       setSidebarCollapsed: state.setSidebarCollapsed,

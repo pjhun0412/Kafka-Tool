@@ -11,7 +11,9 @@ type PrimaryTopicTabActionsParams = Parameters<typeof usePrimaryTopicTabAppActio
 export type WorkspaceControllerInteractionsParams = {
   consume: ConsumeRefreshActionsParams["selectedConsume"] & ConsumeRefreshActionsParams["workspaceRefresh"];
   manualAvro: ManualAvroSchemaParams;
-  quickSearch: QuickSearchActionsParams["actions"] & QuickSearchActionsParams["shortcuts"];
+  quickSearch: QuickSearchActionsParams["actions"] & QuickSearchActionsParams["shortcuts"] & {
+    closeSplitTopicTab: (topic: string) => Promise<void>;
+  };
   topicTabs: PrimaryTopicTabActionsParams;
 };
 
@@ -21,6 +23,17 @@ export function useWorkspaceControllerInteractions({
   quickSearch,
   topicTabs
 }: WorkspaceControllerInteractionsParams) {
+  const { closeTopicTab } = usePrimaryTopicTabAppActions(topicTabs);
+  async function closeActiveTopicTab() {
+    if (quickSearch.activeWorkspacePane === "split" && quickSearch.splitPaneOpen && quickSearch.splitPaneTopic) {
+      await quickSearch.closeSplitTopicTab(quickSearch.splitPaneTopic);
+      return;
+    }
+    if (quickSearch.selectedTopic) {
+      await closeTopicTab(quickSearch.selectedTopic);
+    }
+  }
+
   const { executeQuickSearch } = useQuickSearchAppActions({
     actions: {
       quickSearchResults: quickSearch.quickSearchResults,
@@ -56,6 +69,7 @@ export function useWorkspaceControllerInteractions({
       keyboardShortcuts: quickSearch.keyboardShortcuts,
       openQuickSearch: quickSearch.openQuickSearch,
       closeQuickSearch: quickSearch.closeQuickSearch,
+      closeActiveTopicTab,
       closeSplitPane: quickSearch.closeSplitPane,
       openSplitForTopic: quickSearch.openSplitForTopic,
       moveSplitTopicToPrimary: quickSearch.moveSplitTopicToPrimary,
@@ -106,8 +120,6 @@ export function useWorkspaceControllerInteractions({
       setStatus: consume.setStatus
     }
   });
-  const { closeTopicTab } = usePrimaryTopicTabAppActions(topicTabs);
-
   return {
     closeTopicTab,
     executeQuickSearch,

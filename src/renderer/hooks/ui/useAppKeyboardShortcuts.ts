@@ -14,6 +14,7 @@ type AppKeyboardShortcutParams = {
   keyboardShortcuts: KeyboardShortcutMap;
   openQuickSearch: () => void;
   closeQuickSearch: () => void;
+  closeActiveTopicTab: () => Promise<void>;
   closeSplitPane: () => Promise<void>;
   openSplitForTopic: (serverId: string, topic: string) => Promise<void>;
   moveSplitTopicToPrimary: (topic: string) => Promise<void>;
@@ -40,6 +41,7 @@ export function useAppKeyboardShortcuts({
   keyboardShortcuts,
   openQuickSearch,
   closeQuickSearch,
+  closeActiveTopicTab,
   closeSplitPane,
   openSplitForTopic,
   moveSplitTopicToPrimary,
@@ -98,6 +100,12 @@ export function useAppKeyboardShortcuts({
           if (splitPaneOpen) setActiveWorkspacePane("split");
           return;
         }
+        if (matchesShortcut(event, keyboardShortcuts.closeActiveTopicTab)) {
+          event.preventDefault();
+          closeQuickSearch();
+          void closeActiveTopicTab();
+          return;
+        }
         if (matchesShortcut(event, keyboardShortcuts.closeSplitPane) && splitPaneOpen) {
           event.preventDefault();
           closeQuickSearch();
@@ -124,6 +132,7 @@ export function useAppKeyboardShortcuts({
     keyboardShortcuts,
     openQuickSearch,
     closeQuickSearch,
+    closeActiveTopicTab,
     closeSplitPane,
     openSplitForTopic,
     moveSplitTopicToPrimary,

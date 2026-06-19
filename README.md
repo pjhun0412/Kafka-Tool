@@ -18,6 +18,7 @@ Current release: `2.0.3`
 - Added per-topic Produce templates with save, load, update, and delete support.
 - Added dynamic field and Count/Duration validation before Interval Produce starts.
 - Added left/right pane shortcuts for moving Topic tabs between split panes.
+- Added a shortcut for closing the current Topic tab in the active pane.
 - Refined Topic and Consumer grid cell alignment.
 
 ## Documentation
@@ -102,6 +103,7 @@ Default shortcuts:
 - `Ctrl/Cmd+Left`: send the current Topic in the right pane to the left pane
 - `Ctrl/Cmd+1`: focus the left pane
 - `Ctrl/Cmd+2`: focus the right pane
+- `Ctrl/Cmd+W`: close the current Topic tab
 - `Ctrl/Cmd+Shift+W`: close the split pane
 
 Shortcuts can be customized in `Preferences > Editor > Shortcuts`.
