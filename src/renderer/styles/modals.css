@@ -102,6 +102,14 @@
   @apply rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-extrabold text-emerald-700;
 }
 
+.release-notes-section + .release-notes-section {
+  @apply mt-3;
+}
+
+.release-notes-heading {
+  @apply mb-1 text-[11px] font-extrabold uppercase tracking-wide text-muted;
+}
+
 .field-invalid input,
 .field-invalid select,
 .field-invalid textarea {

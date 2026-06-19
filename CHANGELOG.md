@@ -9,7 +9,6 @@
 ### Improved
 
 - Show server profile validation and connection test errors inside the dialog.
-- Updated README, Korean README, changelog, release guide, and feature docs.
 
 ### Fixed
 
@@ -31,9 +30,7 @@
 
 - Block Interval Produce when dynamic field syntax is invalid.
 - Block invalid Count/Duration stop conditions before Interval Produce starts.
-- Split renderer vendor chunks to remove the Vite 500KB chunk warning.
 - Refined Topic and Consumer grid cell vertical alignment.
-- Updated README and in-app Release Notes for Produce enhancements.
 
 ## 2.0.2
 
@@ -46,7 +43,6 @@
 ### Improved
 
 - Improved shortcut handling for macOS and Windows/Linux by using Cmd/Ctrl-aware bindings.
-- Updated Help content for Shortcuts and Split tabs in English and Korean.
 - Persisted shortcut preferences and release-note acknowledgement in app preferences and settings export/import.
 
 ## 2.0.1
@@ -62,7 +58,6 @@
 - Limited retained raw payload bytes per message to reduce memory pressure during large consumes.
 - Improved Live Record file writing with sequential write backpressure for long-running captures.
 - Kept Message Viewer mode per topic pane, including split panes, when switching tabs.
-- Updated English and Korean README release notes for `2.0.1`.
 
 ### Fixed
 

@@ -15,7 +15,6 @@ Current release: `2.0.4`
 - Added a server profile `Test` action to verify Kafka connectivity before saving.
 - Improved server profile validation so required-field and connection errors are shown inside the dialog.
 - Fixed server/topic context menu dark theme colors and failed-connection icon rendering.
-- Updated README, Korean README, changelog, release guide, and feature docs.
 
 ## Documentation
 

@@ -24,11 +24,18 @@ export function ReleaseNotesDialog(props: {
           </button>
         </div>
         <div className="release-notes-body">
-          <ul>
-            {note.items.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+          {note.sections.map((section, index) => (
+            <div key={index} className="release-notes-section">
+              {section.heading && (
+                <p className="release-notes-heading">{section.heading}</p>
+              )}
+              <ul>
+                {section.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <div className="modal-actions">
           <button className="primary" onClick={props.onClose}>
