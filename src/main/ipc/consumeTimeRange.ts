@@ -5,6 +5,7 @@ import type {
   ConsumeTimeRangeRequest
 } from "../../shared/types.js";
 import { kafkaToolConsumerGroupId } from "./consumeUtils.js";
+import { deleteKafkaToolConsumerGroup } from "./consumerGroupCleanup.js";
 import { runTimeRangeConsumer } from "./timeRangeConsumerRunner.js";
 import { resolveTimeRangeSeekTargets } from "./timeRangeOffsets.js";
 
@@ -15,8 +16,9 @@ export async function consumeTimeRange(request: ConsumeTimeRangeRequest): Promis
   const kafka = createKafka(profile);
   const limit = Math.max(1, Number(request.limit) || 100);
   const admin = kafka.admin();
+  const groupId = kafkaToolConsumerGroupId("time", [request.serverId, request.topic, request.partition ?? "all"]);
   const consumer = kafka.consumer({
-    groupId: kafkaToolConsumerGroupId("time", [request.serverId, request.topic, request.partition ?? "all"]),
+    groupId,
     minBytes: 1,
     maxWaitTimeInMs: 250
   });
@@ -26,13 +28,17 @@ export async function consumeTimeRange(request: ConsumeTimeRangeRequest): Promis
     return [];
   }
 
-  return await runTimeRangeConsumer({
-    consumer,
-    profile,
-    request,
-    manualSchema,
-    seekablePartitions,
-    startOffsets,
-    limit
-  });
+  try {
+    return await runTimeRangeConsumer({
+      consumer,
+      profile,
+      request,
+      manualSchema,
+      seekablePartitions,
+      startOffsets,
+      limit
+    });
+  } finally {
+    void deleteKafkaToolConsumerGroup(request.serverId, groupId);
+  }
 }

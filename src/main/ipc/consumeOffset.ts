@@ -5,6 +5,7 @@ import type {
   ConsumeOffsetResult
 } from "../../shared/types.js";
 import { kafkaToolConsumerGroupId } from "./consumeUtils.js";
+import { deleteKafkaToolConsumerGroup } from "./consumerGroupCleanup.js";
 import { runOffsetConsumer } from "./offsetConsumerRunner.js";
 import { resolveOffsetWindow } from "./offsetWindow.js";
 
@@ -13,8 +14,9 @@ export async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise
   const preferences = await readPreferences();
   const manualSchema = preferences.manualAvroSchemasByServer?.[request.serverId]?.[request.topic];
   const kafka = createKafka(profile);
+  const groupId = kafkaToolConsumerGroupId("offset", [request.serverId, request.topic, request.partition]);
   const consumer = kafka.consumer({
-    groupId: kafkaToolConsumerGroupId("offset", [request.serverId, request.topic, request.partition]),
+    groupId,
     minBytes: 1,
     maxWaitTimeInMs: 250
   });
@@ -35,12 +37,16 @@ export async function consumeOffsetBatch(request: ConsumeOffsetRequest): Promise
     return { messages: [], endOffsetExclusive: offsetWindow.endExclusive?.toString() };
   }
 
-  return await runOffsetConsumer({
-    consumer,
-    profile,
-    request,
-    manualSchema,
-    offsetWindow,
-    limit
-  });
+  try {
+    return await runOffsetConsumer({
+      consumer,
+      profile,
+      request,
+      manualSchema,
+      offsetWindow,
+      limit
+    });
+  } finally {
+    void deleteKafkaToolConsumerGroup(request.serverId, groupId);
+  }
 }

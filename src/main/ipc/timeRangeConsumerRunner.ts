@@ -42,25 +42,24 @@ export async function runTimeRangeConsumer({
       idleTimeout = setTimeout(finish, messages.length > 0 ? 900 : 1500);
     };
 
-    const cleanup = () => {
+    const cleanup = async () => {
       if (idleTimeout) clearTimeout(idleTimeout);
-      void shutdownConsumer(consumer);
+      await shutdownConsumer(consumer);
     };
 
     const finish = () => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      resolve([...messages].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp)));
-      cleanup();
+      const result = [...messages].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+      void cleanup().finally(() => resolve(result));
     };
 
     const fail = (error: unknown) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      reject(error);
-      cleanup();
+      void cleanup().finally(() => reject(error));
     };
 
     const timeout = setTimeout(finish, 15000);
