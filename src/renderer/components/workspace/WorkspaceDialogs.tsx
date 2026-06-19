@@ -3,6 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { AppKeyboardShortcutPreferences, AppPreferences, ServerProfile, TopicCreateRequest } from "../../../shared/types";
 import type { AppLanguage, LanguagePreference } from "../../i18n";
 import type { KeyboardShortcutMap } from "../../keyboardShortcuts";
+import { buildServerProfileInput } from "../../serverProfileForm";
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import { usePreferenceNavigation } from "../../hooks/preferences/usePreferenceNavigation";
 import { useFeedbackStore } from "../../stores/ui/feedbackStore";
@@ -166,6 +167,7 @@ export function WorkspaceDialogs(props: {
           onForm={setServerForm}
           onClose={closeServerForm}
           onSave={props.onSaveServer}
+          onTest={() => window.kafkaApi?.testServer(buildServerProfileInput(editingServerId, serverForm))}
         />
       )}
       {isPreferencesOpen && (

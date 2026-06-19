@@ -4,6 +4,7 @@ import type { AppLogPayload, AppMenuLanguage, AppPreferenceSection, AppPreferenc
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
   saveServer: (server: Omit<ServerProfile, "id"> & { id?: string }) => ipcRenderer.invoke("servers:save", server),
+  testServer: (server: Omit<ServerProfile, "id"> & { id?: string }) => ipcRenderer.invoke("servers:test", server),
   deleteServer: (id: string) => ipcRenderer.invoke("servers:delete", id),
   reorderServers: (ids: string[]) => ipcRenderer.invoke("servers:reorder", ids),
   exportSettings: (options) => ipcRenderer.invoke("settings:export", options),

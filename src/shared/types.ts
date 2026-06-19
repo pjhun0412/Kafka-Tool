@@ -450,6 +450,7 @@ export type ConsumeTimeRangeRequest = {
 export type KafkaApi = {
   listServers: () => Promise<ServerProfile[]>;
   saveServer: (server: Omit<ServerProfile, "id"> & { id?: string }) => Promise<ServerProfile[]>;
+  testServer: (server: Omit<ServerProfile, "id"> & { id?: string }) => Promise<void>;
   deleteServer: (id: string) => Promise<ServerProfile[]>;
   reorderServers: (ids: string[]) => Promise<ServerProfile[]>;
   exportSettings: (options?: ExportSettingsOptions) => Promise<string | null>;

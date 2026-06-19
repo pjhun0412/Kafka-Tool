@@ -134,8 +134,10 @@ export function useServerLifecycleActions({
 
   async function saveServer() {
     if (!kafkaApi) return;
-    const nextServers = await runTask("Saving server...", () =>
-      kafkaApi.saveServer(buildServerProfileInput(editingServerId, serverForm))
+    const nextServers = await runTask(
+      "Saving server...",
+      () => kafkaApi.saveServer(buildServerProfileInput(editingServerId, serverForm)),
+      { toast: false }
     );
     setServers(nextServers);
     setSelectedServerId(editingServerId ?? nextServers[nextServers.length - 1]?.id ?? "");

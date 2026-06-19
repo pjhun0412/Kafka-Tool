@@ -145,24 +145,6 @@ small {
   @apply block h-3.5 w-3.5;
 }
 
-.connection-dot.failed::before {
-  content: "x";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 900;
-  line-height: 1;
-  transform: translateY(-0.5px);
-}
-
-.connection-dot.failed::after {
-  content: none;
-  display: none;
-}
-
 .server strong,
 .server small {
   @apply block overflow-hidden text-ellipsis whitespace-nowrap;
@@ -225,6 +207,10 @@ small {
 
 .context-menu .danger-item {
   @apply text-red-300 hover:bg-red-500/10 hover:text-red-100;
+}
+
+.context-menu {
+  @apply border-[#3c3c3c] bg-[#252526] text-slate-100 shadow-[0_18px_44px_rgba(0,0,0,0.42)];
 }
 
 .context-menu button:hover {

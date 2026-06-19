@@ -98,6 +98,20 @@
   @apply rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] font-extrabold text-red-700;
 }
 
+.form-success {
+  @apply rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-extrabold text-emerald-700;
+}
+
+.field-invalid input,
+.field-invalid select,
+.field-invalid textarea {
+  @apply border-red-400 ring-1 ring-red-500/30;
+}
+
+.field-error-text {
+  @apply mt-1 block text-[11px] font-bold text-red-600;
+}
+
 .error-summary {
   @apply grid grid-cols-[36px_1fr] gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-red-900;
 }
@@ -128,6 +142,10 @@
 
 .modal-actions {
   @apply mt-1 flex justify-end gap-2;
+}
+
+.modal-action-spacer {
+  @apply flex-1;
 }
 
 .settings-transfer-modal {
@@ -252,6 +270,20 @@
 .error-summary,
 .form-error {
   @apply border-red-500/30 bg-red-500/10 text-red-100;
+}
+
+.form-success {
+  @apply border-emerald-400/30 bg-emerald-400/10 text-emerald-100;
+}
+
+.server-modal .field-invalid input,
+.server-modal .field-invalid select,
+.server-modal .field-invalid textarea {
+  @apply border-red-400/80 ring-1 ring-red-400/20;
+}
+
+.server-modal .field-error-text {
+  @apply text-red-300;
 }
 
 .error-summary pre {
