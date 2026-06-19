@@ -37,7 +37,7 @@ type ServerLifecycleActionsParams = {
   refreshTopicsForServer: (
     serverId: string,
     target?: WorkspaceActionTarget,
-    options?: { label?: string; detailLabel?: string }
+    options?: { label?: string; detailLabel?: string; selectFallbackTopic?: boolean }
   ) => Promise<void>;
   refreshBrokersForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
   refreshGroupsForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
@@ -161,7 +161,8 @@ export function useServerLifecycleActions({
         await kafkaApi.checkHealth(server.id);
         await refreshTopicsForServer(server.id, undefined, {
           label: "Initializing server...",
-          detailLabel: "Initializing server..."
+          detailLabel: "Initializing server...",
+          selectFallbackTopic: false
         });
         return true;
       });

@@ -11,6 +11,7 @@ type WorkspaceActionTarget = {
 type RefreshTopicsOptions = {
   label?: string;
   detailLabel?: string;
+  selectFallbackTopic?: boolean;
 };
 
 type TopicResourceActionsParams = {
@@ -64,9 +65,12 @@ export function useTopicResourceActions({
     keepSelectedTopicRowsForServer(serverId, topicNames);
     const previousSelectedTopic = selectedTopicByServer[serverId] ?? "";
     const favoriteTopic = (favoriteTopicsByServer[serverId] ?? []).find((topicName) => topicNames.has(topicName));
+    const shouldSelectFallbackTopic = options.selectFallbackTopic ?? true;
     const nextTopic = previousSelectedTopic && items.some((topic) => topic.name === previousSelectedTopic)
       ? previousSelectedTopic
-      : favoriteTopic ?? items[0]?.name ?? "";
+      : shouldSelectFallbackTopic
+        ? favoriteTopic ?? items[0]?.name ?? ""
+        : "";
     setSelectedTopicByServer((current) => ({ ...current, [serverId]: nextTopic }));
     if (nextTopic) {
       const detail = target

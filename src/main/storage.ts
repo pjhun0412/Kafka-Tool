@@ -1,7 +1,8 @@
 import { app, safeStorage } from "electron";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { writeAppLog } from "./logger.js";
 import type { AppPreferences, ServerProfile } from "../shared/types.js";
 
 type StoredServerProfile = Omit<ServerProfile, "schemaRegistry" | "security"> & {
@@ -45,6 +46,67 @@ function profilesPath() {
 
 function preferencesPath() {
   return path.join(app.getPath("userData"), "preferences.json");
+}
+
+function recoveryDirectoryPath() {
+  return path.join(app.getPath("userData"), ".recovery");
+}
+
+function preferencesBackupPath() {
+  return path.join(recoveryDirectoryPath(), "preferences.json");
+}
+
+function profilesBackupPath() {
+  return path.join(recoveryDirectoryPath(), "servers.json");
+}
+
+function isNodeErrorCode(error: unknown, code: string) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code;
+}
+
+async function writeFileAtomic(filePath: string, data: string) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(temporaryPath, data, "utf8");
+  await rm(filePath, { force: true });
+  await rename(temporaryPath, filePath);
+}
+
+async function rotateExistingJsonFileToBackup(filePath: string, backupPath: string) {
+  try {
+    const currentFile = await readFile(filePath, "utf8");
+    JSON.parse(currentFile);
+    await rm(backupPath, { force: true });
+    await rename(filePath, backupPath);
+  } catch (error) {
+    if (isNodeErrorCode(error, "ENOENT")) {
+      return;
+    }
+    await writeAppLog("warn", "storage.backup", `Skipped backup rotation for unreadable ${path.basename(filePath)}.`, error);
+    await rm(filePath, { force: true });
+  }
+}
+
+async function writeFileWithBackup(filePath: string, backupPath: string, data: string) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(temporaryPath, data, "utf8");
+  await rotateExistingJsonFileToBackup(filePath, backupPath);
+  try {
+    await rename(temporaryPath, filePath);
+  } catch (error) {
+    await writeAppLog("error", "storage.write", `Failed to replace ${path.basename(filePath)} after backup rotation. Trying rollback.`, error);
+    try {
+      await rename(backupPath, filePath);
+    } catch (rollbackError) {
+      await writeAppLog("error", "storage.write", `Failed to roll back ${path.basename(filePath)} from backup.`, rollbackError);
+    }
+    throw error;
+  }
+}
+
+async function restoreFileFromBackup(filePath: string, data: string) {
+  await writeFileAtomic(filePath, data);
 }
 
 function canUseSafeStorage() {
@@ -265,10 +327,26 @@ export async function readProfiles(): Promise<ServerProfile[]> {
     }
     return profiles;
   } catch (error) {
-    if (typeof error === "object" && error && "code" in error && error.code === "ENOENT") {
+    if (isNodeErrorCode(error, "ENOENT")) {
       return [];
     }
-    throw error;
+    await writeAppLog("warn", "storage.servers", "Failed to read servers.json. Trying backup.", error);
+    try {
+      const backupFile = await readFile(profilesBackupPath(), "utf8");
+      const storedProfiles = JSON.parse(backupFile) as StoredServerProfile[];
+      const converted = storedProfiles.map(fromStoredProfile);
+      const profiles = converted.map((item) => item.profile);
+      if (converted.some((item) => item.migrated)) {
+        await writeProfiles(profiles);
+      } else {
+        await restoreFileFromBackup(profilesPath(), backupFile);
+      }
+      await writeAppLog("info", "storage.servers", "Restored servers.json from backup.");
+      return profiles;
+    } catch (backupError) {
+      await writeAppLog("error", "storage.servers", "Failed to restore servers.json from backup. Returning empty list.", backupError);
+      return [];
+    }
   }
 }
 
@@ -280,22 +358,33 @@ export async function writeProfiles(profiles: ServerProfile[]) {
   if (profiles.some(hasProfileSecrets)) {
     requireSafeStorage();
   }
-  await mkdir(app.getPath("userData"), { recursive: true });
-  await writeFile(profilesPath(), JSON.stringify(profiles.map(toStoredProfile), null, 2), "utf8");
+  await writeFileWithBackup(profilesPath(), profilesBackupPath(), JSON.stringify(profiles.map(toStoredProfile), null, 2));
 }
 
 export async function readPreferences(): Promise<AppPreferences> {
   try {
     const file = await readFile(preferencesPath(), "utf8");
-    return { ...defaultPreferences, ...(JSON.parse(file) as Partial<AppPreferences>) };
-  } catch {
-    return defaultPreferences;
+    return normalizePreferences(JSON.parse(file) as Partial<AppPreferences>);
+  } catch (error) {
+    if (isNodeErrorCode(error, "ENOENT")) {
+      return defaultPreferences;
+    }
+    await writeAppLog("warn", "storage.preferences", "Failed to read preferences.json. Trying backup preferences.", error);
+    try {
+      const backupFile = await readFile(preferencesBackupPath(), "utf8");
+      const preferences = normalizePreferences(JSON.parse(backupFile) as Partial<AppPreferences>);
+      await restoreFileFromBackup(preferencesPath(), JSON.stringify(preferences, null, 2));
+      await writeAppLog("info", "storage.preferences", "Restored preferences.json from backup.");
+      return preferences;
+    } catch (backupError) {
+      await writeAppLog("error", "storage.preferences", "Failed to restore preferences.json from backup. Using default preferences.", backupError);
+      return defaultPreferences;
+    }
   }
 }
 
 export async function writePreferences(preferences: AppPreferences) {
-  await mkdir(app.getPath("userData"), { recursive: true });
-  await writeFile(preferencesPath(), JSON.stringify(preferences, null, 2), "utf8");
+  await writeFileWithBackup(preferencesPath(), preferencesBackupPath(), JSON.stringify(normalizePreferences(preferences), null, 2));
 }
 
 export function normalizePreferences(preferences?: Partial<AppPreferences>): AppPreferences {
