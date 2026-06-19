@@ -8,20 +8,14 @@ It is built for developers and operators who need to register Kafka clusters, br
 
 ## Version
 
-Current release: `2.0.3`
+Current release: `2.0.4`
 
-## 2.0.3 Patch Notes
+## 2.0.4 Patch Notes
 
-- Added Interval Produce with Count or Duration limits.
-- Added dynamic Produce fields for Key, Headers, and Value: `${seq}`, `${random}`, `${float}`, `${choice}`, `${timestamp}`, `${date}`, `${now}`, and `${uuid}`.
-- Added Produce Preview for the rendered Key, Headers, and Value before publishing.
-- Added per-topic Produce templates with save, load, update, and delete support.
-- Added dynamic field and Count/Duration validation before Interval Produce starts.
 - Added a server profile `Test` action to verify Kafka connectivity before saving.
-- Added left/right pane shortcuts for moving Topic tabs between split panes.
-- Added a shortcut for closing the current Topic tab in the active pane.
-- Refined Topic and Consumer grid cell alignment.
+- Improved server profile validation so required-field and connection errors are shown inside the dialog.
 - Fixed server/topic context menu dark theme colors and failed-connection icon rendering.
+- Updated README, Korean README, changelog, release guide, and feature docs.
 
 ## Documentation
 

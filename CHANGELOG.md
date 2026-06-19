@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.4
+
+### Added
+
+- Added a server profile `Test` action for validating Kafka connectivity before saving.
+
+### Improved
+
+- Show server profile validation and connection test errors inside the dialog.
+- Updated README, Korean README, changelog, release guide, and feature docs.
+
+### Fixed
+
+- Fixed server and topic context menus showing a light background in the dark UI.
+- Removed the duplicate center `x` overlay from failed server connection indicators.
+
 ## 2.0.3
 
 ### Added
@@ -8,7 +24,6 @@
 - Added dynamic Produce fields for Key, Headers, and Value.
 - Added rendered Produce Preview for Key, Headers, and Value.
 - Added per-topic Produce templates saved in app preferences.
-- Added a server profile `Test` action for validating Kafka connectivity before saving.
 - Added left/right pane move shortcuts for Topic tabs.
 - Added a shortcut for closing the current Topic tab in the active pane.
 
@@ -16,15 +31,9 @@
 
 - Block Interval Produce when dynamic field syntax is invalid.
 - Block invalid Count/Duration stop conditions before Interval Produce starts.
-- Show server profile validation and connection test errors inside the dialog.
 - Split renderer vendor chunks to remove the Vite 500KB chunk warning.
 - Refined Topic and Consumer grid cell vertical alignment.
 - Updated README and in-app Release Notes for Produce enhancements.
-
-### Fixed
-
-- Fixed server and topic context menus showing a light background in the dark UI.
-- Removed the duplicate center `x` overlay from failed server connection indicators.
 
 ## 2.0.2
 
