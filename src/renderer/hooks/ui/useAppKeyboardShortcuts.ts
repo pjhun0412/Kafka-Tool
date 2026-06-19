@@ -8,12 +8,15 @@ type AppKeyboardShortcutParams = {
   quickSearchResultCount: number;
   selectedServerId: string;
   selectedTopic: string;
+  activeWorkspacePane: WorkspacePaneId;
+  splitPaneTopic: string;
   splitPaneOpen: boolean;
   keyboardShortcuts: KeyboardShortcutMap;
   openQuickSearch: () => void;
   closeQuickSearch: () => void;
   closeSplitPane: () => Promise<void>;
   openSplitForTopic: (serverId: string, topic: string) => Promise<void>;
+  moveSplitTopicToPrimary: (topic: string) => Promise<void>;
   openPreferences: (page?: PreferencePage) => void;
   setActiveWorkspacePane: (value: WorkspacePaneId) => void;
   setSidebarCollapsed: (action: boolean | ((current: boolean) => boolean)) => void;
@@ -31,12 +34,15 @@ export function useAppKeyboardShortcuts({
   quickSearchResultCount,
   selectedServerId,
   selectedTopic,
+  activeWorkspacePane,
+  splitPaneTopic,
   splitPaneOpen,
   keyboardShortcuts,
   openQuickSearch,
   closeQuickSearch,
   closeSplitPane,
   openSplitForTopic,
+  moveSplitTopicToPrimary,
   openPreferences,
   setActiveWorkspacePane,
   setSidebarCollapsed,
@@ -74,6 +80,12 @@ export function useAppKeyboardShortcuts({
           if (selectedServerId && selectedTopic) void openSplitForTopic(selectedServerId, selectedTopic);
           return;
         }
+        if (matchesShortcut(event, keyboardShortcuts.sendTopicToLeftPane)) {
+          event.preventDefault();
+          closeQuickSearch();
+          if (activeWorkspacePane === "split" && splitPaneOpen && splitPaneTopic) void moveSplitTopicToPrimary(splitPaneTopic);
+          return;
+        }
         if (matchesShortcut(event, keyboardShortcuts.focusPrimaryPane)) {
           event.preventDefault();
           closeQuickSearch();
@@ -106,12 +118,15 @@ export function useAppKeyboardShortcuts({
     quickSearchResultCount,
     selectedServerId,
     selectedTopic,
+    activeWorkspacePane,
+    splitPaneTopic,
     splitPaneOpen,
     keyboardShortcuts,
     openQuickSearch,
     closeQuickSearch,
     closeSplitPane,
     openSplitForTopic,
+    moveSplitTopicToPrimary,
     openPreferences,
     setActiveWorkspacePane,
     setSidebarCollapsed,

@@ -210,7 +210,7 @@ export function useWorkspaceAppController() {
     },
     stopConsume
   }));
-  const { closeSplitPane, openSplitForTopic, promoteSplitPaneToPrimary } = splitActions;
+  const { closeSplitPane, moveSplitTopicToPrimary, openSplitForTopic, promoteSplitPaneToPrimary } = splitActions;
   const topicOperationActions = useWorkspaceControllerTopicOperations(createWorkspaceTopicOperationParams({
     state: controllerState,
     derived: {
@@ -257,6 +257,7 @@ export function useWorkspaceAppController() {
       loadTopicDetailSilent,
       openManualAvroSchema,
       openQuickSearch,
+      moveSplitTopicToPrimary,
       openSplitForTopic,
       openTopicInWorkspace,
       promoteSplitPaneToPrimary,

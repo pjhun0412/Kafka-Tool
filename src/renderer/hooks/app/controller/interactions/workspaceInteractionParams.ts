@@ -24,6 +24,7 @@ type InteractionActions = Pick<
   | "openQuickSearch"
   | "openSplitForTopic"
   | "openTopicInWorkspace"
+  | "moveSplitTopicToPrimary"
   | "refreshGroups"
   | "refreshGroupsForServer"
   | "refreshTopics"
@@ -70,6 +71,8 @@ export function createWorkspaceInteractionParams({
       quickSearchResultCount: derived.quickSearchResults.length,
       selectedServerId: state.selectedServerId,
       selectedTopic: derived.selectedTopic,
+      activeWorkspacePane: state.activeWorkspacePane,
+      splitPaneTopic: derived.visibleSplitPane?.topic ?? "",
       splitPaneOpen: Boolean(derived.visibleSplitPane),
       keyboardShortcuts: state.keyboardShortcuts,
       groupsByServer: state.groupsByServer,
@@ -77,6 +80,7 @@ export function createWorkspaceInteractionParams({
       getWorkspaceTargetForServer: actions.getWorkspaceTargetForServer,
       openTopicInWorkspace: actions.openTopicInWorkspace,
       openSplitForTopic: actions.openSplitForTopic,
+      moveSplitTopicToPrimary: actions.moveSplitTopicToPrimary,
       openManualAvroSchema: actions.openManualAvroSchema,
       openPreferences: state.openPreferences,
       refreshTopics: actions.refreshTopics,

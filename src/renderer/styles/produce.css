@@ -72,6 +72,14 @@
   @apply w-[92px] pr-7 text-left;
 }
 
+.produce-interval-controls .produce-interval-stop-select {
+  @apply w-[108px];
+}
+
+.produce-interval-controls .produce-interval-duration-input {
+  @apply w-[96px];
+}
+
 .produce-interval-status {
   @apply inline-flex h-9 min-h-9 items-center rounded-md border border-[#264f78] bg-[#1b2f3a] px-2 text-[11px] text-[#9cdcfe];
   font-weight: var(--app-font-weight);

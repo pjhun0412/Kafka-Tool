@@ -171,6 +171,7 @@ export type AppKeyboardShortcutPreferences = Partial<Record<
   | "preferences"
   | "toggleSidebar"
   | "splitTopic"
+  | "sendTopicToLeftPane"
   | "focusPrimaryPane"
   | "focusSplitPane"
   | "closeSplitPane",

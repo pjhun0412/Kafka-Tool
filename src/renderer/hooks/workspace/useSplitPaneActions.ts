@@ -136,6 +136,7 @@ export function useSplitPaneActions({
     });
     await openPrimaryTopicTab(topic);
     await removeSplitTopicTabAfterMove(topic);
+    setActiveWorkspacePane("primary");
   }
 
   async function removePrimaryTopicTabAfterSplit(topic: string) {

@@ -11,18 +11,11 @@ import {
   parseProduceDurationMs,
   renderProduceTemplateDraft,
   validateProduceTemplateDraft,
+  type ProduceIntervalRequest,
   type ProduceTemplateDraft,
   type ProduceTemplateIssue
 } from "../../../produceTemplate";
 import { parseProduceHeaders, validateJsonLikeValue } from "../../../utils";
-
-type ProduceIntervalRequest = {
-  draft: ProduceTemplateDraft;
-  stopMode: "count" | "duration";
-  intervalMs: number;
-  count: number;
-  durationText: string;
-};
 
 type ProduceIntervalConfig = ProduceTemplatePreference["intervalConfig"];
 
@@ -77,6 +70,7 @@ export function ProducePanel(props: {
     const estimatedMax = stopMode === "count" ? count : durationMs > 0 ? Math.ceil(durationMs / delay) : 0;
     return { count, delay, durationMs, estimatedMax };
   }, [durationText, intervalMs, stopMode, totalCount]);
+  const isCountInvalid = !Number.isFinite(totalCount) || totalCount < 1 || totalCount > 100000;
   const valueIssue = useMemo(() => {
     const valueToValidate = mode === "interval" ? renderProduceTemplateDraft(draft, 1).value : props.value;
     return getJsonValueIssue(valueToValidate);
@@ -184,6 +178,10 @@ export function ProducePanel(props: {
       setIntervalError("Every must be at least 100ms.");
       return;
     }
+    if (stopMode === "count" && isCountInvalid) {
+      setIntervalError("Count must be between 1 and 100,000.");
+      return;
+    }
     if (stopMode === "duration" && intervalPlan.durationMs <= 0) {
       setIntervalError("Duration must be like 30s, 5m, 1h, or 1m30s.");
       return;
@@ -206,6 +204,10 @@ export function ProducePanel(props: {
   function requestIntervalStart() {
     if (intervalMs < 100) {
       setIntervalError("Every must be at least 100ms.");
+      return;
+    }
+    if (stopMode === "count" && isCountInvalid) {
+      setIntervalError("Count must be between 1 and 100,000.");
       return;
     }
     if (stopMode === "duration" && intervalPlan.durationMs <= 0) {
@@ -256,7 +258,11 @@ export function ProducePanel(props: {
             </label>
             <label>
               {t(language, "label.stopBy")}
-              <select value={stopMode} onChange={(event) => updateIntervalConfig({ stopMode: event.target.value as "count" | "duration" })}>
+              <select
+                className="produce-interval-stop-select"
+                value={stopMode}
+                onChange={(event) => updateIntervalConfig({ stopMode: event.target.value as "count" | "duration" })}
+              >
                 <option value="count">{t(language, "label.count")}</option>
                 <option value="duration">{t(language, "label.duration")}</option>
               </select>
@@ -276,10 +282,12 @@ export function ProducePanel(props: {
               <label>
                 {t(language, "label.duration")}
                 <input
+                  className="produce-interval-duration-input"
                   type="text"
                   value={durationText}
                   onChange={(event) => updateIntervalConfig({ durationText: event.target.value })}
                   placeholder="5m"
+                  title={t(language, "produce.hintDuration")}
                 />
               </label>
             )}

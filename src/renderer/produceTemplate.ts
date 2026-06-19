@@ -10,6 +10,14 @@ export type ProduceTemplateIssue = {
   token: string;
 };
 
+export type ProduceIntervalRequest = {
+  draft: ProduceTemplateDraft;
+  stopMode: "count" | "duration";
+  intervalMs: number;
+  count: number;
+  durationText: string;
+};
+
 const tokenPattern = /\\?\$\{([^}]+)\}/g;
 
 type ParsedOptions = Record<string, string>;
@@ -216,10 +224,10 @@ export function getProduceTemplateExamples() {
 export function parseProduceDurationMs(input: string) {
   const compact = input.trim().toLowerCase().replace(/\s+/g, "");
   if (!compact) return 0;
-  const tokenPattern = /(\d+(?:\.\d+)?)(ms|s|m|h)/g;
+  const durationUnitPattern = /(\d+(?:\.\d+)?)(ms|s|m|h)/g;
   let total = 0;
   let matched = "";
-  for (const match of compact.matchAll(tokenPattern)) {
+  for (const match of compact.matchAll(durationUnitPattern)) {
     const amount = Number(match[1]);
     const unit = match[2];
     matched += match[0];

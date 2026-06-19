@@ -4,6 +4,8 @@
 .group-lag-table td,
 .broker-table td {
   font-weight: var(--app-font-weight);
+  line-height: 1.35;
+  vertical-align: middle;
 }
 
 th,

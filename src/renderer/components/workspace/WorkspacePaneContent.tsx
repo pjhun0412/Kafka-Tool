@@ -14,7 +14,7 @@ import type {
 import type { AppLanguage } from "../../i18n";
 import { getDefaultTimeRangeValues } from "../../consumeConfig";
 import type { ProduceDraftOverride } from "../../hooks/actions/useProduceActions";
-import { parseProduceDurationMs, renderProduceTemplateDraft, type ProduceTemplateDraft } from "../../produceTemplate";
+import { parseProduceDurationMs, renderProduceTemplateDraft, type ProduceIntervalRequest } from "../../produceTemplate";
 import type { OffsetOrder, TopicConsumeState, View } from "../../uiTypes";
 import { ConsumePanel } from "./consume/ConsumePanel";
 import { ConsumerGroupsPanel } from "./groups/ConsumerGroupsPanel";
@@ -79,14 +79,6 @@ type WorkspacePaneContentProps = {
   onProduce: () => void;
   onProduceDraft: (draft: ProduceDraftOverride) => Promise<void>;
   onProduceIntervalActivity?: (topic: string, running: boolean) => void;
-};
-
-type ProduceIntervalRequest = {
-  draft: ProduceTemplateDraft;
-  stopMode: "count" | "duration";
-  intervalMs: number;
-  count: number;
-  durationText: string;
 };
 
 const emptyProduceIntervalState = {

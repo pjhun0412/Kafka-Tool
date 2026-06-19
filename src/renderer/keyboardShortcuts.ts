@@ -6,6 +6,7 @@ export type KeyboardShortcutId =
   | "preferences"
   | "toggleSidebar"
   | "splitTopic"
+  | "sendTopicToLeftPane"
   | "focusPrimaryPane"
   | "focusSplitPane"
   | "closeSplitPane";
@@ -42,7 +43,13 @@ export const keyboardShortcutDefinitions: KeyboardShortcutDefinition[] = [
     id: "splitTopic",
     labelKey: "shortcuts.splitTopic.label",
     descriptionKey: "shortcuts.splitTopic.description",
-    defaultBinding: "Mod+\\"
+    defaultBinding: "Mod+ArrowRight"
+  },
+  {
+    id: "sendTopicToLeftPane",
+    labelKey: "shortcuts.sendTopicToLeftPane.label",
+    descriptionKey: "shortcuts.sendTopicToLeftPane.description",
+    defaultBinding: "Mod+ArrowLeft"
   },
   {
     id: "focusPrimaryPane",
@@ -86,6 +93,10 @@ export function formatShortcutForPlatform(binding: string, platform = navigator.
         .map((part) => {
           if (part === "Mod") return isMac ? "Cmd" : "Ctrl";
           if (part === "Backslash") return "\\";
+          if (part === "ArrowLeft") return "←";
+          if (part === "ArrowRight") return "→";
+          if (part === "ArrowUp") return "↑";
+          if (part === "ArrowDown") return "↓";
           return part;
         })
         .join("+")
