@@ -129,3 +129,11 @@ For macOS:
 npm ci
 npm run release:mac
 ```
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+## Copyright
+
+Copyright (c) 2026 PJHUN.
