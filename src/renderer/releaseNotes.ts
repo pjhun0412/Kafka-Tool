@@ -14,7 +14,9 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
         "Key, Headers, Value에서 ${seq}, ${random}, ${date}, ${uuid} 같은 동적 필드를 사용할 수 있습니다.",
         "Produce Preview에서 실제 발행될 Key, Headers, Value 렌더링 결과를 함께 확인할 수 있습니다.",
         "토픽별 Produce 템플릿 저장, 불러오기, 업데이트, 삭제를 지원합니다.",
-        "잘못된 동적 필드 문법은 Preview와 Interval 시작 전에 표시되어 잘못된 메시지 발행을 줄입니다."
+        "잘못된 동적 필드 문법과 Count/Duration 종료 조건을 Interval 시작 전에 확인합니다.",
+        "Ctrl/Cmd+→, Ctrl/Cmd+← 단축키로 Topic을 좌우 pane 사이에서 빠르게 이동할 수 있습니다.",
+        "Topic/Consumer 그리드 셀 정렬을 다듬어 목록을 더 편하게 볼 수 있습니다."
       ]
     },
     en: {
@@ -24,7 +26,9 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
         "Added dynamic fields such as ${seq}, ${random}, ${date}, and ${uuid} for Key, Headers, and Value.",
         "Produce Preview now shows the rendered Key, Headers, and Value before publishing.",
         "Added per-topic Produce templates with save, load, update, and delete support.",
-        "Invalid dynamic field syntax is shown in Preview and blocks Interval Produce before messages are sent."
+        "Invalid dynamic field syntax and Count/Duration stop conditions are checked before Interval Produce starts.",
+        "Ctrl/Cmd+Right and Ctrl/Cmd+Left can now move Topics between left and right panes.",
+        "Refined Topic and Consumer grid cell alignment for easier scanning."
       ]
     }
   },

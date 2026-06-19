@@ -16,7 +16,9 @@ Current release: `2.0.3`
 - Added dynamic Produce fields for Key, Headers, and Value: `${seq}`, `${random}`, `${float}`, `${choice}`, `${timestamp}`, `${date}`, `${now}`, and `${uuid}`.
 - Added Produce Preview for the rendered Key, Headers, and Value before publishing.
 - Added per-topic Produce templates with save, load, update, and delete support.
-- Added dynamic field validation before Interval Produce starts.
+- Added dynamic field and Count/Duration validation before Interval Produce starts.
+- Added left/right pane shortcuts for moving Topic tabs between split panes.
+- Refined Topic and Consumer grid cell alignment.
 
 ## Documentation
 
@@ -96,7 +98,8 @@ Per-topic Produce templates are saved in app preferences and are included in set
 Default shortcuts:
 
 - `Ctrl/Cmd+P` or `Ctrl/Cmd+K`: open Quick Search
-- `Ctrl/Cmd+\`: split the current Topic to the right pane
+- `Ctrl/Cmd+Right`: send the current Topic to the right pane
+- `Ctrl/Cmd+Left`: send the current Topic in the right pane to the left pane
 - `Ctrl/Cmd+1`: focus the left pane
 - `Ctrl/Cmd+2`: focus the right pane
 - `Ctrl/Cmd+Shift+W`: close the split pane

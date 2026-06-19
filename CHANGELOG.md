@@ -8,10 +8,14 @@
 - Added dynamic Produce fields for Key, Headers, and Value.
 - Added rendered Produce Preview for Key, Headers, and Value.
 - Added per-topic Produce templates saved in app preferences.
+- Added left/right pane move shortcuts for Topic tabs.
 
 ### Improved
 
 - Block Interval Produce when dynamic field syntax is invalid.
+- Block invalid Count/Duration stop conditions before Interval Produce starts.
+- Split renderer vendor chunks to remove the Vite 500KB chunk warning.
+- Refined Topic and Consumer grid cell vertical alignment.
 - Updated README and in-app Release Notes for Produce enhancements.
 
 ## 2.0.2
