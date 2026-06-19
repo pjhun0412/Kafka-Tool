@@ -8,6 +8,8 @@ Configure a Schema Registry URL in the server profile.
 
 Confluent wire-format messages can be decoded automatically when schema IDs are available.
 
+Schema Registry authentication can be configured in the server profile. Use the server profile `Test` action for Kafka connectivity, and verify Schema Registry access separately by opening a topic that uses Avro payloads.
+
 ## Manual Topic Schemas
 
 Manual schemas are scoped by server and topic.
@@ -30,3 +32,4 @@ When a manual schema is registered for a topic, Produce can serialize the messag
 
 If decoding fails, Kafka Tool keeps the original payload visible and shows the decode error in the UI.
 
+Manual schemas and Schema Registry credentials are included in app settings. Treat exported settings files carefully when secrets are included.

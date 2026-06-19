@@ -16,7 +16,7 @@ Delete short-lived branches after they are merged into `main`.
 Update the package version before a release:
 
 ```bash
-npm version 2.0.1 --no-git-tag-version
+npm version 2.0.3 --no-git-tag-version
 ```
 
 Verify the build:
@@ -29,7 +29,7 @@ Commit the version update:
 
 ```bash
 git add package.json package-lock.json
-git commit -m "chore: release 2.0.1"
+git commit -m "chore: release 2.0.3"
 ```
 
 ## Tag
@@ -37,7 +37,7 @@ git commit -m "chore: release 2.0.1"
 Create a release tag from `main`:
 
 ```bash
-git tag v2.0.1
+git tag v2.0.3
 git push origin main --tags
 ```
 
@@ -59,6 +59,8 @@ Kafka-Tool-Setup-{version}.exe.blockmap
 latest.yml
 ```
 
+`latest.yml` must point to the Windows installer uploaded for the same version.
+
 ## macOS
 
 Build or publish macOS artifacts from a macOS machine.
@@ -77,3 +79,13 @@ GH_TOKEN="your_github_token" CSC_IDENTITY_AUTO_DISCOVERY=false npm run release:m
 
 The release should include `latest-mac.yml` if macOS update checks are expected to work.
 
+## Release Notes
+
+Before publishing, update:
+
+- `README.md`
+- `README.ko.md`
+- `CHANGELOG.md`
+- In-app release notes text
+
+Keep release notes focused on user-visible additions, improvements, and fixes.

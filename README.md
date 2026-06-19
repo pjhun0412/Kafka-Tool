@@ -17,9 +17,11 @@ Current release: `2.0.3`
 - Added Produce Preview for the rendered Key, Headers, and Value before publishing.
 - Added per-topic Produce templates with save, load, update, and delete support.
 - Added dynamic field and Count/Duration validation before Interval Produce starts.
+- Added a server profile `Test` action to verify Kafka connectivity before saving.
 - Added left/right pane shortcuts for moving Topic tabs between split panes.
 - Added a shortcut for closing the current Topic tab in the active pane.
 - Refined Topic and Consumer grid cell alignment.
+- Fixed server/topic context menu dark theme colors and failed-connection icon rendering.
 
 ## Documentation
 
@@ -33,6 +35,7 @@ Current release: `2.0.3`
 ## Highlights
 
 - [x] Multi-cluster server profile management
+- [x] Server profile validation and Kafka connection testing before saving
 - [x] `Broker`, `Topic`, and `Consumer Group` browsing
 - [x] Topic detail, settings, creation, clear messages, and delete actions
 - [x] `Offset`, `Time`, and `Live` Consume modes
@@ -50,6 +53,12 @@ Current release: `2.0.3`
 - [x] Korean/English UI language support
 - [x] Local font support with `Inter` and `Noto Sans KR`
 - [x] GitHub Releases based auto update for packaged builds
+
+## Server Profiles
+
+Server profiles include Broker addresses, optional SSL/TLS, optional SASL/OAUTHBEARER, and optional Schema Registry settings.
+
+Use `Test` in the server profile dialog to verify the Kafka Admin connection before saving. The test uses the current form values, does not save the profile, and shows success or failure inside the dialog.
 
 ## Consume
 

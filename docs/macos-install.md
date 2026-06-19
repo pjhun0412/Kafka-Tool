@@ -17,6 +17,12 @@ Artifacts are written to:
 out/
 ```
 
+Recommended local toolchain:
+
+- Node.js 22 LTS
+- npm from the installed Node.js distribution
+- A clean dependency install with `npm ci`
+
 ## Install
 
 Copy the generated macOS artifact to the target Mac and move `Kafka Tool.app` to `Applications`.
@@ -39,3 +45,4 @@ Unsigned macOS builds can check and download update metadata, but fully automati
 
 For internal use, manual update installation is recommended unless Apple signing and notarization are configured.
 
+If update checks are enabled for macOS releases, upload `latest-mac.yml` together with the macOS artifact in GitHub Releases.
