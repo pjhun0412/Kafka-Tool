@@ -1,5 +1,6 @@
 import type { AppPreferences } from "../shared/types";
 import type { TopicConsumeState } from "./uiTypes";
+import { normalizeValueColumnPaths } from "./consumeValuePaths";
 
 export const DEFAULT_VIEWER_PREFERENCE_RETENTION_DAYS = 90;
 export const DEFAULT_VIEWER_FONT_SIZE = 13;
@@ -68,7 +69,7 @@ export function getViewerPreferenceOverride(
     keyFormat: stored.keyFormat,
     valueFormat: stored.valueFormat,
     payloadEncoding: stored.payloadEncoding,
-    valueColumnPaths: stored.valueColumnPaths
+    valueColumnPaths: normalizeValueColumnPaths(stored.valueColumnPaths)
   };
 }
 
@@ -91,7 +92,10 @@ export function updateTopicViewerPreference(params: {
   const existing = params.current.byServer[params.serverId]?.[params.topic] ?? {};
   const merged = {
     ...existing,
-    ...viewerPatch
+    ...viewerPatch,
+    valueColumnPaths: viewerPatch.valueColumnPaths !== undefined
+      ? normalizeValueColumnPaths(viewerPatch.valueColumnPaths)
+      : normalizeValueColumnPaths(existing.valueColumnPaths)
   };
   const nextPreference = Object.fromEntries(
     viewerPreferenceKeys

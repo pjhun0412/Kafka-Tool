@@ -2,6 +2,11 @@ import type { ConsumedMessage } from "../shared/types";
 
 const messageValuePayloadCache = new WeakMap<ConsumedMessage, { raw: string; value: unknown }>();
 
+export function normalizeValueColumnPaths(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)));
+}
+
 export function getMessageValuePayload(message: ConsumedMessage): unknown {
   if (message.decoded?.value !== undefined) return message.decoded.value;
   const cached = messageValuePayloadCache.get(message);

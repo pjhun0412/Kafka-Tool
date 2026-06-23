@@ -1,4 +1,5 @@
 import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
+import { normalizeValueColumnPaths } from "../../consumeValuePaths";
 import { toConsumeDefaultPatch } from "../../consumeConfig";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { ConsumeDefaultPatch, OffsetOrder, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
@@ -33,7 +34,7 @@ export function createPrimaryConsumeCallbacks(params: PrimaryConsumeCallbackPara
     keyFormat: params.selectedConsumeState.keyFormat,
     valueFormat: params.selectedConsumeState.valueFormat,
     payloadEncoding: params.selectedConsumeState.payloadEncoding,
-    valueColumnPaths: params.selectedConsumeState.valueColumnPaths
+    valueColumnPaths: normalizeValueColumnPaths(params.selectedConsumeState.valueColumnPaths)
   };
   return {
     updateConsume: (patch: Partial<TopicConsumeState>) => {

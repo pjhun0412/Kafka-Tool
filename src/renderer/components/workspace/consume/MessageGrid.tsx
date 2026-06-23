@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ConsumedMessage } from "../../../../shared/types";
 import type { ConsumeFilterMode, MessagePayloadFormat, MessagePreviewEncoding } from "../../../uiTypes";
-import { getMessageValuePayload, readValuePath } from "../../../consumeValuePaths";
+import { getMessageValuePayload, normalizeValueColumnPaths, readValuePath } from "../../../consumeValuePaths";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
 import { getGridPayloadPreview } from "../../../messagePreview";
@@ -195,8 +195,9 @@ export const MessageGrid = memo(function MessageGrid(props: {
   }, [props.onSelectMessage]);
 
   const columns = useMemo<ColumnDef<MessageGridRow>[]>(() => {
-    if (props.valueColumnPaths.length === 0) return messageGridColumns;
-    const valueColumns: ColumnDef<MessageGridRow>[] = props.valueColumnPaths.map((path) => ({
+    const valueColumnPaths = normalizeValueColumnPaths(props.valueColumnPaths);
+    if (valueColumnPaths.length === 0) return messageGridColumns;
+    const valueColumns: ColumnDef<MessageGridRow>[] = valueColumnPaths.map((path) => ({
       id: `value.${path}`,
       header: path,
       accessorFn: (row) => readValuePath(getMessageValuePayload(row.message), path),

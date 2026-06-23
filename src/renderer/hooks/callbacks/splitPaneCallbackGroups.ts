@@ -1,4 +1,5 @@
 import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
+import { normalizeValueColumnPaths } from "../../consumeValuePaths";
 import type { OffsetOrder, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { SplitPaneCallbacksParams } from "./useSplitPaneCallbacks";
@@ -26,7 +27,7 @@ export function createSplitConsumeCallbacks(params: SplitConsumeCallbackParams) 
     keyFormat: params.consumeState.keyFormat,
     valueFormat: params.consumeState.valueFormat,
     payloadEncoding: params.consumeState.payloadEncoding,
-    valueColumnPaths: params.consumeState.valueColumnPaths
+    valueColumnPaths: normalizeValueColumnPaths(params.consumeState.valueColumnPaths)
   };
   return {
     updateConsume: (patch: Partial<TopicConsumeState>) => {

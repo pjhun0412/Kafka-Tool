@@ -3,7 +3,7 @@ import { ChevronUp, RefreshCw } from "lucide-react";
 import type { ConsumedMessage, LiveMapPoint, MessageExportFormat } from "../../../../shared/types";
 import type { AppLanguage } from "../../../i18n";
 import { t } from "../../../i18n";
-import { collectMessageValuePaths } from "../../../consumeValuePaths";
+import { collectMessageValuePaths, normalizeValueColumnPaths } from "../../../consumeValuePaths";
 import { createLiveMapPoint } from "../../../mapPreview";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspectorMode, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
@@ -93,6 +93,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
   const lastSentSelectedMapMessageRef = useRef("");
   const pendingLiveMapPointsRef = useRef<LiveMapPoint[]>([]);
   const liveMapFlushTimerRef = useRef<number | null>(null);
+  const valueColumnPaths = useMemo(() => normalizeValueColumnPaths(props.valueColumnPaths), [props.valueColumnPaths]);
   const startInspectorResize = useInspectorResize({
     consumeGridRef,
     inspectorCollapsed: props.inspectorCollapsed,
@@ -128,8 +129,8 @@ function ConsumePanelView(props: ConsumePanelProps) {
     return collectMessageValuePaths(props.messages, VALUE_COLUMN_SAMPLE_SIZE, MAX_VALUE_COLUMN_CANDIDATES);
   }, [props.messages]);
   const visibleValueColumnPaths = useMemo(
-    () => Array.from(new Set([...props.valueColumnPaths, ...valueColumnCandidates])),
-    [props.valueColumnPaths, valueColumnCandidates]
+    () => Array.from(new Set([...valueColumnPaths, ...valueColumnCandidates])),
+    [valueColumnPaths, valueColumnCandidates]
   );
 
   useEffect(() => {
@@ -225,9 +226,9 @@ function ConsumePanelView(props: ConsumePanelProps) {
   }
 
   function toggleValueColumn(path: string) {
-    props.onValueColumnPaths(props.valueColumnPaths.includes(path)
-      ? props.valueColumnPaths.filter((item) => item !== path)
-      : [...props.valueColumnPaths, path]);
+    props.onValueColumnPaths(valueColumnPaths.includes(path)
+      ? valueColumnPaths.filter((item) => item !== path)
+      : [...valueColumnPaths, path]);
   }
 
   const queryMessage = props.mode === "live"
@@ -313,9 +314,9 @@ function ConsumePanelView(props: ConsumePanelProps) {
             onClick={() => setShowValueColumns((current) => !current)}
           >
             {t(props.language, "label.valueColumns")}
-            {props.valueColumnPaths.length > 0 && <span>{props.valueColumnPaths.length}</span>}
+            {valueColumnPaths.length > 0 && <span>{valueColumnPaths.length}</span>}
           </button>
-          {props.valueColumnPaths.length > 0 && (
+          {valueColumnPaths.length > 0 && (
             <button type="button" className="ghost compact" onClick={() => props.onValueColumnPaths([])}>
               {t(props.language, "label.clear")}
             </button>
@@ -326,7 +327,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
                 <label key={path}>
                   <input
                     type="checkbox"
-                    checked={props.valueColumnPaths.includes(path)}
+                    checked={valueColumnPaths.includes(path)}
                     onChange={() => toggleValueColumn(path)}
                   />
                   <span>{path}</span>
@@ -345,7 +346,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
           {isGridReady ? (
             <MessageGrid
               rows={gridRows}
-              valueColumnPaths={props.valueColumnPaths}
+              valueColumnPaths={valueColumnPaths}
               selectedMessageKey={selectedMessageKey}
               filterMode={props.filterMode}
               hasActiveMessageFilter={hasActiveMessageFilter}
