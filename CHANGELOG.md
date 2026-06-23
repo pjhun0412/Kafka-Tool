@@ -6,11 +6,14 @@
 
 - Added `Value Columns` for Consume grids so selected `value.*` fields can be shown as dedicated columns.
 - Added CSV export support for selected `Value Columns`.
-- Added the independent Map Viewer window for latitude/longitude messages, including vehicle markers, heading, trails, and selected-vehicle follow mode.
+- Added Message Viewer Tree actions for adding leaf values directly to `Value Columns`.
+- Added the independent Map Viewer window for coordinate messages, including per-topic field mapping, projection conversion, vehicle markers, heading, trails, and selected-vehicle follow mode.
 
 ### Improved
 
 - Persist `Value Columns` per topic with Viewer preferences.
+- Support WGS84 degree, WGS84 millisecond, Korea TM, and UTM Zone 52N coordinate inputs in Map Viewer.
+- Support `km/h` and `m/s` speed field handling in Map Viewer.
 - Improved large Consume tab switching by avoiding unnecessary filter copies and caching message row/value parsing work.
 - Improved Map Viewer movement by interpolating vehicle position and heading updates.
 - Refactored Consume value-path helpers and Map Viewer vehicle helpers into focused modules.
@@ -18,6 +21,7 @@
 ### Fixed
 
 - Close the `Value Columns` picker when switching topics.
+- Close the Map Field Mapping picker immediately after a field is selected.
 - Fixed Map Viewer vehicle state ordering during animated updates.
 
 ## 2.0.4

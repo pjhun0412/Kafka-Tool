@@ -17,6 +17,7 @@ Kafka Tool은 Electron, React, TypeScript, KafkaJS 기반의 Apache Kafka 데스
 - Zustand: UI 및 도메인 상태 관리
 - TanStack Table / Virtual: 대량 Grid 렌더링
 - Leaflet: Map Viewer 지도 렌더링
+- proj4: Map Viewer 좌표계 변환
 - avsc: Avro encode/decode
 - electron-builder / electron-updater: 패키징 및 자동 업데이트
 - Vite / Tailwind CSS / PostCSS: Renderer 빌드와 스타일
@@ -122,7 +123,7 @@ src/renderer/
 ├─ i18n.ts                 한국어/영어 메시지
 ├─ main.tsx                React entry
 ├─ map-viewer.ts           Map Viewer renderer entry
-├─ mapPreview.ts           Consume 메시지 좌표 추출/전송 유틸
+├─ mapPreview.ts           Consume 메시지 좌표 추출, 좌표계 변환, Map Viewer 전송 유틸
 ├─ mapViewerVehicles.ts    Map Viewer 차량 상태/마커 유틸
 ├─ messageFilters.ts       Consume 메시지 필터
 ├─ produceTemplate.ts      Produce 동적 필드/템플릿 유틸

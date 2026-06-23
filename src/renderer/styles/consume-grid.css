@@ -44,6 +44,10 @@
   @apply sticky top-0 z-10 border-slate-700 bg-[#252526] py-2.5 text-[#d8d8d8];
 }
 
+.message-table .value-column-header {
+  @apply block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
 .grid-header-cell {
   @apply relative flex min-w-0 items-center gap-1;
 }

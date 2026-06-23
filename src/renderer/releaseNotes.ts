@@ -20,14 +20,17 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
           items: [
             "Consume 결과에서 Value 내부 key를 선택해 그리드 컬럼으로 바로 표시할 수 있습니다.",
             "선택한 Value Columns는 토픽별 Viewer 설정으로 저장되어 다시 열어도 유지됩니다.",
+            "Message Viewer의 Tree에서 leaf 값을 바로 Value Columns에 추가할 수 있습니다.",
             "CSV로 내보낼 때 선택한 Value Columns가 기본 컬럼 뒤에 함께 포함됩니다."
           ]
         },
         {
           heading: "Map Viewer",
           items: [
-            "latitude/longitude가 있는 메시지를 별도 Map Viewer 창에서 확인할 수 있습니다.",
+            "토픽별 Map Field Mapping으로 JSON 내부 좌표 path를 직접 지정할 수 있습니다.",
+            "WGS84, WGS84 millisecond, Korea TM, UTM Zone 52N 좌표계를 지원합니다.",
             "차량 마커, heading, trail, 선택 차량 follow 모드를 지원합니다.",
+            "km/h와 m/s 속도 필드를 Map Viewer에서 함께 표시할 수 있습니다.",
             "차량 이동과 heading 갱신이 더 자연스럽게 보이도록 보간 처리를 개선했습니다."
           ]
         },
@@ -48,14 +51,17 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
           items: [
             "Pick keys inside message Value and show them as dedicated columns in the Consume grid.",
             "Selected Value Columns are saved per topic through Viewer preferences.",
+            "Leaf values in the Message Viewer Tree can now be added directly to Value Columns.",
             "CSV exports now include selected Value Columns after the default columns."
           ]
         },
         {
           heading: "Map Viewer",
           items: [
-            "Messages with latitude/longitude can be inspected in a separate Map Viewer window.",
+            "Per-topic Map Field Mapping lets you choose coordinate paths inside nested JSON values.",
+            "WGS84, WGS84 millisecond, Korea TM, and UTM Zone 52N coordinate systems are supported.",
             "Vehicle markers now support heading, trails, and selected-vehicle follow mode.",
+            "Speed fields in km/h or m/s can be shown in Map Viewer.",
             "Vehicle position and heading updates are interpolated for smoother movement."
           ]
         },

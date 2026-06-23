@@ -110,6 +110,126 @@
   min-height: var(--message-inspector-control-height);
 }
 
+.message-inspector-actions .compact.active {
+  @apply border-[#3794ff]/70 bg-[#094771] text-white;
+}
+
+.map-field-modal-backdrop {
+  @apply z-[80];
+}
+
+.map-field-modal {
+  @apply grid max-h-[86vh] w-[540px] max-w-[calc(100vw-32px)] gap-3 overflow-hidden rounded-lg border border-[#30363d] bg-[#252526] p-4 text-slate-200 shadow-[0_24px_80px_rgba(0,0,0,0.55)];
+}
+
+.map-field-modal .modal-title {
+  @apply mb-0;
+}
+
+.map-field-modal-help {
+  @apply text-[12px] font-semibold leading-5 text-slate-400;
+}
+
+.map-field-modal-notice {
+  @apply rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[12px] font-bold leading-5 text-amber-100;
+}
+
+.map-field-modal-grid {
+  @apply grid max-h-[56vh] gap-3 overflow-auto pr-1;
+}
+
+.map-field-section {
+  @apply border-t border-[#30363d] pt-3 first:border-t-0 first:pt-0;
+}
+
+.map-field-section strong {
+  @apply text-[12px] font-extrabold text-cyan-100;
+}
+
+.map-field-modal-grid > label,
+.map-field-row > label {
+  @apply relative grid min-w-0 gap-1.5;
+}
+
+.map-field-modal-grid > label > span,
+.map-field-row > label > span {
+  @apply text-[11px] font-extrabold text-slate-300;
+}
+
+.map-field-modal-grid select,
+.map-field-row select {
+  @apply h-9 min-h-9 min-w-0 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-0 text-[12px] font-bold text-[#e6e6e6] outline-none focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/25;
+  color-scheme: dark;
+}
+
+.map-field-row {
+  @apply grid grid-cols-[minmax(0,1fr)_150px] gap-2;
+}
+
+.map-field-picker {
+  @apply relative grid min-w-0 gap-1.5;
+}
+
+.map-field-picker-trigger {
+  @apply flex h-9 min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-left text-[12px] font-bold text-slate-300 outline-none transition hover:border-[#007acc]/60 hover:bg-[#252526] hover:text-white;
+}
+
+.map-field-picker-trigger.selected {
+  @apply text-white;
+}
+
+.map-field-picker-trigger span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.map-field-picker-popover {
+  @apply absolute left-0 top-[calc(100%+4px)] z-50 grid max-h-[220px] w-full overflow-hidden rounded-md border border-[#30363d] bg-[#202020] p-2 shadow-[0_18px_48px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)];
+}
+
+.map-field-picker-popover.open-up {
+  @apply bottom-[calc(100%+4px)] top-auto;
+}
+
+.map-field-picker-search {
+  @apply mb-2 flex h-8 min-h-8 items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-slate-400 focus-within:border-[#007acc] focus-within:ring-2 focus-within:ring-[#007acc]/25;
+}
+
+.map-field-picker-search input {
+  @apply h-full min-h-0 flex-1 border-0 bg-transparent p-0 text-[12px] font-bold leading-8 text-slate-100 outline-none ring-0 placeholder:text-slate-500;
+}
+
+.map-field-picker-search input:focus {
+  @apply border-0 ring-0;
+}
+
+.map-field-picker-list {
+  @apply grid max-h-[156px] gap-1 overflow-auto;
+}
+
+.map-field-picker-option {
+  @apply grid min-w-0 gap-0.5 rounded px-2 py-1.5 text-left transition hover:bg-white/[0.06];
+}
+
+.map-field-picker-option strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-extrabold text-slate-100;
+}
+
+.map-field-picker-option span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[10px] font-semibold text-slate-500;
+}
+
+.map-field-picker-option.selected {
+  @apply bg-[#094771];
+}
+
+.map-field-picker-option.muted {
+  @apply mb-1 border border-dashed border-[#3c3c3c] text-slate-300;
+}
+
+.map-field-picker-empty {
+  @apply px-2 py-3 text-center text-[12px] font-semibold text-slate-500;
+}
+
 .message-tree {
   @apply min-h-0 overflow-auto rounded-lg border border-line bg-[#0f161a] p-3 font-mono font-semibold leading-5 text-[#e6edf3];
   font-family: var(--app-font-family);
@@ -152,10 +272,16 @@
   @apply text-slate-500;
 }
 
-.message-tree-filter {
+.message-tree-filter,
+.message-tree-column {
   @apply ml-1 inline-grid h-5 w-5 shrink-0 place-items-center rounded text-slate-500 opacity-0 transition hover:bg-white/10 hover:text-cyan-200;
 }
 
-.message-tree-node.leaf:hover .message-tree-filter {
+.message-tree-column.selected {
+  @apply text-[#7ee787] hover:text-[#7ee787];
+}
+
+.message-tree-node.leaf:hover .message-tree-filter,
+.message-tree-node.leaf:hover .message-tree-column {
   @apply opacity-100;
 }

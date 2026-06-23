@@ -1,4 +1,5 @@
 import type { AppPreferences, ConsumedMessage } from "../shared/types";
+import type { MapFieldMapping } from "./mapPreview";
 
 export type ConsumeMode = "offset" | "timeRange" | "live";
 export type ConsumeFilterField = "all" | "key" | "value" | "headers" | "headersEmpty" | "offset" | "partition" | "timestamp";
@@ -35,6 +36,7 @@ export type TopicConsumeState = {
   valueFormat: MessagePayloadFormat;
   payloadEncoding: MessagePreviewEncoding;
   valueColumnPaths: string[];
+  mapFieldMapping: MapFieldMapping | null;
   messagePaneHeight: number;
   offsetPagination: {
     totalLimit: number;
@@ -72,6 +74,7 @@ export const emptyConsumeState: TopicConsumeState = {
   valueFormat: "json",
   payloadEncoding: "utf-8",
   valueColumnPaths: [],
+  mapFieldMapping: null,
   messagePaneHeight: 230,
   offsetPagination: null
 };

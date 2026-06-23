@@ -30,6 +30,13 @@ export function getMessageRowKey(message: ConsumedMessage) {
   return `${message.partition}-${message.offset}-${message.timestamp}`;
 }
 
+function formatValueColumnHeader(path: string) {
+  const segments = path.split(".").filter(Boolean);
+  const leaf = segments.at(-1) ?? path;
+  const parent = segments.at(-2) ?? "";
+  return parent ? `${leaf} (...${parent})` : leaf;
+}
+
 const messageGridRowCache = new WeakMap<ConsumedMessage, { formatKey: string; row: MessageGridRow }>();
 function getGridRowFormatKey(formats: {
   keyFormat: Extract<MessagePayloadFormat, "text" | "hex" | "base64">;
@@ -199,13 +206,13 @@ export const MessageGrid = memo(function MessageGrid(props: {
     if (valueColumnPaths.length === 0) return messageGridColumns;
     const valueColumns: ColumnDef<MessageGridRow>[] = valueColumnPaths.map((path) => ({
       id: `value.${path}`,
-      header: path,
+      header: () => <span className="value-column-header" title={path}>{formatValueColumnHeader(path)}</span>,
       accessorFn: (row) => readValuePath(getMessageValuePayload(row.message), path),
       cell: ({ getValue }) => {
         const value = String(getValue() ?? "");
         return <span title={value}>{value || "-"}</span>;
       },
-      size: 140
+      size: 170
     }));
     return [...messageGridColumns.slice(0, -1), ...valueColumns, messageGridColumns[messageGridColumns.length - 1]];
   }, [props.valueColumnPaths]);

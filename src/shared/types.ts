@@ -223,6 +223,15 @@ export type AppPreferences = {
       valueFormat?: "json" | "text" | "hex" | "base64";
       payloadEncoding?: "utf-8" | "euc-kr";
       valueColumnPaths?: string[];
+      mapFieldMapping?: {
+        xPath: string;
+        yPath: string;
+        projection: "wgs84" | "wgs84_msec" | "korea_grs80_central" | "korea_itrf2000_central" | "utm52n";
+        identityPath?: string;
+        headingPath?: string;
+        speedPath?: string;
+        speedUnit?: "auto" | "kmh" | "mps";
+      } | null;
       updatedAt: number;
     }>>;
   }>;

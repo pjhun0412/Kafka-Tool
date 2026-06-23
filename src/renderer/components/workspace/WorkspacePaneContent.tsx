@@ -249,6 +249,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           valueFormat={props.consumeState.valueFormat}
           payloadEncoding={props.consumeState.payloadEncoding}
           valueColumnPaths={props.consumeState.valueColumnPaths}
+          mapFieldMapping={props.consumeState.mapFieldMapping}
           offsetPagination={props.consumeState.offsetPagination}
           messagePaneHeight={props.messagePaneHeight}
           onMode={(mode) => props.onUpdateConsume({
@@ -276,6 +277,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onValueFormat={(valueFormat) => props.onUpdateConsume({ valueFormat })}
           onPayloadEncoding={(payloadEncoding) => props.onUpdateConsume({ payloadEncoding })}
           onValueColumnPaths={(valueColumnPaths) => props.onUpdateConsume({ valueColumnPaths })}
+          onMapFieldMapping={(mapFieldMapping) => props.onUpdateConsume({ mapFieldMapping })}
           onPagePrev={() => props.onOffsetPage("prev")}
           onPageNext={() => props.onOffsetPage("next")}
           onSelectMessage={(selectedMessage) => props.onUpdateConsume({ selectedMessage })}

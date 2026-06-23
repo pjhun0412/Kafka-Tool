@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronUp, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Columns3, Folder, RefreshCw, X } from "lucide-react";
 import type { ConsumedMessage, LiveMapPoint, MessageExportFormat } from "../../../../shared/types";
 import type { AppLanguage } from "../../../i18n";
 import { t } from "../../../i18n";
 import { collectMessageValuePaths, normalizeValueColumnPaths } from "../../../consumeValuePaths";
 import { createLiveMapPoint } from "../../../mapPreview";
+import type { MapFieldMapping } from "../../../mapPreview";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspectorMode, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { MessageInspector } from "./MessageInspector";
@@ -41,6 +42,7 @@ type ConsumePanelProps = {
   valueFormat: TopicConsumeState["valueFormat"];
   payloadEncoding: TopicConsumeState["payloadEncoding"];
   valueColumnPaths: string[];
+  mapFieldMapping: MapFieldMapping | null;
   offsetPagination: TopicConsumeState["offsetPagination"];
   messagePaneHeight: number;
   onMode: (value: ConsumeMode) => void;
@@ -64,6 +66,7 @@ type ConsumePanelProps = {
   onValueFormat: (value: TopicConsumeState["valueFormat"]) => void;
   onPayloadEncoding: (value: TopicConsumeState["payloadEncoding"]) => void;
   onValueColumnPaths: (value: string[]) => void;
+  onMapFieldMapping: (value: MapFieldMapping | null) => void;
   onPagePrev: () => void;
   onPageNext: () => void;
   onSelectMessage: (message: ConsumedMessage) => void;
@@ -75,8 +78,64 @@ type ConsumePanelProps = {
   onStop: () => void;
 };
 
-const MAX_VALUE_COLUMN_CANDIDATES = 24;
+const MAX_VALUE_COLUMN_CANDIDATES = 160;
 const VALUE_COLUMN_SAMPLE_SIZE = 200;
+
+type ValueColumnTreeNode = {
+  name: string;
+  fullPath: string;
+  children: Map<string, ValueColumnTreeNode>;
+  leafPath?: string;
+};
+
+function normalizeValueColumnPathKey(path: string) {
+  return path.replace(/[-_\s]/g, "").toLowerCase();
+}
+
+function createValueColumnTree(paths: string[]) {
+  const root: ValueColumnTreeNode = { name: "", fullPath: "", children: new Map() };
+  for (const path of paths) {
+    const segments = path.split(".").filter(Boolean);
+    let node = root;
+    segments.forEach((segment, index) => {
+      const fullPath = segments.slice(0, index + 1).join(".");
+      let child = node.children.get(segment);
+      if (!child) {
+        child = { name: segment, fullPath, children: new Map() };
+        node.children.set(segment, child);
+      }
+      if (index === segments.length - 1) {
+        child.leafPath = path;
+      }
+      node = child;
+    });
+  }
+  return root;
+}
+
+function getValueColumnLeafPaths(node: ValueColumnTreeNode): string[] {
+  const paths: string[] = [];
+  if (node.leafPath) paths.push(node.leafPath);
+  for (const child of node.children.values()) {
+    paths.push(...getValueColumnLeafPaths(child));
+  }
+  return paths;
+}
+
+function getValueColumnGroupHintKey(name: string) {
+  const key = normalizeValueColumnPathKey(name);
+  if (key.includes("position") || key.includes("gps") || key.includes("location")) return "label.positionInfo";
+  if (key.includes("vehicle") || key.includes("ego")) return "label.vehicleStatus";
+  if (key.includes("time")) return "label.timeInfo";
+  return "";
+}
+
+function formatValueColumnLabel(path: string) {
+  const segments = path.split(".").filter(Boolean);
+  const leaf = segments.at(-1) ?? path;
+  const parent = segments.at(-2) ?? "";
+  return parent ? `${leaf} (...${parent})` : leaf;
+}
 
 function ConsumePanelView(props: ConsumePanelProps) {
   const [previewTarget, setPreviewTarget] = useState<MessagePayloadTarget>("value");
@@ -87,6 +146,8 @@ function ConsumePanelView(props: ConsumePanelProps) {
   const [filterDraft, setFilterDraft] = useState(props.filterText);
   const [isGridReady, setIsGridReady] = useState(false);
   const [showValueColumns, setShowValueColumns] = useState(false);
+  const [valueColumnSearch, setValueColumnSearch] = useState("");
+  const [expandedValueColumnGroups, setExpandedValueColumnGroups] = useState<Set<string>>(() => new Set());
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
   const lastSentLiveMapMessageRef = useRef("");
@@ -94,6 +155,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
   const pendingLiveMapPointsRef = useRef<LiveMapPoint[]>([]);
   const liveMapFlushTimerRef = useRef<number | null>(null);
   const valueColumnPaths = useMemo(() => normalizeValueColumnPaths(props.valueColumnPaths), [props.valueColumnPaths]);
+  const mapFieldMappingKey = useMemo(() => JSON.stringify(props.mapFieldMapping ?? null), [props.mapFieldMapping]);
   const startInspectorResize = useInspectorResize({
     consumeGridRef,
     inspectorCollapsed: props.inspectorCollapsed,
@@ -132,14 +194,33 @@ function ConsumePanelView(props: ConsumePanelProps) {
     () => Array.from(new Set([...valueColumnPaths, ...valueColumnCandidates])),
     [valueColumnPaths, valueColumnCandidates]
   );
-
+  const filteredValueColumnPaths = useMemo(() => {
+    const query = valueColumnSearch.trim().toLowerCase();
+    if (!query) return visibleValueColumnPaths;
+    return visibleValueColumnPaths.filter((path) => path.toLowerCase().includes(query));
+  }, [valueColumnSearch, visibleValueColumnPaths]);
+  const valueColumnTree = useMemo(() => createValueColumnTree(filteredValueColumnPaths), [filteredValueColumnPaths]);
+  const rootValueColumnGroupPaths = useMemo(() => {
+    return Array.from(createValueColumnTree(visibleValueColumnPaths).children.values())
+      .filter((node) => node.children.size > 0)
+      .map((node) => node.fullPath);
+  }, [visibleValueColumnPaths]);
   useEffect(() => {
     setFilterDraft(props.filterText);
   }, [props.filterText]);
 
   useEffect(() => {
     setShowValueColumns(false);
+    setValueColumnSearch("");
+    setExpandedValueColumnGroups(new Set());
   }, [props.topic]);
+
+  useEffect(() => {
+    setExpandedValueColumnGroups((current) => {
+      if (current.size > 0 || rootValueColumnGroupPaths.length === 0) return current;
+      return new Set(rootValueColumnGroupPaths);
+    });
+  }, [rootValueColumnGroupPaths]);
 
   useEffect(() => {
     setIsGridReady(false);
@@ -164,10 +245,10 @@ function ConsumePanelView(props: ConsumePanelProps) {
   useEffect(() => {
     if (props.mode !== "live" || props.messages.length === 0) return;
     const latestMessage = props.messages[0];
-    const latestKey = `${latestMessage.topic}:${latestMessage.partition}:${latestMessage.offset}:${latestMessage.timestamp}`;
+    const latestKey = `${latestMessage.topic}:${latestMessage.partition}:${latestMessage.offset}:${latestMessage.timestamp}:${mapFieldMappingKey}`;
     if (latestKey === lastSentLiveMapMessageRef.current) return;
     lastSentLiveMapMessageRef.current = latestKey;
-    const point = createLiveMapPoint(latestMessage);
+    const point = createLiveMapPoint(latestMessage, undefined, undefined, props.mapFieldMapping);
     if (!point) return;
     pendingLiveMapPointsRef.current.push(point);
     if (liveMapFlushTimerRef.current !== null) return;
@@ -179,18 +260,18 @@ function ConsumePanelView(props: ConsumePanelProps) {
         void window.kafkaApi.sendLiveMapPoints(points);
       }
     }, 250);
-  }, [props.messages, props.mode]);
+  }, [mapFieldMappingKey, props.mapFieldMapping, props.messages, props.mode]);
 
   useEffect(() => {
     if (!props.selectedMessage) return;
-    const selectedKey = `${props.selectedMessage.topic}:${props.selectedMessage.partition}:${props.selectedMessage.offset}:${props.selectedMessage.timestamp}`;
+    const selectedKey = `${props.selectedMessage.topic}:${props.selectedMessage.partition}:${props.selectedMessage.offset}:${props.selectedMessage.timestamp}:${mapFieldMappingKey}`;
     if (selectedKey === lastSentSelectedMapMessageRef.current) return;
     lastSentSelectedMapMessageRef.current = selectedKey;
-    const point = createLiveMapPoint(props.selectedMessage, selectedPayload) ?? createLiveMapPoint(props.selectedMessage);
+    const point = createLiveMapPoint(props.selectedMessage, selectedPayload, undefined, props.mapFieldMapping) ?? createLiveMapPoint(props.selectedMessage);
     if (point) {
       void window.kafkaApi.sendLiveMapPoints([{ ...point, focus: true }]);
     }
-  }, [props.selectedMessage, selectedPayload]);
+  }, [mapFieldMappingKey, props.mapFieldMapping, props.selectedMessage, selectedPayload]);
 
   useEffect(() => {
     return () => {
@@ -229,6 +310,87 @@ function ConsumePanelView(props: ConsumePanelProps) {
     props.onValueColumnPaths(valueColumnPaths.includes(path)
       ? valueColumnPaths.filter((item) => item !== path)
       : [...valueColumnPaths, path]);
+  }
+
+  function toggleValueColumnGroup(path: string) {
+    setExpandedValueColumnGroups((current) => {
+      const next = new Set(current);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }
+
+  function toggleValueColumnGroupSelection(node: ValueColumnTreeNode) {
+    const leafPaths = getValueColumnLeafPaths(node);
+    const current = new Set(valueColumnPaths);
+    const allSelected = leafPaths.every((path) => current.has(path));
+    for (const path of leafPaths) {
+      if (allSelected) {
+        current.delete(path);
+      } else {
+        current.add(path);
+      }
+    }
+    props.onValueColumnPaths(normalizeValueColumnPaths(Array.from(current)));
+  }
+
+  function renderValueColumnNode(node: ValueColumnTreeNode, depth: number) {
+    const children = Array.from(node.children.values()).sort((left, right) => left.name.localeCompare(right.name));
+    const hasChildren = children.length > 0;
+    const isExpanded = valueColumnSearch.trim().length > 0 || expandedValueColumnGroups.has(node.fullPath);
+    const leafPaths = hasChildren ? getValueColumnLeafPaths(node) : [];
+    const selectedLeafCount = leafPaths.filter((path) => valueColumnPaths.includes(path)).length;
+    const isGroupChecked = leafPaths.length > 0 && selectedLeafCount === leafPaths.length;
+    const isGroupMixed = selectedLeafCount > 0 && selectedLeafCount < leafPaths.length;
+    const hintKey = hasChildren ? getValueColumnGroupHintKey(node.name) : "";
+
+    if (!hasChildren) {
+      const path = node.leafPath ?? node.fullPath;
+      return (
+        <label key={path} className="value-column-tree-row leaf" style={{ paddingLeft: 8 + depth * 28 }}>
+          <span className="value-column-tree-indent" />
+          <input
+            type="checkbox"
+            checked={valueColumnPaths.includes(path)}
+            onChange={() => toggleValueColumn(path)}
+          />
+          <span className="value-column-leaf-icon-spacer" />
+          <span className="value-column-leaf-name" title={path}>{node.name}</span>
+        </label>
+      );
+    }
+
+    return (
+      <div key={node.fullPath} className="value-column-tree-group">
+        <div className="value-column-tree-row group" style={{ paddingLeft: 8 + depth * 28 }}>
+          <button
+            type="button"
+            className="value-column-tree-expander"
+            onClick={() => toggleValueColumnGroup(node.fullPath)}
+            aria-label={isExpanded ? "Collapse group" : "Expand group"}
+          >
+            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
+          <input
+            type="checkbox"
+            checked={isGroupChecked}
+            ref={(input) => {
+              if (input) input.indeterminate = isGroupMixed;
+            }}
+            onChange={() => toggleValueColumnGroupSelection(node)}
+          />
+          <Folder size={13} />
+          <span className="value-column-group-name" title={node.fullPath}>{node.name}</span>
+          {hintKey && <span className="value-column-group-hint">{t(props.language, hintKey)}</span>}
+          <span className="value-column-group-count">{selectedLeafCount}/{leafPaths.length}</span>
+        </div>
+        {isExpanded && children.map((child) => renderValueColumnNode(child, depth + 1))}
+      </div>
+    );
   }
 
   const queryMessage = props.mode === "live"
@@ -310,9 +472,10 @@ function ConsumePanelView(props: ConsumePanelProps) {
         <div className="value-column-bar">
           <button
             type="button"
-            className={showValueColumns ? "filter-mode-toggle active" : "filter-mode-toggle"}
+            className={showValueColumns ? "value-column-trigger active" : "value-column-trigger"}
             onClick={() => setShowValueColumns((current) => !current)}
           >
+            <Columns3 size={14} />
             {t(props.language, "label.valueColumns")}
             {valueColumnPaths.length > 0 && <span>{valueColumnPaths.length}</span>}
           </button>
@@ -323,16 +486,37 @@ function ConsumePanelView(props: ConsumePanelProps) {
           )}
           {showValueColumns && (
             <div className="value-column-picker">
-              {visibleValueColumnPaths.map((path) => (
-                <label key={path}>
-                  <input
-                    type="checkbox"
-                    checked={valueColumnPaths.includes(path)}
-                    onChange={() => toggleValueColumn(path)}
-                  />
-                  <span>{path}</span>
-                </label>
-              ))}
+              {valueColumnPaths.length > 0 && (
+                <div className="value-column-selected-list" aria-label={t(props.language, "label.selectedValueColumns")}>
+                  {valueColumnPaths.map((path) => (
+                    <span className="value-column-chip" key={path} title={path}>
+                      <span>{formatValueColumnLabel(path)}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleValueColumn(path)}
+                        title={t(props.language, "title.removeValueColumn")}
+                        aria-label={t(props.language, "title.removeValueColumn")}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                className="value-column-search"
+                value={valueColumnSearch}
+                onChange={(event) => setValueColumnSearch(event.target.value)}
+                placeholder={t(props.language, "placeholder.searchValueColumns")}
+              />
+              <div className="value-column-tree">
+                {Array.from(valueColumnTree.children.values())
+                  .sort((left, right) => left.name.localeCompare(right.name))
+                  .map((node) => renderValueColumnNode(node, 0))}
+              </div>
+              {filteredValueColumnPaths.length === 0 && (
+                <div className="value-column-empty">{t(props.language, "label.noValueColumnsMatched")}</div>
+              )}
             </div>
           )}
         </div>
@@ -379,6 +563,10 @@ function ConsumePanelView(props: ConsumePanelProps) {
               rawText={selectedJson}
               valueText={props.selectedMessage?.value ?? ""}
               selectedMessage={props.selectedMessage}
+              mapFieldMapping={props.mapFieldMapping}
+              valueColumnPaths={valueColumnPaths}
+              onMapFieldMapping={props.onMapFieldMapping}
+              onValueColumnPath={toggleValueColumn}
               onMode={props.onInspectorMode}
               onPreviewTarget={setPreviewTarget}
               onPreviewMode={setPreviewMode}
@@ -423,6 +611,7 @@ function areConsumePanelPropsEqual(previous: ConsumePanelProps, next: ConsumePan
     && previous.valueFormat === next.valueFormat
     && previous.payloadEncoding === next.payloadEncoding
     && previous.valueColumnPaths === next.valueColumnPaths
+    && previous.mapFieldMapping === next.mapFieldMapping
     && previous.offsetPagination === next.offsetPagination
     && previous.messagePaneHeight === next.messagePaneHeight;
 }

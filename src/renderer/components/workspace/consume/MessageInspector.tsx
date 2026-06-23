@@ -1,12 +1,46 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Filter, MapPin, Send } from "lucide-react";
+import { ChevronDown, ChevronRight, Columns3, Copy, Filter, MapPin, Search, Send, Settings2, X } from "lucide-react";
 import type { ConsumedMessage } from "../../../../shared/types";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
-import { createLiveMapPoint } from "../../../mapPreview";
+import { createLiveMapPoint, getMapCoordinateFromSelection, normalizeMapFieldMapping } from "../../../mapPreview";
+import type { MapFieldMapping } from "../../../mapPreview";
 import { formatMessagePayload } from "../../../messagePreview";
+import { collectValuePaths } from "../../../consumeValuePaths";
 import type { MessageInspectorMode, MessagePayloadFormat, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode } from "../../../uiTypes";
 import { getEpochTitle, renderHighlightedText, renderRawJsonText, stringifyPrimitive } from "../../../utils";
+
+type MapFieldPickerId = "x" | "y" | "identity" | "heading" | "speed";
+
+function getPathSegments(path: string) {
+  return path.split(".").filter(Boolean);
+}
+
+function formatMapFieldPath(path: string) {
+  if (!path) return "";
+  const segments = getPathSegments(path);
+  const leaf = segments.at(-1) ?? path;
+  const parent = segments.at(-2) ?? "";
+  return parent ? `${leaf} (...${parent})` : leaf;
+}
+
+function getAutoMapFieldPath(paths: string[], kind: MapFieldPickerId) {
+  const patterns: Record<MapFieldPickerId, RegExp[]> = {
+    x: [/longitude$/i, /lng$/i, /lon$/i, /xM$/],
+    y: [/latitude$/i, /lat$/i, /yM$/],
+    identity: [/vehicleID$/i, /vehicleId$/i, /terminalID$/i, /terminalId$/i],
+    heading: [/heading$/i, /bearing$/i, /direction$/i],
+    speed: [/egoVehicleSpeedMps$/i, /speedMps$/i, /speed$/i]
+  };
+  return paths.find((path) => patterns[kind].some((pattern) => pattern.test(path))) ?? "";
+}
+
+function getValueColumnPathFromTreePath(path: string) {
+  const valuePrefix = "message.value.";
+  if (!path.startsWith(valuePrefix)) return null;
+  const valuePath = path.slice(valuePrefix.length);
+  return valuePath ? valuePath : null;
+}
 
 export function MessageInspector(props: {
   mode: MessageInspectorMode;
@@ -19,6 +53,8 @@ export function MessageInspector(props: {
   rawText: string;
   valueText: string;
   selectedMessage: ConsumedMessage | null;
+  mapFieldMapping: MapFieldMapping | null;
+  valueColumnPaths: string[];
   onMode: (mode: MessageInspectorMode) => void;
   onPreviewTarget: (target: MessagePayloadTarget) => void;
   onPreviewMode: (mode: MessagePreviewMode) => void;
@@ -26,9 +62,20 @@ export function MessageInspector(props: {
   onSearch: (value: string) => void;
   onApplyFilter: (value: string) => void;
   onSendToProduce: (message: ConsumedMessage) => void;
+  onMapFieldMapping: (mapping: MapFieldMapping | null) => void;
+  onValueColumnPath: (path: string) => void;
   onCollapse: () => void;
 }) {
   const language = useAppLanguage();
+  const [isMapSettingsOpen, setIsMapSettingsOpen] = useState(false);
+  const [activeMapFieldPicker, setActiveMapFieldPicker] = useState<MapFieldPickerId | null>(null);
+  const [mapFieldPickerQuery, setMapFieldPickerQuery] = useState("");
+  const [mapSettingsNotice, setMapSettingsNotice] = useState("");
+  const [mapSettingsDraft, setMapSettingsDraft] = useState<MapFieldMapping>({
+    xPath: "",
+    yPath: "",
+    projection: "wgs84"
+  });
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
   }
@@ -47,18 +94,162 @@ export function MessageInspector(props: {
     props.valueFormat === "json"
   );
   const mapPoint = useMemo(
-    () => (props.selectedMessage ? createLiveMapPoint(props.selectedMessage, props.payload) ?? createLiveMapPoint(props.selectedMessage) : null),
-    [props.payload, props.selectedMessage]
+    () => (props.selectedMessage ? createLiveMapPoint(props.selectedMessage, props.payload, undefined, props.mapFieldMapping) ?? createLiveMapPoint(props.selectedMessage) : null),
+    [props.mapFieldMapping, props.payload, props.selectedMessage]
   );
+  const mapFieldPaths = useMemo(() => Array.from(collectValuePaths(props.payload)).sort((left, right) => left.localeCompare(right)), [props.payload]);
+  const autoMapFieldPaths = useMemo(() => ({
+    x: getAutoMapFieldPath(mapFieldPaths, "x"),
+    y: getAutoMapFieldPath(mapFieldPaths, "y"),
+    identity: getAutoMapFieldPath(mapFieldPaths, "identity"),
+    heading: getAutoMapFieldPath(mapFieldPaths, "heading"),
+    speed: getAutoMapFieldPath(mapFieldPaths, "speed")
+  }), [mapFieldPaths]);
   const canShowTree = Boolean(props.payload);
   const showEncoding = props.mode === "preview" && props.previewMode === "text" && (props.previewTarget === "key" || props.previewTarget === "value");
 
   async function openLiveMap() {
+    if (!props.selectedMessage) return;
+    if (!mapPoint) {
+      openMapSettings(t(language, "label.mapFieldMappingRequired"));
+      return;
+    }
     const focusedPoint = mapPoint ? { ...mapPoint, focus: true } : null;
     if (focusedPoint) {
       await window.kafkaApi.sendLiveMapPoints([focusedPoint]);
     }
     await window.kafkaApi.openLiveMap();
+  }
+
+  function openMapSettings(notice = "") {
+    setMapSettingsDraft(props.mapFieldMapping ?? {
+      xPath: "",
+      yPath: "",
+      projection: "wgs84"
+    });
+    setActiveMapFieldPicker(null);
+    setMapFieldPickerQuery("");
+    setMapSettingsNotice(notice);
+    setIsMapSettingsOpen(true);
+  }
+
+  function updateMapSettingsDraft(patch: Partial<MapFieldMapping>) {
+    setMapSettingsDraft((current) => ({ ...current, ...patch }));
+  }
+
+  function applyMapSettings() {
+    const normalized = normalizeMapFieldMapping(mapSettingsDraft);
+    if (!normalized || !getMapCoordinateFromSelection(props.payload, normalized)) {
+      setMapSettingsNotice(t(language, "label.mapFieldMappingInvalid"));
+      return;
+    }
+    props.onMapFieldMapping(normalized);
+    setMapSettingsNotice("");
+    setIsMapSettingsOpen(false);
+  }
+
+  function clearMapSettings() {
+    props.onMapFieldMapping(null);
+    setMapSettingsDraft({ xPath: "", yPath: "", projection: "wgs84" });
+  }
+
+  function closeFieldPicker() {
+    setActiveMapFieldPicker(null);
+    setMapFieldPickerQuery("");
+  }
+
+  function openFieldPicker(id: MapFieldPickerId) {
+    setActiveMapFieldPicker((current) => current === id ? null : id);
+    setMapFieldPickerQuery("");
+  }
+
+  function getMapFieldPickerPaths(value: string) {
+    const query = mapFieldPickerQuery.trim().toLowerCase();
+    const filtered = query
+      ? mapFieldPaths.filter((path) => path.toLowerCase().includes(query) || formatMapFieldPath(path).toLowerCase().includes(query))
+      : mapFieldPaths;
+    return Array.from(new Set([value, ...filtered].filter(Boolean))).sort((left, right) => formatMapFieldPath(left).localeCompare(formatMapFieldPath(right)));
+  }
+
+  function selectMapField(value: string, onChange: (value: string) => void) {
+    onChange(value);
+    closeFieldPicker();
+  }
+
+  function renderMapFieldPicker(params: {
+    id: MapFieldPickerId;
+    value: string;
+    autoPath?: string;
+    required?: boolean;
+    placement?: "top" | "bottom";
+    onChange: (value: string) => void;
+  }) {
+    const isOpen = activeMapFieldPicker === params.id;
+    const display = params.value
+      ? formatMapFieldPath(params.value)
+      : params.required
+        ? t(language, "label.selectField")
+        : params.autoPath
+          ? `${t(language, "label.autoDetect")} (${formatMapFieldPath(params.autoPath)})`
+          : t(language, "label.autoDetectFailed");
+    const paths = getMapFieldPickerPaths(params.value);
+    return (
+      <div className="map-field-picker">
+        <button
+          type="button"
+          className={params.value ? "map-field-picker-trigger selected" : "map-field-picker-trigger"}
+          onClick={() => openFieldPicker(params.id)}
+          title={params.value || params.autoPath || display}
+        >
+          <span>{display}</span>
+          <ChevronDown size={14} />
+        </button>
+        {isOpen && (
+          <div className={params.placement === "top" ? "map-field-picker-popover open-up" : "map-field-picker-popover"}>
+            <label className="map-field-picker-search">
+              <Search size={13} />
+              <input
+                value={mapFieldPickerQuery}
+                onChange={(event) => setMapFieldPickerQuery(event.target.value)}
+                placeholder={t(language, "placeholder.searchMapFields")}
+                autoFocus
+              />
+            </label>
+            {!params.required && (
+              <button
+                type="button"
+                className="map-field-picker-option muted"
+                title={params.autoPath || ""}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  selectMapField("", params.onChange);
+                }}
+              >
+                <span>{params.autoPath ? `${t(language, "label.autoDetect")} (${formatMapFieldPath(params.autoPath)})` : t(language, "label.autoDetectFailed")}</span>
+              </button>
+            )}
+            <div className="map-field-picker-list">
+              {paths.map((path) => (
+                <button
+                  type="button"
+                  className={path === params.value ? "map-field-picker-option selected" : "map-field-picker-option"}
+                  key={path}
+                  title={path}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    selectMapField(path, params.onChange);
+                  }}
+                >
+                  <strong>{formatMapFieldPath(path)}</strong>
+                  <span>{path}</span>
+                </button>
+              ))}
+              {paths.length === 0 && <div className="map-field-picker-empty">{t(language, "label.noSettingsMatched")}</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -119,20 +310,124 @@ export function MessageInspector(props: {
           <button
             className="ghost compact"
             onClick={() => void openLiveMap()}
-            disabled={!mapPoint}
-            title={mapPoint ? t(language, "title.openLiveMap") : t(language, "label.noMapCoordinate")}
+            disabled={!props.selectedMessage}
+            title={mapPoint ? t(language, "title.openLiveMap") : t(language, "label.mapFieldMappingRequired")}
           >
             <MapPin size={14} /> Map
+          </button>
+          <button
+            className={props.mapFieldMapping ? "ghost compact active" : "ghost compact"}
+            onClick={() => openMapSettings()}
+            disabled={!props.selectedMessage}
+            title={t(language, "title.mapFieldSettings")}
+          >
+            <Settings2 size={14} /> {t(language, "label.mapSettings")}
           </button>
           <button className="ghost compact" onClick={() => props.selectedMessage && props.onSendToProduce(props.selectedMessage)} disabled={!props.selectedMessage}><Send size={14} /> Produce</button>
           <button className="ghost compact icon-only" onClick={props.onCollapse} title={t(language, "title.collapseMessageViewer")} aria-label={t(language, "title.collapseMessageViewer")}><ChevronDown size={15} /></button>
         </div>
       </div>
+      {isMapSettingsOpen && (
+        <div className="modal-backdrop map-field-modal-backdrop" role="presentation" onMouseDown={() => setIsMapSettingsOpen(false)}>
+          <section className="map-field-modal" role="dialog" aria-modal="true" aria-labelledby="map-field-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-title">
+              <div>
+                <span className="eyebrow">{props.selectedMessage?.topic ?? "Topic"}</span>
+                <h2 id="map-field-modal-title">{t(language, "label.mapFieldMapping")}</h2>
+              </div>
+              <button className="modal-close" onClick={() => setIsMapSettingsOpen(false)} title={t(language, "title.close")}>
+                <X size={16} />
+              </button>
+            </div>
+            <p className="map-field-modal-help">{t(language, "label.mapFieldMappingHelp")}</p>
+            {mapSettingsNotice && <div className="map-field-modal-notice" role="alert">{mapSettingsNotice}</div>}
+            <div className={activeMapFieldPicker ? "map-field-modal-grid picker-open" : "map-field-modal-grid"}>
+              <div className="map-field-section">
+                <strong>{t(language, "label.mapCoordinateSection")}</strong>
+              </div>
+              <label>
+                <span>{t(language, "label.mapCoordinateSystem")}</span>
+                <select value={mapSettingsDraft.projection} onChange={(event) => {
+                  closeFieldPicker();
+                  updateMapSettingsDraft({ projection: event.target.value as MapFieldMapping["projection"] });
+                }}>
+                  <optgroup label={t(language, "label.mapProjectionWgs84Group")}>
+                    <option value="wgs84">WGS84 (Lat/Lng Deg)</option>
+                    <option value="wgs84_msec">WGS84 (Lat/Lng Msec)</option>
+                  </optgroup>
+                  <optgroup label={t(language, "label.mapProjectionTmGroup")}>
+                    <option value="korea_grs80_central">GRS80 (Korea Central Belt / 한국 중부원점)</option>
+                    <option value="korea_itrf2000_central">ITRF 2000 (Central Belt / 한국 중부원점)</option>
+                  </optgroup>
+                  <optgroup label={t(language, "label.mapProjectionUtmGroup")}>
+                    <option value="utm52n">UTM Zone 52N (Korea Belt)</option>
+                  </optgroup>
+                </select>
+              </label>
+              <div className="map-field-section">
+                <strong>{t(language, "label.mapRequiredCoordinateSection")}</strong>
+              </div>
+              <label>
+                <span>{t(language, "label.mapYField")}</span>
+                {renderMapFieldPicker({ id: "y", value: mapSettingsDraft.yPath, required: true, autoPath: autoMapFieldPaths.y, onChange: (yPath) => updateMapSettingsDraft({ yPath }) })}
+              </label>
+              <label>
+                <span>{t(language, "label.mapXField")}</span>
+                {renderMapFieldPicker({ id: "x", value: mapSettingsDraft.xPath, required: true, autoPath: autoMapFieldPaths.x, onChange: (xPath) => updateMapSettingsDraft({ xPath }) })}
+              </label>
+              <div className="map-field-section">
+                <strong>{t(language, "label.mapVehicleSection")}</strong>
+              </div>
+              <label>
+                <span>{t(language, "label.mapHeadingField")}</span>
+                {renderMapFieldPicker({ id: "heading", value: mapSettingsDraft.headingPath ?? "", autoPath: autoMapFieldPaths.heading, placement: "top", onChange: (headingPath) => updateMapSettingsDraft({ headingPath }) })}
+              </label>
+              <div className="map-field-row">
+                <label>
+                  <span>{t(language, "label.mapSpeedField")}</span>
+                  {renderMapFieldPicker({ id: "speed", value: mapSettingsDraft.speedPath ?? "", autoPath: autoMapFieldPaths.speed, placement: "top", onChange: (speedPath) => updateMapSettingsDraft({ speedPath }) })}
+                </label>
+                <label>
+                  <span>{t(language, "label.mapSpeedUnit")}</span>
+                  <select
+                  value={mapSettingsDraft.speedUnit ?? "auto"}
+                  onChange={(event) => {
+                    closeFieldPicker();
+                    updateMapSettingsDraft({ speedUnit: event.target.value as MapFieldMapping["speedUnit"] });
+                  }}
+                >
+                    <option value="auto">{t(language, "label.autoDetect")}</option>
+                    <option value="kmh">km/h</option>
+                    <option value="mps">m/s</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>{t(language, "label.mapIdentityField")}</span>
+                {renderMapFieldPicker({ id: "identity", value: mapSettingsDraft.identityPath ?? "", autoPath: autoMapFieldPaths.identity, placement: "top", onChange: (identityPath) => updateMapSettingsDraft({ identityPath }) })}
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="ghost compact" onClick={clearMapSettings}>{t(language, "label.clear")}</button>
+              <button className="ghost compact" onClick={() => setIsMapSettingsOpen(false)}>{t(language, "action.cancel")}</button>
+              <button className="primary compact" onClick={applyMapSettings} disabled={!mapSettingsDraft.xPath || !mapSettingsDraft.yPath}>{t(language, "action.save")}</button>
+            </div>
+          </section>
+        </div>
+      )}
       {props.selectedMessage ? (
         props.mode === "tree" ? (
           canShowTree ? (
             <div className="message-tree">
-              <MessageTreeNode name="message" value={props.payload} path="message" search={props.search} onApplyFilter={props.onApplyFilter} />
+              <MessageTreeNode
+                name="message"
+                value={props.payload}
+                path="message"
+                search={props.search}
+                valueColumnPaths={props.valueColumnPaths}
+                onApplyFilter={props.onApplyFilter}
+                onValueColumnPath={props.onValueColumnPath}
+              />
             </div>
           ) : (
             <pre className="message-view">{t(language, "label.noStructuredPayload")}</pre>
@@ -156,7 +451,9 @@ export function MessageTreeNode(props: {
   value: unknown;
   path: string;
   search: string;
+  valueColumnPaths: string[];
   onApplyFilter: (value: string) => void;
+  onValueColumnPath: (path: string) => void;
 }) {
   const language = useAppLanguage();
   const [expanded, setExpanded] = useState(true);
@@ -166,6 +463,8 @@ export function MessageTreeNode(props: {
   const epochTitle = getEpochTitle(props.value);
 
   if (!isObject) {
+    const valueColumnPath = getValueColumnPathFromTreePath(props.path);
+    const isValueColumnSelected = Boolean(valueColumnPath && props.valueColumnPaths.includes(valueColumnPath));
     return (
       <div className="message-tree-node leaf">
         <span className="message-tree-key">{renderHighlightedText(props.name, props.search)}</span>
@@ -174,6 +473,16 @@ export function MessageTreeNode(props: {
         <button className="message-tree-filter" onClick={() => props.onApplyFilter(primitive)} title={t(language, "title.applyToFilter")}>
           <Filter size={12} />
         </button>
+        {valueColumnPath && (
+          <button
+            className={isValueColumnSelected ? "message-tree-column selected" : "message-tree-column"}
+            onClick={() => props.onValueColumnPath(valueColumnPath)}
+            title={isValueColumnSelected ? t(language, "title.valueColumnAlreadyAdded") : t(language, "title.addValueColumn")}
+            aria-label={isValueColumnSelected ? t(language, "title.valueColumnAlreadyAdded") : t(language, "title.addValueColumn")}
+          >
+            <Columns3 size={12} />
+          </button>
+        )}
       </div>
     );
   }
@@ -188,7 +497,16 @@ export function MessageTreeNode(props: {
       {expanded && (
         <div className="message-tree-children">
           {entries.map(([key, value]) => (
-            <MessageTreeNode key={`${props.path}.${key}`} name={key} value={value} path={`${props.path}.${key}`} search={props.search} onApplyFilter={props.onApplyFilter} />
+            <MessageTreeNode
+              key={`${props.path}.${key}`}
+              name={key}
+              value={value}
+              path={`${props.path}.${key}`}
+              search={props.search}
+              valueColumnPaths={props.valueColumnPaths}
+              onApplyFilter={props.onApplyFilter}
+              onValueColumnPath={props.onValueColumnPath}
+            />
           ))}
         </div>
       )}

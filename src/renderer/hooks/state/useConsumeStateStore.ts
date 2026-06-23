@@ -23,7 +23,7 @@ type ConsumeStateStoreParams = {
   consumeDefaultsByServer: AppPreferences["consumeDefaultsByServer"];
 };
 
-const viewerPreferencePatchKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding", "valueColumnPaths"] as const;
+const viewerPreferencePatchKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding", "valueColumnPaths", "mapFieldMapping"] as const;
 
 function hasViewerPreferencePatch(patch: Partial<TopicConsumeState>) {
   return viewerPreferencePatchKeys.some((key) => patch[key] !== undefined);

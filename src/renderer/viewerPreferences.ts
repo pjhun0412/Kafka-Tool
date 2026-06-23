@@ -1,6 +1,7 @@
 import type { AppPreferences } from "../shared/types";
 import type { TopicConsumeState } from "./uiTypes";
 import { normalizeValueColumnPaths } from "./consumeValuePaths";
+import { normalizeMapFieldMapping } from "./mapPreview";
 
 export const DEFAULT_VIEWER_PREFERENCE_RETENTION_DAYS = 90;
 export const DEFAULT_VIEWER_FONT_SIZE = 13;
@@ -10,9 +11,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type ViewerPreferences = NonNullable<AppPreferences["viewerPreferences"]>;
 export type ViewerPreferencesByServer = NonNullable<ViewerPreferences["byServer"]>;
 export type TopicViewerPreference = ViewerPreferencesByServer[string][string];
-export type ViewerPreferencePatch = Pick<TopicConsumeState, "inspectorMode" | "keyFormat" | "valueFormat" | "payloadEncoding" | "valueColumnPaths">;
+export type ViewerPreferencePatch = Pick<TopicConsumeState, "inspectorMode" | "keyFormat" | "valueFormat" | "payloadEncoding" | "valueColumnPaths" | "mapFieldMapping">;
 
-const viewerPreferenceKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding", "valueColumnPaths"] as const;
+const viewerPreferenceKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding", "valueColumnPaths", "mapFieldMapping"] as const;
 
 function isViewerPreferenceValueEqual(
   left: ViewerPreferencePatch[keyof ViewerPreferencePatch] | undefined,
@@ -21,6 +22,9 @@ function isViewerPreferenceValueEqual(
   if (Array.isArray(left) || Array.isArray(right)) {
     if (!Array.isArray(left) || !Array.isArray(right)) return false;
     return left.length === right.length && left.every((item, index) => item === right[index]);
+  }
+  if ((left && typeof left === "object") || (right && typeof right === "object")) {
+    return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
   }
   return left === right;
 }
@@ -69,7 +73,8 @@ export function getViewerPreferenceOverride(
     keyFormat: stored.keyFormat,
     valueFormat: stored.valueFormat,
     payloadEncoding: stored.payloadEncoding,
-    valueColumnPaths: normalizeValueColumnPaths(stored.valueColumnPaths)
+    valueColumnPaths: normalizeValueColumnPaths(stored.valueColumnPaths),
+    mapFieldMapping: normalizeMapFieldMapping(stored.mapFieldMapping)
   };
 }
 
@@ -95,7 +100,10 @@ export function updateTopicViewerPreference(params: {
     ...viewerPatch,
     valueColumnPaths: viewerPatch.valueColumnPaths !== undefined
       ? normalizeValueColumnPaths(viewerPatch.valueColumnPaths)
-      : normalizeValueColumnPaths(existing.valueColumnPaths)
+      : normalizeValueColumnPaths(existing.valueColumnPaths),
+    mapFieldMapping: viewerPatch.mapFieldMapping !== undefined
+      ? normalizeMapFieldMapping(viewerPatch.mapFieldMapping)
+      : normalizeMapFieldMapping(existing.mapFieldMapping)
   };
   const nextPreference = Object.fromEntries(
     viewerPreferenceKeys

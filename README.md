@@ -13,7 +13,7 @@ Current release: `2.0.5`
 ## 2.0.5 Patch Notes
 
 - Added `Value Columns` for Consume grids and CSV export.
-- Added Map Viewer for coordinate messages with vehicle heading, trails, and selected-vehicle follow mode.
+- Added Map Viewer for coordinate messages with per-topic field mapping, projection conversion, vehicle heading, trails, and selected-vehicle follow mode.
 - Improved large Consume tab switching and Map Viewer movement smoothing.
 
 ## Documentation
@@ -35,7 +35,7 @@ Current release: `2.0.5`
 - [x] Key/Value payload display as `Text`, `JSON`, `Hex`, or `Base64`
 - [x] `Value Columns` for selected `value.*` fields in the Consume grid and CSV export
 - [x] Message Viewer with `Raw`, `Tree`, and `Preview` modes
-- [x] Map Viewer for latitude/longitude payloads
+- [x] Map Viewer with per-topic coordinate field mapping and WGS84/TM/UTM conversion
 - [x] Live message recording to `JSONL` files
 - [x] Produce messages with key, headers, value, templates, and Interval Produce
 - [x] Dynamic Produce fields for repeated test data
@@ -69,18 +69,21 @@ Large offset queries are paged automatically when the requested limit is greater
 
 Key and Value can be viewed and exported as `Text`, `JSON`, `Hex`, or `Base64`. Kafka Tool keeps raw payload bytes only up to a fixed per-message limit to protect memory during large consumes. Larger payloads still display as text when KafkaJS can decode them, but raw-only views such as hex/base64 show an explicit retained-bytes warning.
 
-Use `Value Columns` to select fields inside a structured Value payload, such as `vehicleId`, `latitude`, `longitude`, `speed`, or nested paths. Selected Value Columns are stored per topic. CSV exports include selected Value Columns after the default message columns; JSON and LOG exports keep their existing formats.
+Use `Value Columns` to select fields inside a structured Value payload, such as `vehicleId`, `latitude`, `longitude`, `speed`, or deeply nested paths. The picker groups nested fields as a tree, and leaf values in the Message Viewer Tree can be added directly to Value Columns. Selected Value Columns are stored per topic. CSV exports include selected Value Columns after the default message columns; JSON and LOG exports keep their existing formats.
 
 Live Record writes messages directly to a `JSONL` file stream. It is intended for long-running captures without keeping the entire captured dataset in renderer memory.
 
 ## Map Viewer
 
-Messages that contain latitude/longitude fields can be sent to the Map Viewer from the Consume message toolbar. The Map Viewer opens in a separate window and supports:
+Messages that contain coordinate fields can be sent to the Map Viewer from the Consume message toolbar. The Map Viewer opens in a separate window and supports:
 
+- per-topic Map Field Mapping for custom JSON paths
+- WGS84 degree, WGS84 millisecond, Korea TM, and UTM Zone 52N coordinate conversion
 - vehicle markers with heading-aware rotation
 - trails for recent movement history
 - selected-vehicle follow, auto-fit, and free-move modes
 - a vehicle list with topic, speed, heading, and coordinates
+- speed fields in `km/h` or `m/s`
 
 The Map Viewer is designed for smart-city, BIS, C-ITS, and autonomous-driving Kafka topics where developers need to inspect live coordinate streams.
 
