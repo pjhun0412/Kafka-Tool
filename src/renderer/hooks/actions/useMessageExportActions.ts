@@ -1,5 +1,6 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import type { ConsumedMessage, KafkaApi, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
+import { normalizeValueColumnPaths } from "../../consumeValuePaths";
 import type { PaneToastState, ToastState, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
 
 type MessageExportActionParams = {
@@ -104,7 +105,7 @@ export function useMessageExportActions({
         keyFormat: state.keyFormat,
         valueFormat: state.valueFormat,
         payloadEncoding: state.payloadEncoding,
-        valueColumnPaths: state.valueColumnPaths
+        valueColumnPaths: normalizeValueColumnPaths(state.valueColumnPaths)
       }
     });
 
@@ -143,3 +144,4 @@ export function useMessageExportActions({
     exportOffsetConditionMessages
   };
 }
+
