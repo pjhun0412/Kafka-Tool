@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ConsumedMessage } from "../../../../shared/types";
 import type { ConsumeFilterMode, MessagePayloadFormat, MessagePreviewEncoding } from "../../../uiTypes";
+import { getMessageValuePayload, readValuePath } from "../../../consumeValuePaths";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
 import { getGridPayloadPreview } from "../../../messagePreview";
@@ -29,6 +30,15 @@ export function getMessageRowKey(message: ConsumedMessage) {
   return `${message.partition}-${message.offset}-${message.timestamp}`;
 }
 
+const messageGridRowCache = new WeakMap<ConsumedMessage, { formatKey: string; row: MessageGridRow }>();
+function getGridRowFormatKey(formats: {
+  keyFormat: Extract<MessagePayloadFormat, "text" | "hex" | "base64">;
+  valueFormat: MessagePayloadFormat;
+  payloadEncoding: MessagePreviewEncoding;
+}) {
+  return `${formats.keyFormat}:${formats.valueFormat}:${formats.payloadEncoding}`;
+}
+
 export function createMessageGridRow(
   message: ConsumedMessage,
   formats: {
@@ -37,11 +47,15 @@ export function createMessageGridRow(
     payloadEncoding: MessagePreviewEncoding;
   }
 ): MessageGridRow {
+  const formatKey = getGridRowFormatKey(formats);
+  const cached = messageGridRowCache.get(message);
+  if (cached?.formatKey === formatKey) return cached.row;
+
   const hasDecodedValue = message.decoded?.value !== undefined;
   const keyText = getGridPayloadPreview(message, "key", formats.keyFormat, formats.payloadEncoding) || "-";
   const valueText = getGridPayloadPreview(message, "value", formats.valueFormat, formats.payloadEncoding);
   const decodedError = message.decoded?.error ?? "";
-  return {
+  const row = {
     message,
     rowKey: getMessageRowKey(message),
     partition: message.partition,
@@ -57,6 +71,8 @@ export function createMessageGridRow(
     hasDecodedValue,
     decodedError
   };
+  messageGridRowCache.set(message, { formatKey, row });
+  return row;
 }
 
 export function useMessageGridRows(params: {
@@ -156,6 +172,7 @@ const messageGridColumns: ColumnDef<MessageGridRow>[] = [
 
 export const MessageGrid = memo(function MessageGrid(props: {
   rows: MessageGridRow[];
+  valueColumnPaths: string[];
   selectedMessageKey: string;
   filterMode: ConsumeFilterMode;
   hasActiveMessageFilter: boolean;
@@ -177,10 +194,25 @@ export const MessageGrid = memo(function MessageGrid(props: {
     props.onSelectMessage(row.message);
   }, [props.onSelectMessage]);
 
+  const columns = useMemo<ColumnDef<MessageGridRow>[]>(() => {
+    if (props.valueColumnPaths.length === 0) return messageGridColumns;
+    const valueColumns: ColumnDef<MessageGridRow>[] = props.valueColumnPaths.map((path) => ({
+      id: `value.${path}`,
+      header: path,
+      accessorFn: (row) => readValuePath(getMessageValuePayload(row.message), path),
+      cell: ({ getValue }) => {
+        const value = String(getValue() ?? "");
+        return <span title={value}>{value || "-"}</span>;
+      },
+      size: 140
+    }));
+    return [...messageGridColumns.slice(0, -1), ...valueColumns, messageGridColumns[messageGridColumns.length - 1]];
+  }, [props.valueColumnPaths]);
+
   return (
     <DataGrid
       data={props.rows}
-      columns={messageGridColumns}
+      columns={columns}
       className="tanstack-message-table"
       emptyText={t(language, "label.noMessages")}
       getRowKey={(row) => row.rowKey}

@@ -32,7 +32,8 @@ export function createPrimaryConsumeCallbacks(params: PrimaryConsumeCallbackPara
   const payloadOptions = {
     keyFormat: params.selectedConsumeState.keyFormat,
     valueFormat: params.selectedConsumeState.valueFormat,
-    payloadEncoding: params.selectedConsumeState.payloadEncoding
+    payloadEncoding: params.selectedConsumeState.payloadEncoding,
+    valueColumnPaths: params.selectedConsumeState.valueColumnPaths
   };
   return {
     updateConsume: (patch: Partial<TopicConsumeState>) => {

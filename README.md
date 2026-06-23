@@ -1,20 +1,20 @@
-# Kafka Tool
+﻿# Kafka Tool
 
 [English](README.md) | [한국어](README.ko.md)
 
 Kafka Tool is a lightweight Electron desktop client for Apache Kafka.
 
-It is built for developers and operators who need to register Kafka clusters, browse brokers/topics/consumer groups, consume and produce messages, inspect payloads, manage topic settings, and export data from one desktop app.
+It is built for developers and operators who need to register Kafka clusters, browse brokers/topics/consumer groups, consume and produce messages, inspect payloads, manage topic settings, visualize coordinate streams, and export data from one desktop app.
 
 ## Version
 
-Current release: `2.0.4`
+Current release: `2.0.5`
 
-## 2.0.4 Patch Notes
+## 2.0.5 Patch Notes
 
-- Added a server profile `Test` action to verify Kafka connectivity before saving.
-- Improved server profile validation so required-field and connection errors are shown inside the dialog.
-- Fixed server/topic context menu dark theme colors and failed-connection icon rendering.
+- Added `Value Columns` for Consume grids and CSV export.
+- Added Map Viewer for coordinate messages with vehicle heading, trails, and selected-vehicle follow mode.
+- Improved large Consume tab switching and Map Viewer movement smoothing.
 
 ## Documentation
 
@@ -33,7 +33,9 @@ Current release: `2.0.4`
 - [x] Topic detail, settings, creation, clear messages, and delete actions
 - [x] `Offset`, `Time`, and `Live` Consume modes
 - [x] Key/Value payload display as `Text`, `JSON`, `Hex`, or `Base64`
+- [x] `Value Columns` for selected `value.*` fields in the Consume grid and CSV export
 - [x] Message Viewer with `Raw`, `Tree`, and `Preview` modes
+- [x] Map Viewer for latitude/longitude payloads
 - [x] Live message recording to `JSONL` files
 - [x] Produce messages with key, headers, value, templates, and Interval Produce
 - [x] Dynamic Produce fields for repeated test data
@@ -49,7 +51,7 @@ Current release: `2.0.4`
 
 ## Server Profiles
 
-Server profiles include Broker addresses, optional SSL/TLS, optional SASL/OAUTHBEARER, and optional Schema Registry settings.
+Server profiles include broker addresses, optional SSL/TLS, optional SASL/OAUTHBEARER, and optional Schema Registry settings.
 
 Use `Test` in the server profile dialog to verify the Kafka Admin connection before saving. The test uses the current form values, does not save the profile, and shows success or failure inside the dialog.
 
@@ -67,7 +69,20 @@ Large offset queries are paged automatically when the requested limit is greater
 
 Key and Value can be viewed and exported as `Text`, `JSON`, `Hex`, or `Base64`. Kafka Tool keeps raw payload bytes only up to a fixed per-message limit to protect memory during large consumes. Larger payloads still display as text when KafkaJS can decode them, but raw-only views such as hex/base64 show an explicit retained-bytes warning.
 
+Use `Value Columns` to select fields inside a structured Value payload, such as `vehicleId`, `latitude`, `longitude`, `speed`, or nested paths. Selected Value Columns are stored per topic. CSV exports include selected Value Columns after the default message columns; JSON and LOG exports keep their existing formats.
+
 Live Record writes messages directly to a `JSONL` file stream. It is intended for long-running captures without keeping the entire captured dataset in renderer memory.
+
+## Map Viewer
+
+Messages that contain latitude/longitude fields can be sent to the Map Viewer from the Consume message toolbar. The Map Viewer opens in a separate window and supports:
+
+- vehicle markers with heading-aware rotation
+- trails for recent movement history
+- selected-vehicle follow, auto-fit, and free-move modes
+- a vehicle list with topic, speed, heading, and coordinates
+
+The Map Viewer is designed for smart-city, BIS, C-ITS, and autonomous-driving Kafka topics where developers need to inspect live coordinate streams.
 
 ## Produce
 

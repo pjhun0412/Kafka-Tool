@@ -1,21 +1,25 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { LiveMapPoint } from "../shared/types";
+import {
+  createVehicleIcon,
+  escapeHtml,
+  formatSpeed,
+  getLatLng,
+  getPointHeading,
+  interpolateHeading,
+  markerColor,
+  type TrackingMode,
+  type VehicleState
+} from "./mapViewerVehicles";
 import "./styles/map-viewer.css";
 
-type TrackingMode = "selected" | "fit" | "free";
-
-type VehicleState = {
-  point: LiveMapPoint;
-  marker: L.Marker;
-  trail: L.LatLngTuple[];
-  polyline: L.Polyline;
-  animation?: number;
-};
-
 const MAX_TRAIL = 80;
-const MOVE_DURATION_MS = 650;
+const DEFAULT_MOVE_DURATION_MS = 850;
+const MIN_MOVE_DURATION_MS = 300;
+const MAX_MOVE_DURATION_MS = 1200;
 const TRAIL_GAP_METERS = 250;
+const FOLLOW_CENTER_INTERVAL_MS = 48;
 const vehicles = new Map<string, VehicleState>();
 
 let selectedId = "";
@@ -23,6 +27,7 @@ let trackingMode: TrackingMode = "selected";
 let trailsVisible = true;
 let popupVisible = false;
 let lastUpdateAt = 0;
+let lastFollowCenterAt = 0;
 
 const root = document.getElementById("map-viewer");
 if (!root) throw new Error("Map Viewer root element was not found.");
@@ -98,56 +103,25 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 setTimeout(() => map.invalidateSize(), 0);
 
-function escapeHtml(value: unknown) {
-  return String(value).replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[char] ?? char));
-}
 
-function markerColor(id: string) {
-  const palette = ["#38bdf8", "#22c55e", "#f59e0b", "#f472b6", "#a78bfa", "#fb7185", "#2dd4bf", "#60a5fa"];
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return palette[hash % palette.length];
-}
+function updateVehicleIcon(vehicle: VehicleState, point: LiveMapPoint, heading: number | undefined = getPointHeading(point)) {
+  const markerElement = vehicle.marker.getElement();
+  const vehicleElement = markerElement?.querySelector<HTMLElement>(".vehicle-marker");
+  if (!vehicleElement) {
+    vehicle.marker.setIcon(createVehicleIcon(
+      heading === undefined ? { ...point, heading: undefined } : { ...point, heading },
+      point.id === selectedId
+    ));
+    return;
+  }
 
-function createVehicleIcon(point: LiveMapPoint, selected: boolean) {
-  const color = markerColor(point.id);
-  const heading = Number.isFinite(point.heading) ? Number(point.heading) : 0;
-  const headingClass = Number.isFinite(point.heading) ? "has-heading" : "";
-  const selectedClass = selected ? "selected" : "";
-  return L.divIcon({
-    className: "vehicle-marker-icon",
-    iconSize: [1, 1],
-    iconAnchor: [0, 0],
-    html: `
-      <div class="vehicle-marker ${headingClass} ${selectedClass}" style="--marker-color:${color}; --heading:${heading}deg">
-        <div class="vehicle-marker-body">
-          <svg class="vehicle-marker-svg" viewBox="0 0 48 88" aria-hidden="true">
-            <path class="vehicle-body-shape" d="M24 2c-9.3 0-15.8 5.7-17.1 15L3.3 43.6c-.4 3-.4 6.1 0 9.1L6.9 71C8.2 80.3 14.7 86 24 86s15.8-5.7 17.1-15l3.6-18.3c.6-3 .6-6.1 0-9.1L41.1 17C39.8 7.7 33.3 2 24 2Z" />
-            <path class="vehicle-glass" d="M11.2 19.4c1.2-5.3 4.6-8.1 10.2-8.5l-1.8 8.4c-.4 1.8-1.8 3.1-3.6 3.5l-5.6 1.2.8-4.6Zm25.6 0-.8 4.6-5.6-1.2c-1.8-.4-3.2-1.7-3.6-3.5L25 10.9c5.6.4 9 3.2 10.2 8.5Z" />
-            <path class="vehicle-glass" d="M12.3 37.1c6.6-2.1 17.1-2.1 23.4 0l-2.3 12.8c-5.3-2.2-13.7-2.2-18.8 0l-2.3-12.8Zm2.1 29.7c5.1 2.3 14.1 2.3 19.2 0l-1.6 8c-.8 4.1-3.6 6.3-8 6.3s-7.2-2.2-8-6.3l-1.6-8Z" />
-            <path class="vehicle-shadow-shape" d="M8.9 29.3c3.7-1.7 8.9-2.6 15.1-2.6s11.4.9 15.1 2.6l.9 6.6c-4.5-2.3-10-3.4-16-3.4S12.5 33.6 8 35.9l.9-6.6Zm-.4 29.3c4.8 2.2 10 3.3 15.5 3.3s10.7-1.1 15.5-3.3l-1.1 5.4c-4.2 2.4-9 3.6-14.4 3.6S13.8 66.4 9.6 64l-1.1-5.4Z" />
-          </svg>
-        </div>
-        <div class="vehicle-marker-label">${escapeHtml(point.label || point.id)}</div>
-      </div>
-    `
-  });
-}
-
-function getLatLng(point: LiveMapPoint): L.LatLngTuple {
-  return [point.lat, point.lng];
-}
-
-function formatSpeed(speed: unknown) {
-  const speedNumber = Number(speed);
-  if (!Number.isFinite(speedNumber)) return "";
-  return speedNumber.toFixed(1);
+  vehicleElement.classList.toggle("selected", point.id === selectedId);
+  vehicleElement.classList.toggle("has-heading", heading !== undefined);
+  vehicleElement.style.setProperty("--heading", `${heading ?? 0}deg`);
+  const labelElement = vehicleElement.querySelector<HTMLElement>(".vehicle-marker-label");
+  if (labelElement) {
+    labelElement.textContent = point.label || point.id;
+  }
 }
 
 function appendTrailPoint(vehicle: VehicleState, latLng: L.LatLngTuple) {
@@ -207,7 +181,7 @@ function updateStatus() {
 
 function renderMarkers() {
   for (const vehicle of vehicles.values()) {
-    vehicle.marker.setIcon(createVehicleIcon(vehicle.point, vehicle.point.id === selectedId));
+    updateVehicleIcon(vehicle, vehicle.point, vehicle.lastHeading);
     vehicle.polyline.setStyle({
       opacity: trailsVisible ? (selectedId && selectedId !== vehicle.point.id ? 0.18 : 0.72) : 0,
       weight: selectedId === vehicle.point.id ? 4 : 2,
@@ -299,13 +273,18 @@ function fitAllVehicles() {
 function applyTracking() {
   if (trackingMode === "selected") {
     const vehicle = selectedVehicle();
-    if (vehicle) map.panTo(getLatLng(vehicle.point), { animate: true, duration: 0.45 });
+    if (vehicle) {
+      const current = vehicle.marker.getLatLng();
+      map.panTo([current.lat, current.lng], { animate: true, duration: 0.25 });
+    }
     return;
   }
   if (trackingMode === "fit") fitAllVehicles();
 }
 
 function animateMarker(vehicle: VehicleState, nextPoint: LiveMapPoint) {
+  const previousPoint = vehicle.point;
+  const receivedAt = Date.now();
   if (vehicle.animation) {
     cancelAnimationFrame(vehicle.animation);
     vehicle.animation = undefined;
@@ -316,16 +295,33 @@ function animateMarker(vehicle: VehicleState, nextPoint: LiveMapPoint) {
   const to = L.latLng(nextPoint.lat, nextPoint.lng);
   const finalLatLng: L.LatLngTuple = [to.lat, to.lng];
   const shouldResetTrail = isTrailGap(vehicle, finalLatLng);
+  const fromHeading = vehicle.lastHeading ?? getPointHeading(previousPoint);
+  const toHeading = getPointHeading(nextPoint);
+  const duration = vehicle.lastPointAt
+    ? Math.min(MAX_MOVE_DURATION_MS, Math.max(MIN_MOVE_DURATION_MS, receivedAt - vehicle.lastPointAt))
+    : DEFAULT_MOVE_DURATION_MS;
+  vehicle.point = nextPoint;
+  vehicle.lastPointAt = receivedAt;
   const start = performance.now();
 
   function step(now: number) {
-    const progress = Math.min(1, (now - start) / MOVE_DURATION_MS);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const lat = from.lat + (to.lat - from.lat) * eased;
-    const lng = from.lng + (to.lng - from.lng) * eased;
+    const progress = Math.min(1, (now - start) / duration);
+    const lat = from.lat + (to.lat - from.lat) * progress;
+    const lng = from.lng + (to.lng - from.lng) * progress;
+    const heading = interpolateHeading(fromHeading, toHeading, progress);
     const currentLatLng: L.LatLngTuple = [lat, lng];
     vehicle.marker.setLatLng(currentLatLng);
+    vehicle.lastHeading = heading;
+    updateVehicleIcon(vehicle, nextPoint, heading);
     vehicle.polyline.setLatLngs(shouldResetTrail ? [currentLatLng] : [...vehicle.trail, currentLatLng]);
+    if (
+      trackingMode === "selected"
+      && selectedId === nextPoint.id
+      && (progress === 1 || now - lastFollowCenterAt >= FOLLOW_CENTER_INTERVAL_MS)
+    ) {
+      lastFollowCenterAt = now;
+      map.setView(currentLatLng, map.getZoom(), { animate: false });
+    }
     if (progress < 1) {
       vehicle.animation = requestAnimationFrame(step);
       return;
@@ -337,6 +333,8 @@ function animateMarker(vehicle: VehicleState, nextPoint: LiveMapPoint) {
     } else {
       appendTrailPoint(vehicle, finalLatLng);
     }
+    vehicle.lastHeading = toHeading;
+    updateVehicleIcon(vehicle, nextPoint, toHeading);
     vehicle.animation = undefined;
   }
 
@@ -346,7 +344,6 @@ function animateMarker(vehicle: VehicleState, nextPoint: LiveMapPoint) {
 function upsertVehicle(point: LiveMapPoint) {
   const existing = vehicles.get(point.id);
   if (existing) {
-    existing.point = point;
     animateMarker(existing, point);
     return existing;
   }
@@ -366,6 +363,8 @@ function upsertVehicle(point: LiveMapPoint) {
   }).addTo(map);
 
   const vehicle = { point, marker, trail, polyline };
+  vehicle.lastHeading = getPointHeading(point);
+  vehicle.lastPointAt = Date.now();
   vehicles.set(point.id, vehicle);
   return vehicle;
 }
@@ -428,7 +427,6 @@ function addPoints(nextPoints: LiveMapPoint[]) {
   if (focusedPoint) {
     selectedId = focusedPoint.id;
     setTrackingMode("selected");
-    map.panTo(getLatLng(focusedPoint), { animate: true, duration: 0.45 });
     showPopup(focusedPoint);
   } else {
     applyTracking();

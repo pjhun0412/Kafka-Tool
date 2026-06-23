@@ -6,6 +6,28 @@ export function csvValue(value: unknown) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+function getExportValuePayload(message: ConsumedMessage): unknown {
+  if (message.decoded?.value !== undefined) return message.decoded.value;
+  if (!message.value) return null;
+  try {
+    return JSON.parse(message.value) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function readValuePath(source: unknown, path: string) {
+  if (!source || typeof source !== "object") return "";
+  let current: unknown = source;
+  for (const segment of path.split(".")) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) return "";
+    current = (current as Record<string, unknown>)[segment];
+  }
+  if (current === null || current === undefined) return "";
+  if (typeof current === "object") return JSON.stringify(current);
+  return String(current);
+}
+
 function getBytesFromBase64(value?: string) {
   return value ? Buffer.from(value, "base64") : Buffer.alloc(0);
 }
@@ -74,20 +96,27 @@ export function formatExportMessage(message: ConsumedMessage, options?: MessageE
 }
 
 export function formatMessagesCsv(messages: ConsumedMessage[], options?: MessageExportPayloadOptions) {
-  const header = ["topic", "partition", "offset", "timestamp", "key", "value", "headers"];
-  const rows = messages.map((message) => {
-    const exportMessage = formatExportMessage(message, options);
-    return [
-      exportMessage.topic,
-      exportMessage.partition,
-      exportMessage.offset,
-      exportMessage.timestamp,
-      exportMessage.key,
-      exportMessage.value,
-      JSON.stringify(exportMessage.headers)
-    ].map(csvValue).join(",");
-  });
-  return [header.join(","), ...rows].join("\n");
+  return [formatMessageCsvHeader(options), ...messages.map((message) => formatMessageCsvLine(message, options))].join("\n");
+}
+
+export function formatMessageCsvLine(message: ConsumedMessage, options?: MessageExportPayloadOptions) {
+  const exportMessage = formatExportMessage(message, options);
+  const valueColumnPaths = options?.valueColumnPaths ?? [];
+  const valuePayload = valueColumnPaths.length > 0 ? getExportValuePayload(message) : null;
+  return [
+    exportMessage.topic,
+    exportMessage.partition,
+    exportMessage.offset,
+    exportMessage.timestamp,
+    exportMessage.key,
+    exportMessage.value,
+    JSON.stringify(exportMessage.headers),
+    ...valueColumnPaths.map((path) => readValuePath(valuePayload, path))
+  ].map(csvValue).join(",");
+}
+
+export function formatMessageCsvHeader(options?: MessageExportPayloadOptions) {
+  return ["topic", "partition", "offset", "timestamp", "key", "value", "headers", ...(options?.valueColumnPaths ?? []).map((path) => `value.${path}`)].join(",");
 }
 
 export function formatMessageLog(messages: ConsumedMessage[], template?: string, options?: MessageExportPayloadOptions) {

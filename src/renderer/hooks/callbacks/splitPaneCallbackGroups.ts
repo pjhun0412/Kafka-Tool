@@ -25,7 +25,8 @@ export function createSplitConsumeCallbacks(params: SplitConsumeCallbackParams) 
   const payloadOptions = {
     keyFormat: params.consumeState.keyFormat,
     valueFormat: params.consumeState.valueFormat,
-    payloadEncoding: params.consumeState.payloadEncoding
+    payloadEncoding: params.consumeState.payloadEncoding,
+    valueColumnPaths: params.consumeState.valueColumnPaths
   };
   return {
     updateConsume: (patch: Partial<TopicConsumeState>) => {

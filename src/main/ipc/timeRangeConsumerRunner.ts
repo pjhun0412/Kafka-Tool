@@ -8,6 +8,9 @@ import type {
 } from "../../shared/types.js";
 import { shutdownConsumer } from "./consumeUtils.js";
 
+const TIME_RANGE_EMPTY_IDLE_TIMEOUT_MS = 4000;
+const TIME_RANGE_ACTIVE_IDLE_TIMEOUT_MS = 900;
+
 type TimeRangeConsumerRunnerParams = {
   consumer: Consumer;
   profile: ServerProfile;
@@ -39,7 +42,10 @@ export async function runTimeRangeConsumer({
 
     const resetIdleTimeout = () => {
       if (idleTimeout) clearTimeout(idleTimeout);
-      idleTimeout = setTimeout(finish, messages.length > 0 ? 900 : 1500);
+      idleTimeout = setTimeout(
+        finish,
+        messages.length > 0 ? TIME_RANGE_ACTIVE_IDLE_TIMEOUT_MS : TIME_RANGE_EMPTY_IDLE_TIMEOUT_MS
+      );
     };
 
     const cleanup = async () => {

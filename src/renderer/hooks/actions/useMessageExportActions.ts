@@ -103,7 +103,8 @@ export function useMessageExportActions({
       payloadOptions: {
         keyFormat: state.keyFormat,
         valueFormat: state.valueFormat,
-        payloadEncoding: state.payloadEncoding
+        payloadEncoding: state.payloadEncoding,
+        valueColumnPaths: state.valueColumnPaths
       }
     });
 

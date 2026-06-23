@@ -34,6 +34,7 @@ export type TopicConsumeState = {
   keyFormat: Extract<MessagePayloadFormat, "text" | "hex" | "base64">;
   valueFormat: MessagePayloadFormat;
   payloadEncoding: MessagePreviewEncoding;
+  valueColumnPaths: string[];
   messagePaneHeight: number;
   offsetPagination: {
     totalLimit: number;
@@ -70,6 +71,7 @@ export const emptyConsumeState: TopicConsumeState = {
   keyFormat: "text",
   valueFormat: "json",
   payloadEncoding: "utf-8",
+  valueColumnPaths: [],
   messagePaneHeight: 230,
   offsetPagination: null
 };

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.5
+
+### Added
+
+- Added `Value Columns` for Consume grids so selected `value.*` fields can be shown as dedicated columns.
+- Added CSV export support for selected `Value Columns`.
+- Added the independent Map Viewer window for latitude/longitude messages, including vehicle markers, heading, trails, and selected-vehicle follow mode.
+
+### Improved
+
+- Persist `Value Columns` per topic with Viewer preferences.
+- Improved large Consume tab switching by avoiding unnecessary filter copies and caching message row/value parsing work.
+- Improved Map Viewer movement by interpolating vehicle position and heading updates.
+- Refactored Consume value-path helpers and Map Viewer vehicle helpers into focused modules.
+
+### Fixed
+
+- Close the `Value Columns` picker when switching topics.
+- Fixed Map Viewer vehicle state ordering during animated updates.
+
 ## 2.0.4
 
 ### Added

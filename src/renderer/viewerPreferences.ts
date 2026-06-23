@@ -9,9 +9,20 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type ViewerPreferences = NonNullable<AppPreferences["viewerPreferences"]>;
 export type ViewerPreferencesByServer = NonNullable<ViewerPreferences["byServer"]>;
 export type TopicViewerPreference = ViewerPreferencesByServer[string][string];
-export type ViewerPreferencePatch = Pick<TopicConsumeState, "inspectorMode" | "keyFormat" | "valueFormat" | "payloadEncoding">;
+export type ViewerPreferencePatch = Pick<TopicConsumeState, "inspectorMode" | "keyFormat" | "valueFormat" | "payloadEncoding" | "valueColumnPaths">;
 
-const viewerPreferenceKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding"] as const;
+const viewerPreferenceKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding", "valueColumnPaths"] as const;
+
+function isViewerPreferenceValueEqual(
+  left: ViewerPreferencePatch[keyof ViewerPreferencePatch] | undefined,
+  right: ViewerPreferencePatch[keyof ViewerPreferencePatch] | undefined
+) {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right)) return false;
+    return left.length === right.length && left.every((item, index) => item === right[index]);
+  }
+  return left === right;
+}
 
 export function normalizeViewerPreferences(preferences?: AppPreferences["viewerPreferences"]): Required<ViewerPreferences> {
   return {
@@ -56,7 +67,8 @@ export function getViewerPreferenceOverride(
     inspectorMode: stored.inspectorMode,
     keyFormat: stored.keyFormat,
     valueFormat: stored.valueFormat,
-    payloadEncoding: stored.payloadEncoding
+    payloadEncoding: stored.payloadEncoding,
+    valueColumnPaths: stored.valueColumnPaths
   };
 }
 
@@ -83,7 +95,7 @@ export function updateTopicViewerPreference(params: {
   };
   const nextPreference = Object.fromEntries(
     viewerPreferenceKeys
-      .filter((key) => merged[key] !== undefined && merged[key] !== params.baseline[key])
+      .filter((key) => merged[key] !== undefined && !isViewerPreferenceValueEqual(merged[key], params.baseline[key]))
       .map((key) => [key, merged[key]])
   ) as Partial<ViewerPreferencePatch>;
 

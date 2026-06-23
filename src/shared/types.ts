@@ -222,6 +222,7 @@ export type AppPreferences = {
       keyFormat?: "text" | "hex" | "base64";
       valueFormat?: "json" | "text" | "hex" | "base64";
       payloadEncoding?: "utf-8" | "euc-kr";
+      valueColumnPaths?: string[];
       updatedAt: number;
     }>>;
   }>;
@@ -363,6 +364,7 @@ export type MessageExportPayloadOptions = {
   keyFormat?: "text" | "hex" | "base64";
   valueFormat?: "json" | "text" | "hex" | "base64";
   payloadEncoding?: "utf-8" | "euc-kr";
+  valueColumnPaths?: string[];
 };
 
 export type AppPreferenceSection = "general" | "avro";

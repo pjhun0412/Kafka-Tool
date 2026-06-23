@@ -48,6 +48,7 @@ const messageValueCache = new WeakMap<ConsumedMessage, { raw: string; parsed: un
 export function filterMessages(messages: ConsumedMessage[], filterText: string, filterField: ConsumeFilterField) {
   const query = filterText.trim();
   const terms = parseMessageFilterTerms(query);
+  if (filterField !== "headersEmpty" && terms.length === 0) return messages;
   return messages.filter((message) => {
     if (filterField === "headersEmpty" && Object.keys(message.headers ?? {}).length > 0) {
       return false;

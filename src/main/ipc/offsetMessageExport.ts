@@ -5,8 +5,9 @@ import type {
   OffsetMessageExportRequest
 } from "../../shared/types.js";
 import {
-  csvValue,
   formatExportMessage,
+  formatMessageCsvHeader,
+  formatMessageCsvLine,
   formatMessageLogLine
 } from "./messageExportFormatters.js";
 
@@ -36,7 +37,7 @@ export async function writeOffsetMessageExport({
 
   try {
     if (request.format === "csv") {
-      await write(["topic", "partition", "offset", "timestamp", "key", "value", "headers"].join(",") + "\n");
+      await write(formatMessageCsvHeader(request.payloadOptions) + "\n");
     } else if (request.format === "json") {
       await write(`{\n  "exportedAt": ${JSON.stringify(new Date().toISOString())},\n  "topic": ${JSON.stringify(request.topic)},\n  "messages": [\n`);
     }
@@ -50,15 +51,7 @@ export async function writeOffsetMessageExport({
       for (const message of messages) {
         const exportMessage = formatExportMessage(message, request.payloadOptions);
         if (request.format === "csv") {
-          await write([
-            exportMessage.topic,
-            exportMessage.partition,
-            exportMessage.offset,
-            exportMessage.timestamp,
-            exportMessage.key,
-            exportMessage.value,
-            JSON.stringify(exportMessage.headers)
-          ].map(csvValue).join(",") + "\n");
+          await write(formatMessageCsvLine(message, request.payloadOptions) + "\n");
         } else if (request.format === "log") {
           await write(formatMessageLogLine(message, request.template, request.payloadOptions) + "\n");
         } else {

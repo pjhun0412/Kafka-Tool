@@ -124,6 +124,30 @@
   @apply border-amber-300 bg-amber-50 text-amber-800 shadow-sm;
 }
 
+.value-column-bar {
+  @apply relative mb-2 flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-[#30363d] bg-[#252526] p-2 text-[12px] text-slate-200 shadow-[0_8px_20px_rgba(0,0,0,0.18)];
+}
+
+.value-column-bar .filter-mode-toggle span {
+  @apply ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#007acc] px-1 text-[10px] font-black text-white;
+}
+
+.value-column-picker {
+  @apply absolute left-2 top-[calc(100%+4px)] z-40 grid max-h-64 w-[420px] max-w-[calc(100vw-96px)] grid-cols-2 gap-1 overflow-auto rounded-md border border-[#30363d] bg-[#252526] p-2 shadow-[0_24px_70px_rgba(0,0,0,0.45)];
+}
+
+.value-column-picker label {
+  @apply flex min-w-0 cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] font-bold text-slate-300 hover:bg-white/[0.06] hover:text-white;
+}
+
+.value-column-picker input {
+  @apply h-3.5 w-3.5 shrink-0;
+}
+
+.value-column-picker span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
 .date-field {
   @apply relative flex h-9 min-h-9 w-[150px] shrink-0 grid-cols-none items-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2 text-slate-100 transition placeholder:text-slate-500 focus-within:border-[#007acc] focus-within:ring-2 focus-within:ring-[#007acc]/25;
 }

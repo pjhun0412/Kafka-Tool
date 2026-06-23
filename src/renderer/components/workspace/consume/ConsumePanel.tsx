@@ -1,8 +1,9 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronUp, RefreshCw } from "lucide-react";
 import type { ConsumedMessage, LiveMapPoint, MessageExportFormat } from "../../../../shared/types";
 import type { AppLanguage } from "../../../i18n";
 import { t } from "../../../i18n";
+import { collectMessageValuePaths } from "../../../consumeValuePaths";
 import { createLiveMapPoint } from "../../../mapPreview";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspectorMode, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
@@ -39,6 +40,7 @@ type ConsumePanelProps = {
   keyFormat: TopicConsumeState["keyFormat"];
   valueFormat: TopicConsumeState["valueFormat"];
   payloadEncoding: TopicConsumeState["payloadEncoding"];
+  valueColumnPaths: string[];
   offsetPagination: TopicConsumeState["offsetPagination"];
   messagePaneHeight: number;
   onMode: (value: ConsumeMode) => void;
@@ -61,6 +63,7 @@ type ConsumePanelProps = {
   onKeyFormat: (value: TopicConsumeState["keyFormat"]) => void;
   onValueFormat: (value: TopicConsumeState["valueFormat"]) => void;
   onPayloadEncoding: (value: TopicConsumeState["payloadEncoding"]) => void;
+  onValueColumnPaths: (value: string[]) => void;
   onPagePrev: () => void;
   onPageNext: () => void;
   onSelectMessage: (message: ConsumedMessage) => void;
@@ -72,6 +75,9 @@ type ConsumePanelProps = {
   onStop: () => void;
 };
 
+const MAX_VALUE_COLUMN_CANDIDATES = 24;
+const VALUE_COLUMN_SAMPLE_SIZE = 200;
+
 function ConsumePanelView(props: ConsumePanelProps) {
   const [previewTarget, setPreviewTarget] = useState<MessagePayloadTarget>("value");
   const [previewMode, setPreviewMode] = useState<MessagePreviewMode>(props.valueFormat);
@@ -80,6 +86,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [filterDraft, setFilterDraft] = useState(props.filterText);
   const [isGridReady, setIsGridReady] = useState(false);
+  const [showValueColumns, setShowValueColumns] = useState(false);
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
   const lastSentLiveMapMessageRef = useRef("");
@@ -117,9 +124,21 @@ function ConsumePanelView(props: ConsumePanelProps) {
     payloadEncoding: props.payloadEncoding
   });
 
+  const valueColumnCandidates = useMemo(() => {
+    return collectMessageValuePaths(props.messages, VALUE_COLUMN_SAMPLE_SIZE, MAX_VALUE_COLUMN_CANDIDATES);
+  }, [props.messages]);
+  const visibleValueColumnPaths = useMemo(
+    () => Array.from(new Set([...props.valueColumnPaths, ...valueColumnCandidates])),
+    [props.valueColumnPaths, valueColumnCandidates]
+  );
+
   useEffect(() => {
     setFilterDraft(props.filterText);
   }, [props.filterText]);
+
+  useEffect(() => {
+    setShowValueColumns(false);
+  }, [props.topic]);
 
   useEffect(() => {
     setIsGridReady(false);
@@ -205,6 +224,12 @@ function ConsumePanelView(props: ConsumePanelProps) {
     setPreviewEncoding(props.payloadEncoding);
   }
 
+  function toggleValueColumn(path: string) {
+    props.onValueColumnPaths(props.valueColumnPaths.includes(path)
+      ? props.valueColumnPaths.filter((item) => item !== path)
+      : [...props.valueColumnPaths, path]);
+  }
+
   const queryMessage = props.mode === "live"
     ? props.isConsuming
       ? t(props.language, "task.stoppingLiveConsume")
@@ -280,6 +305,37 @@ function ConsumePanelView(props: ConsumePanelProps) {
         onFilterMode={props.onFilterMode}
         onClear={clearMessageFilter}
       />
+      {visibleValueColumnPaths.length > 0 && (
+        <div className="value-column-bar">
+          <button
+            type="button"
+            className={showValueColumns ? "filter-mode-toggle active" : "filter-mode-toggle"}
+            onClick={() => setShowValueColumns((current) => !current)}
+          >
+            {t(props.language, "label.valueColumns")}
+            {props.valueColumnPaths.length > 0 && <span>{props.valueColumnPaths.length}</span>}
+          </button>
+          {props.valueColumnPaths.length > 0 && (
+            <button type="button" className="ghost compact" onClick={() => props.onValueColumnPaths([])}>
+              {t(props.language, "label.clear")}
+            </button>
+          )}
+          {showValueColumns && (
+            <div className="value-column-picker">
+              {visibleValueColumnPaths.map((path) => (
+                <label key={path}>
+                  <input
+                    type="checkbox"
+                    checked={props.valueColumnPaths.includes(path)}
+                    onChange={() => toggleValueColumn(path)}
+                  />
+                  <span>{path}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div
         className={props.inspectorCollapsed ? "consume-grid inspector-collapsed" : "consume-grid"}
         ref={consumeGridRef}
@@ -289,6 +345,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
           {isGridReady ? (
             <MessageGrid
               rows={gridRows}
+              valueColumnPaths={props.valueColumnPaths}
               selectedMessageKey={selectedMessageKey}
               filterMode={props.filterMode}
               hasActiveMessageFilter={hasActiveMessageFilter}
@@ -364,6 +421,7 @@ function areConsumePanelPropsEqual(previous: ConsumePanelProps, next: ConsumePan
     && previous.keyFormat === next.keyFormat
     && previous.valueFormat === next.valueFormat
     && previous.payloadEncoding === next.payloadEncoding
+    && previous.valueColumnPaths === next.valueColumnPaths
     && previous.offsetPagination === next.offsetPagination
     && previous.messagePaneHeight === next.messagePaneHeight;
 }

@@ -9,6 +9,9 @@ import type {
 import { shutdownConsumer } from "./consumeUtils.js";
 import type { OffsetWindow } from "./offsetWindow.js";
 
+const OFFSET_CONSUME_EMPTY_IDLE_TIMEOUT_MS = 3500;
+const OFFSET_CONSUME_ACTIVE_IDLE_TIMEOUT_MS = 700;
+
 type OffsetConsumerRunnerParams = {
   consumer: Consumer;
   profile: ServerProfile;
@@ -37,7 +40,10 @@ export async function runOffsetConsumer({
 
     const resetIdleTimeout = () => {
       if (idleTimeout) clearTimeout(idleTimeout);
-      idleTimeout = setTimeout(finish, messages.length > 0 ? 700 : 1200);
+      idleTimeout = setTimeout(
+        finish,
+        messages.length > 0 ? OFFSET_CONSUME_ACTIVE_IDLE_TIMEOUT_MS : OFFSET_CONSUME_EMPTY_IDLE_TIMEOUT_MS
+      );
     };
 
     const cleanup = async () => {
