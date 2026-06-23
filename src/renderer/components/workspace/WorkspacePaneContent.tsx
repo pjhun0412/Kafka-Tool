@@ -28,6 +28,7 @@ type WorkspacePaneContentProps = {
   topic: string;
   openedTopicTabs: string[];
   language: AppLanguage;
+  isConnected: boolean;
   detail: TopicDetail | null;
   topics: TopicSummary[];
   brokers: BrokerSummary[];
@@ -188,6 +189,7 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
       {props.view === "topics" && (
         <ServerTopicsPanel
           topics={props.topics}
+          isConnected={props.isConnected}
           favoriteTopicNames={props.favoriteTopicNames}
           selectedTopics={props.selectedTopics}
           sorting={props.topicSorting}

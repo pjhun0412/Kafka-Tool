@@ -202,6 +202,7 @@ export function PrimaryWorkspacePane(props: {
           topic={props.selectedTopic}
           openedTopicTabs={props.topicTabs}
           language={props.language}
+          isConnected={props.isSelectedServerConnected}
           detail={props.detail}
           topics={props.topics}
           brokers={props.brokers}

@@ -24,6 +24,10 @@ export function DataGrid<TData extends object>(props: {
   getRowStyle?: (row: TData) => React.CSSProperties;
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
+  keyboardNavigation?: {
+    selectedKey: string;
+    onSelectRow: (row: TData) => void;
+  };
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
 }) {
@@ -86,9 +90,47 @@ export function DataGrid<TData extends object>(props: {
     0,
     rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1]?.end ?? 0)
   );
+  const getResolvedRowKey = (row: TData, index: number) => props.getRowKey ? props.getRowKey(row, index) : String(index);
+
+  function selectRow(row: TData) {
+    if (props.keyboardNavigation) {
+      props.keyboardNavigation.onSelectRow(row);
+      return;
+    }
+    props.onRowClick?.(row);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!props.keyboardNavigation || rows.length === 0) return;
+    const selectedIndex = rows.findIndex((row) => getResolvedRowKey(row.original, row.index) === props.keyboardNavigation?.selectedKey);
+    const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowDown") {
+      nextIndex = Math.min(rows.length - 1, currentIndex + 1);
+    } else if (event.key === "ArrowUp") {
+      nextIndex = Math.max(0, currentIndex - 1);
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = rows.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    if (nextIndex === selectedIndex) return;
+    rowVirtualizer.scrollToIndex(nextIndex, { align: "center" });
+    props.keyboardNavigation.onSelectRow(rows[nextIndex].original);
+  }
 
   return (
-    <div ref={scrollParentRef} className={props.className ? `message-table ${props.className}` : "message-table"}>
+    <div
+      ref={scrollParentRef}
+      className={props.className ? `message-table ${props.className}` : "message-table"}
+      tabIndex={props.keyboardNavigation ? 0 : undefined}
+      onKeyDown={handleKeyDown}
+    >
       <table style={{ tableLayout: "fixed", width: "100%" }}>
         <DataGridHeader
           table={table}
@@ -109,7 +151,10 @@ export function DataGrid<TData extends object>(props: {
                 key={props.getRowKey ? props.getRowKey(row.original, row.index) : row.id}
                 className={props.getRowClassName?.(row.original)}
                 style={props.getRowStyle?.(row.original)}
-                onClick={() => props.onRowClick?.(row.original)}
+                onClick={() => {
+                  scrollParentRef.current?.focus();
+                  selectRow(row.original);
+                }}
                 onDoubleClick={() => props.onRowDoubleClick?.(row.original)}
               >
                 {row.getVisibleCells().map((cell) => {

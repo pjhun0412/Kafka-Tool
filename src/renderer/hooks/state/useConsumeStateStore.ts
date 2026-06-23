@@ -23,6 +23,12 @@ type ConsumeStateStoreParams = {
   consumeDefaultsByServer: AppPreferences["consumeDefaultsByServer"];
 };
 
+const viewerPreferencePatchKeys = ["inspectorMode", "keyFormat", "valueFormat", "payloadEncoding"] as const;
+
+function hasViewerPreferencePatch(patch: Partial<TopicConsumeState>) {
+  return viewerPreferencePatchKeys.some((key) => patch[key] !== undefined);
+}
+
 export function useConsumeStateStore({
   selectedServerId,
   consumeDefaults,
@@ -92,7 +98,9 @@ export function useConsumeStateStore({
   }
 
   function updateConsumeStateFor(serverId: string, topic: string, patch: Partial<TopicConsumeState>, pane: WorkspacePaneId = "primary") {
-    rememberViewerPreference(serverId, topic, patch);
+    if (hasViewerPreferencePatch(patch)) {
+      rememberViewerPreference(serverId, topic, patch);
+    }
     if (pane === "split") {
       setSplitConsumeStatesByServer((current) => mergeConsumeState(current, serverId, topic, patch));
       return;

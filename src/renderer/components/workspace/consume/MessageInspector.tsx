@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Filter, Send } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Copy, Filter, MapPin, Send } from "lucide-react";
 import type { ConsumedMessage } from "../../../../shared/types";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
+import { createLiveMapPoint } from "../../../mapPreview";
 import { formatMessagePayload } from "../../../messagePreview";
 import type { MessageInspectorMode, MessagePayloadFormat, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode } from "../../../uiTypes";
 import { getEpochTitle, renderHighlightedText, renderRawJsonText, stringifyPrimitive } from "../../../utils";
@@ -45,8 +46,20 @@ export function MessageInspector(props: {
     props.previewEncoding,
     props.valueFormat === "json"
   );
+  const mapPoint = useMemo(
+    () => (props.selectedMessage ? createLiveMapPoint(props.selectedMessage, props.payload) ?? createLiveMapPoint(props.selectedMessage) : null),
+    [props.payload, props.selectedMessage]
+  );
   const canShowTree = Boolean(props.payload);
   const showEncoding = props.mode === "preview" && props.previewMode === "text" && (props.previewTarget === "key" || props.previewTarget === "value");
+
+  async function openLiveMap() {
+    const focusedPoint = mapPoint ? { ...mapPoint, focus: true } : null;
+    if (focusedPoint) {
+      await window.kafkaApi.sendLiveMapPoints([focusedPoint]);
+    }
+    await window.kafkaApi.openLiveMap();
+  }
 
   return (
     <section className="message-inspector">
@@ -103,6 +116,14 @@ export function MessageInspector(props: {
           {props.mode === "preview" && (
             <button className="ghost compact" onClick={() => void copyText(previewText)} disabled={!previewText}><Copy size={14} /> {t(language, "label.preview")}</button>
           )}
+          <button
+            className="ghost compact"
+            onClick={() => void openLiveMap()}
+            disabled={!mapPoint}
+            title={mapPoint ? t(language, "title.openLiveMap") : t(language, "label.noMapCoordinate")}
+          >
+            <MapPin size={14} /> Map
+          </button>
           <button className="ghost compact" onClick={() => props.selectedMessage && props.onSendToProduce(props.selectedMessage)} disabled={!props.selectedMessage}><Send size={14} /> Produce</button>
           <button className="ghost compact icon-only" onClick={props.onCollapse} title={t(language, "title.collapseMessageViewer")} aria-label={t(language, "title.collapseMessageViewer")}><ChevronDown size={15} /></button>
         </div>

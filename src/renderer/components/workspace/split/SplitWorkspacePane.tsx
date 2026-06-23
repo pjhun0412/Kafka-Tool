@@ -157,6 +157,7 @@ export function SplitWorkspacePane(props: {
         topic={props.pane.topic}
         openedTopicTabs={props.pane.topicTabs}
         language={props.language}
+        isConnected={props.isConnected}
         detail={props.pane.detail}
         topics={props.topics}
         brokers={props.brokers}

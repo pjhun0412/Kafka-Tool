@@ -8,6 +8,7 @@ import { registerMessageExportIpcHandlers } from "./ipc/messageExport.js";
 import { registerServerIpcHandlers } from "./ipc/servers.js";
 import { registerTopicIpcHandlers } from "./ipc/topics.js";
 import { logMainError, pruneOldLogs, writeAppLog } from "./logger.js";
+import { clearLiveMapPoints, getLiveMapPoints, openLiveMapWindow, sendLiveMapPoints } from "./liveMapWindow.js";
 import { createApplicationMenu, getLiveRecordTitle, resolveMenuLanguage } from "./menu.js";
 import { createSettingsTransferActions } from "./settingsTransfer.js";
 import { createMainWindow } from "./window.js";
@@ -77,6 +78,10 @@ registerAppSettingsIpcHandlers({
   createApplicationMenu: rebuildApplicationMenu,
   exportSettingsToFile,
   importSettingsFromFile,
+  clearLiveMapPoints,
+  getLiveMapPoints,
+  openLiveMapWindow,
+  sendLiveMapPoints,
   setMenuLanguage: (language) => {
     menuLanguage = language;
   }

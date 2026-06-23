@@ -185,6 +185,10 @@ export const MessageGrid = memo(function MessageGrid(props: {
       emptyText={t(language, "label.noMessages")}
       getRowKey={(row) => row.rowKey}
       getRowClassName={getRowClassName}
+      keyboardNavigation={{
+        selectedKey: props.selectedMessageKey,
+        onSelectRow: handleRowClick
+      }}
       onRowClick={handleRowClick}
     />
   );

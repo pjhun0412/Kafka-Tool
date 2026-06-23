@@ -344,6 +344,20 @@ export type ConsumedMessage = {
 
 export const RAW_PAYLOAD_BASE64_LIMIT_BYTES = 256 * 1024;
 
+export type LiveMapPoint = {
+  id: string;
+  topic: string;
+  partition: number;
+  offset: string;
+  timestamp: string;
+  lat: number;
+  lng: number;
+  heading?: number;
+  focus?: boolean;
+  label?: string;
+  meta?: Record<string, string>;
+};
+
 export type MessageExportFormat = "json" | "csv" | "log";
 export type MessageExportPayloadOptions = {
   keyFormat?: "text" | "hex" | "base64";
@@ -457,6 +471,9 @@ export type KafkaApi = {
   importSettings: (options?: ImportSettingsOptions) => Promise<ImportSettingsResult | null>;
   logError: (payload: AppLogPayload) => Promise<void>;
   openLogsFolder: () => Promise<string>;
+  openExternalUrl: (url: string) => Promise<void>;
+  openLiveMap: () => Promise<void>;
+  sendLiveMapPoints: (points: LiveMapPoint[]) => Promise<void>;
   checkForUpdates: () => Promise<void>;
   installUpdate: () => Promise<void>;
   getAppVersion: () => Promise<string>;

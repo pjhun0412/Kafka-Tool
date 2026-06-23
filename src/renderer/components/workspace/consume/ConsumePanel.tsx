@@ -1,8 +1,9 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { ChevronUp, RefreshCw } from "lucide-react";
-import type { ConsumedMessage, MessageExportFormat } from "../../../../shared/types";
+import type { ConsumedMessage, LiveMapPoint, MessageExportFormat } from "../../../../shared/types";
 import type { AppLanguage } from "../../../i18n";
 import { t } from "../../../i18n";
+import { createLiveMapPoint } from "../../../mapPreview";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspectorMode, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { MessageInspector } from "./MessageInspector";
@@ -11,7 +12,7 @@ import { MessageGrid } from "./MessageGrid";
 import { useConsumePanelMessages } from "./useConsumePanelMessages";
 import { useInspectorResize } from "./useInspectorResize";
 
-export function ConsumePanel(props: {
+type ConsumePanelProps = {
   messages: ConsumedMessage[];
   topic: string;
   language: AppLanguage;
@@ -69,7 +70,9 @@ export function ConsumePanel(props: {
   onExportAll: (format: MessageExportFormat) => void;
   onStart: () => void;
   onStop: () => void;
-}) {
+};
+
+function ConsumePanelView(props: ConsumePanelProps) {
   const [previewTarget, setPreviewTarget] = useState<MessagePayloadTarget>("value");
   const [previewMode, setPreviewMode] = useState<MessagePreviewMode>(props.valueFormat);
   const [previewEncoding, setPreviewEncoding] = useState<MessagePreviewEncoding>(props.payloadEncoding);
@@ -79,6 +82,10 @@ export function ConsumePanel(props: {
   const [isGridReady, setIsGridReady] = useState(false);
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
+  const lastSentLiveMapMessageRef = useRef("");
+  const lastSentSelectedMapMessageRef = useRef("");
+  const pendingLiveMapPointsRef = useRef<LiveMapPoint[]>([]);
+  const liveMapFlushTimerRef = useRef<number | null>(null);
   const startInspectorResize = useInspectorResize({
     consumeGridRef,
     inspectorCollapsed: props.inspectorCollapsed,
@@ -135,6 +142,45 @@ export function ConsumePanel(props: {
   }, [props.autoScroll, props.messages.length, props.mode]);
 
   useEffect(() => {
+    if (props.mode !== "live" || props.messages.length === 0) return;
+    const latestMessage = props.messages[0];
+    const latestKey = `${latestMessage.topic}:${latestMessage.partition}:${latestMessage.offset}:${latestMessage.timestamp}`;
+    if (latestKey === lastSentLiveMapMessageRef.current) return;
+    lastSentLiveMapMessageRef.current = latestKey;
+    const point = createLiveMapPoint(latestMessage);
+    if (!point) return;
+    pendingLiveMapPointsRef.current.push(point);
+    if (liveMapFlushTimerRef.current !== null) return;
+    liveMapFlushTimerRef.current = window.setTimeout(() => {
+      liveMapFlushTimerRef.current = null;
+      const points = pendingLiveMapPointsRef.current;
+      pendingLiveMapPointsRef.current = [];
+      if (points.length > 0) {
+        void window.kafkaApi.sendLiveMapPoints(points);
+      }
+    }, 250);
+  }, [props.messages, props.mode]);
+
+  useEffect(() => {
+    if (!props.selectedMessage) return;
+    const selectedKey = `${props.selectedMessage.topic}:${props.selectedMessage.partition}:${props.selectedMessage.offset}:${props.selectedMessage.timestamp}`;
+    if (selectedKey === lastSentSelectedMapMessageRef.current) return;
+    lastSentSelectedMapMessageRef.current = selectedKey;
+    const point = createLiveMapPoint(props.selectedMessage, selectedPayload) ?? createLiveMapPoint(props.selectedMessage);
+    if (point) {
+      void window.kafkaApi.sendLiveMapPoints([{ ...point, focus: true }]);
+    }
+  }, [props.selectedMessage, selectedPayload]);
+
+  useEffect(() => {
+    return () => {
+      if (liveMapFlushTimerRef.current !== null) {
+        window.clearTimeout(liveMapFlushTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (previewTarget === "key") setPreviewMode(props.keyFormat);
     if (previewTarget === "value") setPreviewMode(props.valueFormat);
   }, [previewTarget, props.keyFormat, props.valueFormat]);
@@ -149,6 +195,7 @@ export function ConsumePanel(props: {
   }
 
   function selectMessage(message: ConsumedMessage) {
+    if (props.selectedMessage === message) return;
     props.onSelectMessage(message);
     if (previewTarget === "key") {
       setPreviewMode(props.keyFormat);
@@ -289,3 +336,36 @@ export function ConsumePanel(props: {
     </section>
   );
 }
+
+function areConsumePanelPropsEqual(previous: ConsumePanelProps, next: ConsumePanelProps) {
+  return previous.messages === next.messages
+    && previous.topic === next.topic
+    && previous.language === next.language
+    && previous.selectedMessage === next.selectedMessage
+    && previous.mode === next.mode
+    && previous.offsetOrder === next.offsetOrder
+    && previous.isConsuming === next.isConsuming
+    && previous.offset === next.offset
+    && previous.limit === next.limit
+    && previous.partition === next.partition
+    && previous.timeStart === next.timeStart
+    && previous.timeEnd === next.timeEnd
+    && previous.filterText === next.filterText
+    && previous.filterField === next.filterField
+    && previous.filterMode === next.filterMode
+    && previous.inspectorMode === next.inspectorMode
+    && previous.inspectorCollapsed === next.inspectorCollapsed
+    && previous.isQuerying === next.isQuerying
+    && previous.autoScroll === next.autoScroll
+    && previous.maxMessages === next.maxMessages
+    && previous.liveRecordEnabled === next.liveRecordEnabled
+    && previous.liveRecordPath === next.liveRecordPath
+    && previous.liveRecordCount === next.liveRecordCount
+    && previous.keyFormat === next.keyFormat
+    && previous.valueFormat === next.valueFormat
+    && previous.payloadEncoding === next.payloadEncoding
+    && previous.offsetPagination === next.offsetPagination
+    && previous.messagePaneHeight === next.messagePaneHeight;
+}
+
+export const ConsumePanel = React.memo(ConsumePanelView, areConsumePanelPropsEqual);

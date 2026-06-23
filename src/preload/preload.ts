@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppLogPayload, AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppLogPayload, AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, LiveMapPoint, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -11,6 +11,9 @@ const api: KafkaApi = {
   importSettings: (options) => ipcRenderer.invoke("settings:import", options),
   logError: (payload: AppLogPayload) => ipcRenderer.invoke("app:log-error", payload),
   openLogsFolder: () => ipcRenderer.invoke("app:open-logs-folder"),
+  openExternalUrl: (url: string) => ipcRenderer.invoke("app:open-external-url", url),
+  openLiveMap: () => ipcRenderer.invoke("app:open-live-map"),
+  sendLiveMapPoints: (points: LiveMapPoint[]) => ipcRenderer.invoke("app:send-live-map-points", points),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   installUpdate: () => ipcRenderer.invoke("updates:install"),
   getAppVersion: () => ipcRenderer.invoke("app:version"),

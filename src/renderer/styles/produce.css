@@ -56,6 +56,10 @@
   @apply flex flex-wrap items-center gap-2 text-[11px] text-slate-300;
 }
 
+.produce-primary-action {
+  @apply h-9 min-h-9 shrink-0 whitespace-nowrap px-3;
+}
+
 .produce-interval-controls label {
   @apply inline-flex h-9 min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 leading-none;
   font-weight: var(--app-font-weight);
@@ -83,6 +87,14 @@
 .produce-interval-status {
   @apply inline-flex h-9 min-h-9 items-center rounded-md border border-[#264f78] bg-[#1b2f3a] px-2 text-[11px] text-[#9cdcfe];
   font-weight: var(--app-font-weight);
+}
+
+.produce-interval-top-panel {
+  @apply grid gap-2;
+}
+
+.produce-interval-top-panel:empty {
+  @apply hidden;
 }
 
 .produce-template-toolbar {
@@ -141,8 +153,20 @@
   @apply border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
 }
 
+.produce-value-editor-row {
+  @apply grid gap-2;
+}
+
+.produce-value-editor-row.preview-open {
+  @apply grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] items-stretch;
+}
+
+.produce-value-editor-row textarea {
+  @apply min-h-[280px];
+}
+
 .produce-render-preview {
-  @apply grid gap-2 rounded-md border border-[#30363d] bg-[#111315] p-3;
+  @apply grid min-h-[280px] content-start gap-2 rounded-md border border-[#30363d] bg-[#111315] p-3;
 }
 
 .produce-render-preview-title {
@@ -175,7 +199,7 @@
 }
 
 .produce-render-preview pre {
-  @apply m-0 max-h-[260px] overflow-auto rounded border border-[#30363d] bg-[#070a0d] p-3 text-[12px] leading-5 text-slate-100;
+  @apply m-0 max-h-[220px] overflow-auto rounded border border-[#30363d] bg-[#070a0d] p-3 text-[12px] leading-5 text-slate-100;
 }
 
 .produce-render-preview code {
@@ -185,6 +209,10 @@
 @media (max-width: 1180px) {
   .produce-template-toolbar {
     @apply ml-0;
+  }
+
+  .produce-value-editor-row.preview-open {
+    @apply grid-cols-1;
   }
 }
 

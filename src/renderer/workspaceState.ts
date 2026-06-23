@@ -22,20 +22,11 @@ export function getTopicConsumeState(states: ConsumeStatesByServer, serverId: st
   return states[serverId]?.[topic] ?? null;
 }
 
-function cloneConsumedMessage(message: TopicConsumeState["messages"][number]) {
-  return {
-    ...message,
-    headers: { ...message.headers },
-    decoded: message.decoded ? { ...message.decoded } : undefined
-  };
-}
-
 export function cloneTopicConsumeState(state: TopicConsumeState): TopicConsumeState {
-  const messages = state.messages.map(cloneConsumedMessage);
   return {
     ...state,
-    messages,
-    selectedMessage: state.selectedMessage ? cloneConsumedMessage(state.selectedMessage) : null,
+    messages: state.messages,
+    selectedMessage: state.selectedMessage,
     offsetPagination: state.offsetPagination
       ? {
           ...state.offsetPagination,

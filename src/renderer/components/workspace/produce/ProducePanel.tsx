@@ -298,6 +298,21 @@ export function ProducePanel(props: {
             )}
           </div>
         )}
+        {mode === "single" ? (
+          <button className="primary compact produce-primary-action" onClick={props.onProduce} disabled={!props.topic}>
+            <Send size={15} /> {t(language, "action.sendMessage")}
+          </button>
+        ) : (
+          <button
+            className={props.intervalState.isRunning ? "danger compact produce-primary-action" : "primary compact produce-primary-action"}
+            type="button"
+            onClick={props.intervalState.isRunning ? props.onStopInterval : requestIntervalStart}
+            disabled={!props.topic}
+          >
+            {props.intervalState.isRunning ? <Square size={15} /> : <Play size={15} />}
+            {props.intervalState.isRunning ? t(language, "action.stopInterval") : t(language, "action.startInterval")}
+          </button>
+        )}
         <div className="produce-template-toolbar">
           <span className="produce-template-toolbar-label">{t(language, "produceTemplate.template")}</span>
           <select value={selectedTemplateId} onChange={(event) => applyTemplate(event.target.value)} aria-label={t(language, "produceTemplate.select")}>
@@ -326,94 +341,11 @@ export function ProducePanel(props: {
           {templateMessage && <span className="produce-template-message">{templateMessage}</span>}
         </div>
       </div>
-      {props.hasAvroSchema && (
-        <div className="produce-schema-notice">
-          <Braces size={15} />
-          {t(language, "label.avroSerializationEnabled")} ({props.avroEncoding === "confluent" ? "Confluent" : "Raw"})
-        </div>
-      )}
-      <label>{t(language, "label.key")}<input value={props.keyText} onChange={(event) => props.onKey(event.target.value)} placeholder={t(language, "placeholder.optionalKey")} /></label>
-      <label>{t(language, "label.headers")}<textarea className="headers-editor" value={props.headers} onChange={(event) => props.onHeaders(event.target.value)} placeholder="{ }" /></label>
-      <label>
-        <span className="produce-value-label-row">
-          <span>{t(language, "label.value")}</span>
-          <span className="produce-value-actions">
-            <button
-              type="button"
-              className={isRenderedPreviewOpen ? "ghost compact active" : "ghost compact"}
-              onClick={() => setIsRenderedPreviewOpen((current) => !current)}
-              title={t(language, "produce.renderPreview")}
-            >
-              <Eye size={13} /> {t(language, "label.preview")}
-            </button>
-          </span>
-        </span>
-        <textarea
-          className={valueIssue ? "invalid" : undefined}
-          value={props.value}
-          onChange={(event) => props.onValue(event.target.value)}
-        />
-      </label>
-      {isRenderedPreviewOpen && (
-        <div className="produce-render-preview">
-          <div className="produce-render-preview-title">
-            <span>{t(language, "produce.renderedPreview")}</span>
-            <button type="button" className="ghost compact" onClick={() => setIsRenderedPreviewOpen(false)}>{t(language, "title.close")}</button>
-          </div>
-          {templateIssues.length > 0 && (
-            <div className="produce-template-issues">
-              <strong>{t(language, "produce.dynamicFieldIssues")}</strong>
-              {templateIssues.map((issue, index) => (
-                <span key={`${issue.field}-${issue.token}-${index}`}>
-                  {formatTemplateIssue(issue, language)}
-                </span>
-              ))}
-            </div>
-          )}
-          <div className="produce-render-preview-grid">
-            <div className="produce-render-preview-field">
-              <span>{t(language, "label.key")}</span>
-              <pre><code>{renderedPreview.key || t(language, "label.noKey")}</code></pre>
-            </div>
-            <div className="produce-render-preview-field">
-              <span>{t(language, "label.headers")}</span>
-              <pre><code>{renderedPreview.headers.trim() ? tryPrettyJson(renderedPreview.headers) : "{ }"}</code></pre>
-            </div>
-            <div className="produce-render-preview-field">
-              <span>{t(language, "label.value")}</span>
-              <pre><code>{renderedPreview.value ? tryPrettyJson(renderedPreview.value) : t(language, "label.emptyValue")}</code></pre>
-            </div>
-          </div>
-        </div>
-      )}
-      {valueIssue && (
-        <div className="produce-value-error">
-          <span>{valueIssue.message}</span>
-          {valueIssue.line > 0 && <span>Line {valueIssue.line}, column {valueIssue.column}</span>}
-          {valueIssue.snippet && (
-            <pre className="produce-error-snippet">
-              <code>{valueIssue.snippet}</code>
-              <code>{`${" ".repeat(valueIssue.caretColumn)}^`}</code>
-            </pre>
-          )}
-        </div>
-      )}
       {mode === "interval" && (
-        <div className="produce-template-panel">
+        <div className="produce-interval-top-panel">
           <div className="produce-interval-warning">
             {t(language, "produce.intervalWarning")}
           </div>
-          <details className="produce-template-guide">
-            <summary>Dynamic field guide</summary>
-            <div className="produce-template-examples">
-              {getProduceTemplateExamples().map((example) => (
-                <div key={example.syntax} className="produce-template-example">
-                  <code>{example.syntax}</code>
-                  <span>{example.description}</span>
-                </div>
-              ))}
-            </div>
-          </details>
           {isConfirmingInterval && (
             <div className="produce-interval-confirm">
               <strong>{t(language, "produce.confirmTitle")}</strong>
@@ -442,20 +374,108 @@ export function ProducePanel(props: {
           {(intervalError || props.intervalState.error) && <div className="produce-interval-error">{intervalError || props.intervalState.error}</div>}
         </div>
       )}
-      {mode === "single" ? (
-        <button className="primary wide" onClick={props.onProduce} disabled={!props.topic}>
-          <Send size={16} /> {t(language, "action.sendMessage")}
-        </button>
-      ) : (
-        <button
-          className={props.intervalState.isRunning ? "danger wide" : "primary wide"}
-          type="button"
-          onClick={props.intervalState.isRunning ? props.onStopInterval : requestIntervalStart}
-          disabled={!props.topic}
-        >
-          {props.intervalState.isRunning ? <Square size={16} /> : <Play size={16} />}
-          {props.intervalState.isRunning ? t(language, "action.stopInterval") : t(language, "action.startInterval")}
-        </button>
+      {props.hasAvroSchema && (
+        <div className="produce-schema-notice">
+          <Braces size={15} />
+          {t(language, "label.avroSerializationEnabled")} ({props.avroEncoding === "confluent" ? "Confluent" : "Raw"})
+        </div>
+      )}
+      <label>{t(language, "label.key")}<input value={props.keyText} onChange={(event) => props.onKey(event.target.value)} placeholder={t(language, "placeholder.optionalKey")} /></label>
+      <label>{t(language, "label.headers")}<textarea className="headers-editor" value={props.headers} onChange={(event) => props.onHeaders(event.target.value)} placeholder="{ }" /></label>
+      <div className="produce-value-field">
+        <div className="produce-value-label-row">
+          <span>{t(language, "label.value")}</span>
+          <span className="produce-value-actions">
+            <button
+              type="button"
+              className={isRenderedPreviewOpen ? "ghost compact active" : "ghost compact"}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsRenderedPreviewOpen((current) => !current);
+              }}
+              title={t(language, "produce.renderPreview")}
+            >
+              <Eye size={13} /> {t(language, "label.preview")}
+            </button>
+          </span>
+        </div>
+        <div className={isRenderedPreviewOpen ? "produce-value-editor-row preview-open" : "produce-value-editor-row"}>
+          <textarea
+            className={valueIssue ? "invalid" : undefined}
+            value={props.value}
+            onChange={(event) => props.onValue(event.target.value)}
+          />
+          {isRenderedPreviewOpen && (
+            <div className="produce-render-preview">
+              <div className="produce-render-preview-title">
+                <span>{t(language, "produce.renderedPreview")}</span>
+                <button
+                  type="button"
+                  className="ghost compact"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsRenderedPreviewOpen(false);
+                  }}
+                >
+                  {t(language, "title.close")}
+                </button>
+              </div>
+              {templateIssues.length > 0 && (
+                <div className="produce-template-issues">
+                  <strong>{t(language, "produce.dynamicFieldIssues")}</strong>
+                  {templateIssues.map((issue, index) => (
+                    <span key={`${issue.field}-${issue.token}-${index}`}>
+                      {formatTemplateIssue(issue, language)}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="produce-render-preview-grid">
+                <div className="produce-render-preview-field">
+                  <span>{t(language, "label.key")}</span>
+                  <pre><code>{renderedPreview.key || t(language, "label.noKey")}</code></pre>
+                </div>
+                <div className="produce-render-preview-field">
+                  <span>{t(language, "label.headers")}</span>
+                  <pre><code>{renderedPreview.headers.trim() ? tryPrettyJson(renderedPreview.headers) : "{ }"}</code></pre>
+                </div>
+                <div className="produce-render-preview-field">
+                  <span>{t(language, "label.value")}</span>
+                  <pre><code>{renderedPreview.value ? tryPrettyJson(renderedPreview.value) : t(language, "label.emptyValue")}</code></pre>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {valueIssue && (
+        <div className="produce-value-error">
+          <span>{valueIssue.message}</span>
+          {valueIssue.line > 0 && <span>Line {valueIssue.line}, column {valueIssue.column}</span>}
+          {valueIssue.snippet && (
+            <pre className="produce-error-snippet">
+              <code>{valueIssue.snippet}</code>
+              <code>{`${" ".repeat(valueIssue.caretColumn)}^`}</code>
+            </pre>
+          )}
+        </div>
+      )}
+      {mode === "interval" && (
+        <div className="produce-template-panel">
+          <details className="produce-template-guide">
+            <summary>Dynamic field guide</summary>
+            <div className="produce-template-examples">
+              {getProduceTemplateExamples().map((example) => (
+                <div key={example.syntax} className="produce-template-example">
+                  <code>{example.syntax}</code>
+                  <span>{example.description}</span>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
       )}
     </section>
   );

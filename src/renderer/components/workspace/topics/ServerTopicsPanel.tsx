@@ -9,6 +9,7 @@ import { t } from "../../../i18n";
 
 export function ServerTopicsPanel(props: {
   topics: TopicSummary[];
+  isConnected: boolean;
   favoriteTopicNames: string[];
   selectedTopics: string[];
   sorting?: SortingState;
@@ -126,7 +127,13 @@ export function ServerTopicsPanel(props: {
         <h2>{t(language, "label.topics")}</h2>
         <div className="section-title-actions">
           <span>{props.topics.length} {t(language, "label.topics")}</span>
-          <button className="primary compact" type="button" onClick={props.onCreateTopic} title={t(language, "title.createTopic")}>
+          <button
+            className="primary compact"
+            type="button"
+            onClick={props.onCreateTopic}
+            disabled={!props.isConnected}
+            title={props.isConnected ? t(language, "title.createTopic") : t(language, "title.disconnected")}
+          >
             <Plus size={14} />
             {t(language, "topicCreate.create")}
           </button>

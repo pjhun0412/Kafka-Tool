@@ -22,12 +22,24 @@ const tokenPattern = /\\?\$\{([^}]+)\}/g;
 
 type ParsedOptions = Record<string, string>;
 
+type ParsedToken = {
+  expression: string;
+  kind: string;
+  options: ParsedOptions;
+};
+
 function parseOptions(optionText = ""): ParsedOptions {
   return optionText.split("|").reduce<ParsedOptions>((options, option) => {
     const [key, ...valueParts] = option.split("=");
     if (key && valueParts.length > 0) options[key.trim()] = valueParts.join("=").trim();
     return options;
   }, {});
+}
+
+function parsePositiveIntegerOption(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
 function parseRange(expression: string) {
@@ -44,7 +56,8 @@ function parseRange(expression: string) {
     start,
     end,
     options,
-    pad: options.pad ? Number(options.pad) : inferredPad
+    pad: parsePositiveIntegerOption(options.pad, inferredPad),
+    step: parsePositiveIntegerOption(options.step, 1)
   };
 }
 
@@ -59,15 +72,59 @@ function parseFloatRange(expression: string) {
   };
 }
 
+function parseToken(token: string): ParsedToken {
+  const colonIndex = token.indexOf(":");
+  const rawKind = colonIndex >= 0 ? token.slice(0, colonIndex) : token;
+  const expression = colonIndex >= 0 ? token.slice(colonIndex + 1) : "";
+  const [kind, ...kindOptionParts] = rawKind.split("|");
+  return {
+    expression,
+    kind: kind.trim().toLowerCase(),
+    options: parseOptions(kindOptionParts.join("|"))
+  };
+}
+
+function splitExpressionOptions(expression: string) {
+  const [value, ...optionParts] = expression.split("|");
+  return {
+    options: parseOptions(optionParts.join("|")),
+    value
+  };
+}
+
+function parseOffsetMs(offsetText: string | undefined) {
+  const compact = offsetText?.trim().toLowerCase();
+  if (!compact) return 0;
+  const match = /^([+-]?)(\d+(?:\.\d+)?)(ms|s|m|h|d|w)$/.exec(compact);
+  if (!match) return NaN;
+  const [, signText, amountText, unit] = match;
+  const sign = signText === "-" ? -1 : 1;
+  const amount = Number(amountText);
+  const multipliers: Record<string, number> = {
+    d: 24 * 60 * 60 * 1000,
+    h: 60 * 60 * 1000,
+    m: 60 * 1000,
+    ms: 1,
+    s: 1000,
+    w: 7 * 24 * 60 * 60 * 1000
+  };
+  return sign * amount * multipliers[unit];
+}
+
+function dateWithOffset(options: ParsedOptions) {
+  const offsetMs = parseOffsetMs(options.offset);
+  return new Date(Date.now() + (Number.isFinite(offsetMs) ? offsetMs : 0));
+}
+
 function getTokenIssue(token: string) {
-  const [kind, ...rest] = token.split(":");
-  const expression = rest.join(":");
-  const normalizedKind = kind.trim().toLowerCase();
+  const { expression, kind: normalizedKind, options: tokenOptions } = parseToken(token);
+  const dateOptions = splitExpressionOptions(expression).options;
+  const offset = tokenOptions.offset ?? dateOptions.offset;
 
   if (!normalizedKind) return "Token name is empty.";
   if (normalizedKind === "seq") {
     return expression && !parseRange(expression)
-      ? "Use ${seq} or ${seq:start..end|pad=n}."
+      ? "Use ${seq} or ${seq:start..end|step=n|pad=n}."
       : "";
   }
   if (normalizedKind === "number" || normalizedKind === "random") {
@@ -82,12 +139,18 @@ function getTokenIssue(token: string) {
       : "Provide choices separated by |, such as ${choice:A|B|C}.";
   }
   if (normalizedKind === "timestamp") {
-    return !expression || expression === "s" || expression === "seconds"
+    const { value } = splitExpressionOptions(expression);
+    if (offset && !Number.isFinite(parseOffsetMs(offset))) return "Use offset like offset=-3d or offset=+1h.";
+    return !value || value === "s" || value === "seconds"
       ? ""
       : "Use ${timestamp} or ${timestamp:s}.";
   }
-  if (normalizedKind === "date") return "";
-  if (normalizedKind === "now") return "";
+  if (normalizedKind === "date") {
+    return offset && !Number.isFinite(parseOffsetMs(offset)) ? "Use offset like offset=-3d or offset=+1h." : "";
+  }
+  if (normalizedKind === "now") {
+    return offset && !Number.isFinite(parseOffsetMs(offset)) ? "Use offset like offset=-3d or offset=+1h." : "";
+  }
   if (normalizedKind === "uuid") {
     return expression ? "Use ${uuid} without options." : "";
   }
@@ -104,15 +167,17 @@ function rangedValue(expression: string, iteration: number) {
   const range = parseRange(expression);
   if (!range) return String(iteration);
   const direction = range.end >= range.start ? 1 : -1;
-  const size = Math.abs(range.end - range.start) + 1;
+  const size = Math.floor(Math.abs(range.end - range.start) / range.step) + 1;
   const offset = (Math.max(1, iteration) - 1) % size;
-  return formatPadded(range.start + offset * direction, range.pad);
+  return formatPadded(range.start + offset * range.step * direction, range.pad);
 }
 
-function randomInt(min: number, max: number) {
-  const low = Math.ceil(Math.min(min, max));
-  const high = Math.floor(Math.max(min, max));
-  return String(Math.floor(Math.random() * (high - low + 1)) + low);
+function randomInt(expression: string) {
+  const range = parseRange(expression);
+  if (!range) return "";
+  const low = Math.ceil(Math.min(range.start, range.end));
+  const high = Math.floor(Math.max(range.start, range.end));
+  return formatPadded(Math.floor(Math.random() * (high - low + 1)) + low, range.pad);
 }
 
 function randomFloat(expression: string) {
@@ -143,14 +208,11 @@ function formatDate(date: Date, format: string) {
 }
 
 function renderToken(token: string, iteration: number) {
-  const [kind, ...rest] = token.split(":");
-  const expression = rest.join(":");
-  const normalizedKind = kind.trim().toLowerCase();
+  const { expression, kind: normalizedKind, options: tokenOptions } = parseToken(token);
 
   if (normalizedKind === "seq") return rangedValue(expression, iteration);
   if (normalizedKind === "number" || normalizedKind === "random") {
-    const range = parseRange(expression);
-    return range ? randomInt(range.start, range.end) : "";
+    return randomInt(expression);
   }
   if (normalizedKind === "float") return randomFloat(expression);
   if (normalizedKind === "choice") {
@@ -158,16 +220,21 @@ function renderToken(token: string, iteration: number) {
     return choices.length ? choices[Math.floor(Math.random() * choices.length)] : "";
   }
   if (normalizedKind === "now") {
-    const now = new Date();
-    return expression ? formatDate(now, expression) : now.toISOString();
+    const { options, value: format } = splitExpressionOptions(expression);
+    const now = dateWithOffset({ ...tokenOptions, ...options });
+    return format ? formatDate(now, format) : now.toISOString();
   }
   if (normalizedKind === "timestamp") {
-    const now = new Date();
-    if (!expression) return String(now.getTime());
-    if (expression === "s" || expression === "seconds") return String(Math.floor(now.getTime() / 1000));
+    const { options, value } = splitExpressionOptions(expression);
+    const now = dateWithOffset({ ...tokenOptions, ...options });
+    if (!value) return String(now.getTime());
+    if (value === "s" || value === "seconds") return String(Math.floor(now.getTime() / 1000));
     return String(now.getTime());
   }
-  if (normalizedKind === "date") return formatDate(new Date(), expression || "yyyy-MM-dd HH:mm:ss");
+  if (normalizedKind === "date") {
+    const { options, value: format } = splitExpressionOptions(expression);
+    return formatDate(dateWithOffset({ ...tokenOptions, ...options }), format || "yyyy-MM-dd HH:mm:ss");
+  }
   if (normalizedKind === "uuid") return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `\${${token}}`;
 }
@@ -201,21 +268,18 @@ export function validateProduceTemplateDraft(draft: ProduceTemplateDraft): Produ
 }
 
 export function getProduceTemplateHints() {
-  return ["${seq}", "${seq:1..100|pad=7}", "${random:1..100}", "${float:0..1|fixed=2}", "${choice:A|B|C}", "${date:yyyy-MM-dd HH:mm:ss}", "${uuid}"];
+  return ["${seq}", "${seq:1..100|step=5|pad=4}", "${random:1..100}", "${random:1..5|pad=6}", "${float:37.50..37.70|fixed=6}", "${choice:A|B|C}", "${date:yyyy-MM-dd HH:mm:ss|offset=-3d}", "${timestamp|offset=+1h}", "${uuid}"];
 }
 
 export function getProduceTemplateExamples() {
   return [
-    { syntax: "${seq}", description: "Sequential values starting at 1 with no upper limit." },
-    { syntax: "${seq:1..10}", description: "Sequential values, wraps inside the range." },
-    { syntax: "VMS${seq:1..100|pad=7}", description: "Padded IDs such as VMS0000001." },
-    { syntax: "${random:1..100}", description: "Random integer in the range." },
-    { syntax: "${float:0..1|fixed=2}", description: "Random decimal with fixed digits." },
-    { syntax: "${choice:READY|RUNNING|ERROR}", description: "Randomly picks one value." },
-    { syntax: "${timestamp}", description: "Current epoch milliseconds." },
-    { syntax: "${timestamp:s}", description: "Current epoch seconds." },
-    { syntax: "${date:yyyy-MM-dd HH:mm:ss}", description: "Formatted current local date/time." },
-    { syntax: "${now}", description: "Current ISO date/time." },
+    { syntax: "${seq:1..100|step=5|pad=4}", description: "Sequential or wrapped values with optional step and padding." },
+    { syntax: "PVMS${random:1..5|pad=6}", description: "Random integers, optionally padded for IDs." },
+    { syntax: "${float:37.50..37.70|fixed=6}", description: "Random decimals for coordinates or measurements." },
+    { syntax: "${choice:READY|RUNNING|ERROR}", description: "Randomly picks one value from a list." },
+    { syntax: "${date:yyyy-MM-dd HH:mm:ss|offset=-3d}", description: "Formatted local date/time with optional offset." },
+    { syntax: "${timestamp|offset=+1h}", description: "Epoch milliseconds or ${timestamp:s} for seconds." },
+    { syntax: "${now|offset=-10m}", description: "ISO date/time with optional offset." },
     { syntax: "${uuid}", description: "Random UUID." },
     { syntax: "\\${uuid}", description: "Escapes a token and sends it as literal text." }
   ];
