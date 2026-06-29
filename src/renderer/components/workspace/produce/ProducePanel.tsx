@@ -72,9 +72,8 @@ export function ProducePanel(props: {
   }, [durationText, intervalMs, stopMode, totalCount]);
   const isCountInvalid = !Number.isFinite(totalCount) || totalCount < 1 || totalCount > 100000;
   const valueIssue = useMemo(() => {
-    const valueToValidate = mode === "interval" ? renderProduceTemplateDraft(draft, 1).value : props.value;
-    return getJsonValueIssue(valueToValidate);
-  }, [draft, mode, props.value]);
+    return getJsonValueIssue(renderProduceTemplateDraft(draft, 1).value);
+  }, [draft]);
   const renderedPreview = useMemo(
     () => renderProduceTemplateDraft(draft, 1),
     [draft]
@@ -201,6 +200,26 @@ export function ProducePanel(props: {
     });
   }
 
+  async function sendSingleProduce() {
+    if (templateIssues.length > 0) {
+      setIntervalError(formatTemplateIssue(templateIssues[0], language));
+      return;
+    }
+    const renderedDraft = renderProduceTemplateDraft(draft, 1);
+    const renderedValueIssue = getJsonValueIssue(renderedDraft.value);
+    if (renderedValueIssue) {
+      setIntervalError(`${renderedValueIssue.message} Check the rendered message. String tokens like \${date:yyyy-MM-dd HH:mm:ss} must be wrapped in quotes inside JSON.`);
+      return;
+    }
+    const headers = parseProduceHeaders(renderedDraft.headers);
+    if (typeof headers === "string") {
+      setIntervalError(headers);
+      return;
+    }
+    setIntervalError("");
+    await props.onProduceDraft(renderedDraft);
+  }
+
   function requestIntervalStart() {
     if (intervalMs < 100) {
       setIntervalError("Every must be at least 100ms.");
@@ -299,7 +318,7 @@ export function ProducePanel(props: {
           </div>
         )}
         {mode === "single" ? (
-          <button className="primary compact produce-primary-action" onClick={props.onProduce} disabled={!props.topic}>
+          <button className="primary compact produce-primary-action" onClick={() => void sendSingleProduce()} disabled={!props.topic}>
             <Send size={15} /> {t(language, "action.sendMessage")}
           </button>
         ) : (
@@ -374,6 +393,7 @@ export function ProducePanel(props: {
           {(intervalError || props.intervalState.error) && <div className="produce-interval-error">{intervalError || props.intervalState.error}</div>}
         </div>
       )}
+      {mode === "single" && intervalError && <div className="produce-interval-error">{intervalError}</div>}
       {props.hasAvroSchema && (
         <div className="produce-schema-notice">
           <Braces size={15} />
@@ -386,6 +406,17 @@ export function ProducePanel(props: {
         <div className="produce-value-label-row">
           <span>{t(language, "label.value")}</span>
           <span className="produce-value-actions">
+            <details className="produce-template-guide produce-template-guide-popover">
+              <summary>{t(language, "produce.dynamicFieldGuide")}</summary>
+              <div className="produce-template-examples">
+                {getProduceTemplateExamples().map((example) => (
+                  <div key={example.syntax} className="produce-template-example">
+                    <code>{example.syntax}</code>
+                    <span>{example.description}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
             <button
               type="button"
               className={isRenderedPreviewOpen ? "ghost compact active" : "ghost compact"}
@@ -460,21 +491,6 @@ export function ProducePanel(props: {
               <code>{`${" ".repeat(valueIssue.caretColumn)}^`}</code>
             </pre>
           )}
-        </div>
-      )}
-      {mode === "interval" && (
-        <div className="produce-template-panel">
-          <details className="produce-template-guide">
-            <summary>Dynamic field guide</summary>
-            <div className="produce-template-examples">
-              {getProduceTemplateExamples().map((example) => (
-                <div key={example.syntax} className="produce-template-example">
-                  <code>{example.syntax}</code>
-                  <span>{example.description}</span>
-                </div>
-              ))}
-            </div>
-          </details>
         </div>
       )}
     </section>

@@ -92,6 +92,9 @@ export function createApplicationMenu(options: {
       ]
     },
     {
+      role: "editMenu"
+    },
+    {
       label: labels.help,
       submenu: [
         {

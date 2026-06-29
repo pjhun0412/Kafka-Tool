@@ -3,6 +3,7 @@
   font-family: var(--app-font-family);
   font-size: var(--message-viewer-font-size, 13px);
   font-weight: var(--message-viewer-font-weight, 600);
+  user-select: text;
 }
 
 .message-view mark,
@@ -235,6 +236,7 @@
   font-family: var(--app-font-family);
   font-size: var(--message-viewer-font-size, 13px);
   font-weight: var(--message-viewer-font-weight, 600);
+  user-select: text;
 }
 
 .message-tree,

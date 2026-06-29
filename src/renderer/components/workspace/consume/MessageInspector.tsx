@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Columns3, Copy, Filter, MapPin, Search, Send, Settings2, X } from "lucide-react";
 import type { ConsumedMessage } from "../../../../shared/types";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
@@ -107,6 +107,29 @@ export function MessageInspector(props: {
   }), [mapFieldPaths]);
   const canShowTree = Boolean(props.payload);
   const showEncoding = props.mode === "preview" && props.previewMode === "text" && (props.previewTarget === "key" || props.previewTarget === "value");
+
+  useEffect(() => {
+    function copySelectedInspectorText(event: KeyboardEvent) {
+      if (event.key.toLowerCase() !== "c" || (!event.metaKey && !event.ctrlKey) || event.altKey) return;
+      const selection = window.getSelection();
+      const selectedText = selection?.toString() ?? "";
+      if (!selection || selection.isCollapsed || !selectedText) return;
+      const anchorNode = selection.anchorNode;
+      const focusNode = selection.focusNode;
+      const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement;
+      const focusElement = focusNode instanceof Element ? focusNode : focusNode?.parentElement;
+      const isInspectorSelection = Boolean(
+        anchorElement?.closest(".message-inspector")
+        || focusElement?.closest(".message-inspector")
+      );
+      if (!isInspectorSelection) return;
+      event.preventDefault();
+      void navigator.clipboard.writeText(selectedText);
+    }
+
+    window.addEventListener("keydown", copySelectedInspectorText, true);
+    return () => window.removeEventListener("keydown", copySelectedInspectorText, true);
+  }, []);
 
   async function openLiveMap() {
     if (!props.selectedMessage) return;

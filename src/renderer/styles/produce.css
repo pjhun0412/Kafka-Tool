@@ -142,7 +142,7 @@
 }
 
 .produce-value-actions {
-  @apply inline-flex flex-wrap items-center gap-1;
+  @apply relative inline-flex flex-wrap items-center gap-1;
 }
 
 .produce-value-actions button {
@@ -254,6 +254,26 @@
 
 .produce-template-guide summary {
   @apply cursor-pointer select-none px-3 py-2 text-[12px] font-semibold text-slate-200;
+}
+
+.produce-template-guide-popover {
+  @apply relative h-7 min-h-7 rounded-md bg-[#1e1e1e];
+}
+
+.produce-template-guide-popover summary {
+  @apply flex h-7 min-h-7 list-none items-center rounded-md px-2 py-0 text-[11px] leading-7 text-slate-200 hover:bg-white/[0.06];
+}
+
+.produce-template-guide-popover summary::-webkit-details-marker {
+  @apply hidden;
+}
+
+.produce-template-guide-popover[open] summary {
+  @apply border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
+}
+
+.produce-template-guide-popover .produce-template-examples {
+  @apply absolute right-0 top-[calc(100%+6px)] z-30 w-[560px] max-w-[calc(100vw-48px)] rounded-md border border-[#30363d] bg-[#111315] shadow-[0_18px_48px_rgba(0,0,0,0.5)];
 }
 
 .produce-template-examples {
