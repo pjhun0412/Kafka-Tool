@@ -142,6 +142,24 @@
   font-weight: var(--app-font-weight);
 }
 
+.message-table th.grid-row-action-cell,
+.message-table td.grid-row-action-cell {
+  @apply text-center align-middle;
+}
+
+.message-table th.grid-row-action-cell input[type="checkbox"],
+.message-table td.grid-row-action-cell input[type="checkbox"] {
+  @apply m-0 inline-block h-4 w-4 align-middle;
+}
+
+.message-table .grid-header-button input[type="checkbox"] {
+  @apply m-0 inline-block h-4 w-4 align-middle;
+}
+
+.message-table th:has(.grid-header-button input[type="checkbox"]) .grid-header-button {
+  @apply justify-center;
+}
+
 .message-table tbody tr {
   @apply cursor-pointer border-l-4 border-l-transparent text-[#dddddd] transition hover:bg-[#262626];
 }
@@ -160,6 +178,18 @@
 
 .message-table tbody tr.selected td {
   @apply border-[#bfdcde] text-[#ffffff];
+}
+
+.message-table tbody tr.checked {
+  @apply bg-[#252b33] shadow-[inset_4px_0_0_#3794ff] hover:bg-[#2b323d];
+}
+
+.message-table tbody tr.checked td {
+  @apply text-slate-100;
+}
+
+.message-table tbody tr.selected.checked {
+  @apply bg-[#30343a] shadow-[inset_4px_0_0_#22d3ee];
 }
 
 .message-table tbody tr.filter-highlight {

@@ -98,7 +98,7 @@
 }
 
 .server-work-tabs button {
-  @apply relative h-8 min-h-8 max-h-8 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 py-0 text-[12px] font-extrabold leading-none text-[#c8c8c8] shadow-none hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+  @apply relative h-9 min-h-9 max-h-9 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 py-0 text-[12px] font-extrabold leading-none text-[#c8c8c8] shadow-none hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
 }
 
 .server-work-tabs button svg {
@@ -128,7 +128,7 @@
 
 .topic-work-tabs button,
 .split-topic-tabs button {
-  @apply relative min-h-8 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 text-[#c8c8c8] shadow-none hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
+  @apply relative h-9 min-h-9 max-h-9 overflow-hidden rounded border border-[#333333] bg-[#252526] px-3 py-0 leading-none text-[#c8c8c8] shadow-none hover:border-[#4a4a4a] hover:bg-[#2d2d30] hover:text-[#f0f0f0];
 }
 
 .topic-work-tabs button svg,

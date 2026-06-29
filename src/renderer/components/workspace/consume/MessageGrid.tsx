@@ -181,30 +181,78 @@ export const MessageGrid = memo(function MessageGrid(props: {
   rows: MessageGridRow[];
   valueColumnPaths: string[];
   selectedMessageKey: string;
+  checkedMessageKeys: Set<string>;
   filterMode: ConsumeFilterMode;
   hasActiveMessageFilter: boolean;
   highlightedMessageKeys: Set<string>;
   onSelectMessage: (message: ConsumedMessage) => void;
+  onToggleMessageChecked: (message: ConsumedMessage) => void;
+  onToggleVisibleChecked: (messages: ConsumedMessage[], checked: boolean) => void;
 }) {
   const language = useAppLanguage();
+  const {
+    checkedMessageKeys,
+    filterMode,
+    hasActiveMessageFilter,
+    highlightedMessageKeys,
+    onSelectMessage,
+    onToggleMessageChecked,
+    onToggleVisibleChecked,
+    rows,
+    selectedMessageKey,
+    valueColumnPaths
+  } = props;
+  const visibleMessages = useMemo(() => rows.map((row) => row.message), [rows]);
+  const checkedVisibleCount = useMemo(
+    () => rows.filter((row) => checkedMessageKeys.has(row.rowKey)).length,
+    [checkedMessageKeys, rows]
+  );
+  const allVisibleChecked = rows.length > 0 && checkedVisibleCount === rows.length;
+  const partlyVisibleChecked = checkedVisibleCount > 0 && !allVisibleChecked;
   const getRowClassName = useCallback((row: MessageGridRow) => {
     const classes = [];
-    if (props.selectedMessageKey === row.rowKey) classes.push("selected");
-    if (props.filterMode === "highlight" && props.hasActiveMessageFilter) {
-      const isMatched = props.highlightedMessageKeys.has(row.rowKey);
+    if (selectedMessageKey === row.rowKey) classes.push("selected");
+    if (checkedMessageKeys.has(row.rowKey)) classes.push("checked");
+    if (filterMode === "highlight" && hasActiveMessageFilter) {
+      const isMatched = highlightedMessageKeys.has(row.rowKey);
       classes.push(isMatched ? "filter-highlight" : "filter-muted");
     }
     return classes.join(" ");
-  }, [props.filterMode, props.hasActiveMessageFilter, props.highlightedMessageKeys, props.selectedMessageKey]);
+  }, [checkedMessageKeys, filterMode, hasActiveMessageFilter, highlightedMessageKeys, selectedMessageKey]);
 
   const handleRowClick = useCallback((row: MessageGridRow) => {
-    props.onSelectMessage(row.message);
-  }, [props.onSelectMessage]);
+    onSelectMessage(row.message);
+  }, [onSelectMessage]);
 
   const columns = useMemo<ColumnDef<MessageGridRow>[]>(() => {
-    const valueColumnPaths = normalizeValueColumnPaths(props.valueColumnPaths);
-    if (valueColumnPaths.length === 0) return messageGridColumns;
-    const valueColumns: ColumnDef<MessageGridRow>[] = valueColumnPaths.map((path) => ({
+    const selectColumn: ColumnDef<MessageGridRow> = {
+      id: "select",
+      header: () => (
+        <input
+          type="checkbox"
+          checked={allVisibleChecked}
+          ref={(input) => {
+            if (input) input.indeterminate = partlyVisibleChecked;
+          }}
+          title={t(language, "replay.selectVisible")}
+          onChange={(event) => onToggleVisibleChecked(visibleMessages, event.target.checked)}
+        />
+      ),
+      enableSorting: false,
+      enableColumnFilter: false,
+      size: 36,
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={checkedMessageKeys.has(row.original.rowKey)}
+          title={t(language, "replay.selectMessage")}
+          onChange={() => onToggleMessageChecked(row.original.message)}
+        />
+      )
+    };
+    const normalizedValueColumnPaths = normalizeValueColumnPaths(valueColumnPaths);
+    if (normalizedValueColumnPaths.length === 0) return [selectColumn, ...messageGridColumns];
+    const valueColumns: ColumnDef<MessageGridRow>[] = normalizedValueColumnPaths.map((path) => ({
       id: `value.${path}`,
       header: () => <span className="value-column-header" title={path}>{formatValueColumnHeader(path)}</span>,
       accessorFn: (row) => readValuePath(getMessageValuePayload(row.message), path),
@@ -214,19 +262,19 @@ export const MessageGrid = memo(function MessageGrid(props: {
       },
       size: 170
     }));
-    return [...messageGridColumns.slice(0, -1), ...valueColumns, messageGridColumns[messageGridColumns.length - 1]];
-  }, [props.valueColumnPaths]);
+    return [selectColumn, ...messageGridColumns.slice(0, -1), ...valueColumns, messageGridColumns[messageGridColumns.length - 1]];
+  }, [allVisibleChecked, checkedMessageKeys, language, onToggleMessageChecked, onToggleVisibleChecked, partlyVisibleChecked, valueColumnPaths, visibleMessages]);
 
   return (
     <DataGrid
-      data={props.rows}
+      data={rows}
       columns={columns}
       className="tanstack-message-table"
       emptyText={t(language, "label.noMessages")}
       getRowKey={(row) => row.rowKey}
       getRowClassName={getRowClassName}
       keyboardNavigation={{
-        selectedKey: props.selectedMessageKey,
+        selectedKey: selectedMessageKey,
         onSelectRow: handleRowClick
       }}
       onRowClick={handleRowClick}

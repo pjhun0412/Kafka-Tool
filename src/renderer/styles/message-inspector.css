@@ -127,6 +127,10 @@
   @apply grid min-w-0 gap-0.5 rounded px-2.5 py-2 text-left transition hover:bg-white/[0.06];
 }
 
+.produce-action-menu button:disabled {
+  @apply cursor-not-allowed opacity-45 hover:bg-transparent;
+}
+
 .produce-action-menu strong {
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-extrabold text-slate-100;
 }
@@ -145,7 +149,10 @@
 
 .replay-target-modal {
   @apply grid w-full max-w-[720px] rounded-lg border border-[#30363d] bg-[#1f1f1f] text-[#d4d4d4] shadow-[0_24px_80px_rgba(0,0,0,0.55)];
-  overflow: visible;
+  height: min(92vh, 860px);
+  max-height: min(92vh, 860px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
 }
 
 .replay-target-modal .modal-title {
@@ -169,9 +176,8 @@
 }
 
 .replay-route-grid {
-  @apply mx-4 mt-4 grid gap-3;
+  @apply mx-4 mt-4 grid min-h-0 content-start gap-3 overflow-auto pb-4 pr-1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: visible;
 }
 
 .replay-route-card {
@@ -202,6 +208,30 @@
 
 .replay-route-card dd {
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-slate-200;
+}
+
+.replay-source-modes {
+  @apply grid grid-cols-4 gap-1 rounded-md border border-[#30363d] bg-[#111719] p-1;
+}
+
+.replay-source-modes button {
+  @apply grid min-w-0 gap-0.5 rounded px-2 py-1.5 text-left transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent;
+}
+
+.replay-source-modes button.active {
+  @apply bg-[#094771] shadow-[inset_0_0_0_1px_rgba(55,148,255,0.45)];
+}
+
+.replay-source-modes strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-extrabold text-slate-100;
+}
+
+.replay-source-modes span {
+  @apply text-[10px] font-bold text-slate-400;
+}
+
+.replay-source-modes button.active span {
+  @apply text-sky-200;
 }
 
 .replay-target-select,
@@ -301,6 +331,51 @@
   @apply h-4 w-4 accent-[#3794ff];
 }
 
+.replay-options-card {
+  @apply grid-cols-1;
+  grid-column: 1 / -1;
+}
+
+.replay-options-card h3 {
+  @apply col-span-1;
+}
+
+.replay-options-card label {
+  @apply inline-flex items-center gap-2 text-[12px] font-bold text-slate-300;
+}
+
+.replay-options-card input {
+  @apply h-4 w-4 accent-[#3794ff];
+}
+
+.replay-delay-control {
+  @apply flex flex-wrap items-center gap-2 rounded-md border border-[#30363d] bg-[#111719] px-2 py-1.5;
+}
+
+.replay-delay-control input[type="number"] {
+  @apply h-8 min-h-8 w-24 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-0 text-right text-[12px] font-bold text-slate-100 outline-none transition focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/20 disabled:cursor-not-allowed disabled:opacity-45;
+}
+
+.replay-delay-control span {
+  @apply text-[12px] font-bold text-slate-300;
+}
+
+.replay-order-control {
+  @apply grid grid-cols-3 gap-1 rounded-md border border-[#30363d] bg-[#111719] p-1;
+}
+
+.replay-order-control button {
+  @apply h-8 min-w-0 rounded px-2 text-[12px] font-extrabold text-slate-300 transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.replay-order-control button.active {
+  @apply bg-[#094771] text-white shadow-[inset_0_0_0_1px_rgba(55,148,255,0.45)];
+}
+
+.replay-option-help {
+  @apply rounded-md border border-[#30363d] bg-[#111719] px-2 py-1.5 text-[11px] font-semibold leading-5 text-slate-400;
+}
+
 .replay-editor-card {
   @apply relative gap-3;
   grid-column: 1 / -1;
@@ -333,6 +408,181 @@
 
 .replay-editor-card label:last-child textarea {
   @apply min-h-[132px];
+}
+
+.replay-batch-card {
+  @apply overflow-visible;
+  grid-column: 1 / -1;
+  align-self: start;
+  min-height: max-content;
+}
+
+.replay-batch-card p {
+  @apply text-[12px] font-semibold leading-5 text-slate-400;
+}
+
+.replay-dynamic-toggle {
+  @apply inline-flex w-fit items-center gap-2 text-[12px] font-bold text-slate-200;
+}
+
+.replay-dynamic-toggle input {
+  @apply h-4 w-4 accent-[#3794ff];
+}
+
+.replay-override-panel {
+  @apply grid gap-2 overflow-visible rounded-md border border-[#30363d] bg-[#111719] p-2;
+  min-height: max-content;
+}
+
+.replay-override-title {
+  @apply flex min-w-0 items-center justify-between gap-3;
+}
+
+.replay-override-title strong {
+  @apply text-[12px] font-extrabold text-slate-100;
+}
+
+.replay-override-body {
+  @apply grid min-h-0 gap-2;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.replay-override-list {
+  @apply grid min-h-0 gap-1.5 overflow-auto pr-1;
+}
+
+.replay-override-tree-panel {
+  @apply grid gap-1.5 overflow-hidden rounded-md border border-[#30363d] bg-[#181818] p-2;
+  height: clamp(180px, 26vh, 300px);
+  min-height: 180px;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.replay-override-selected-panel {
+  @apply grid gap-1.5 overflow-hidden rounded-md border border-[#30363d] bg-[#181818] p-2;
+  min-height: 96px;
+  max-height: 180px;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+
+.replay-override-search {
+  @apply h-8 min-h-8 rounded border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-[12px] font-bold text-slate-100 outline-none placeholder:text-slate-500 focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/25;
+}
+
+.replay-override-tree {
+  @apply h-full min-h-0 overflow-auto overscroll-contain pr-1;
+}
+
+.replay-override-tree-group {
+  @apply min-w-0;
+}
+
+.replay-override-tree-row {
+  @apply flex min-h-8 min-w-0 items-center gap-1.5 rounded py-1 pr-2 text-[12px] font-bold text-slate-300 transition hover:bg-white/[0.06] hover:text-white;
+}
+
+.replay-override-tree-row.group {
+  @apply border-l border-transparent text-slate-200;
+}
+
+.replay-override-tree-row.leaf {
+  @apply cursor-pointer border-l border-[#3c3c3c]/70 text-slate-300;
+}
+
+.replay-override-tree-row input {
+  @apply h-3.5 w-3.5 shrink-0;
+}
+
+.replay-override-tree-expander {
+  @apply grid h-5 w-5 shrink-0 place-items-center rounded text-slate-400 transition hover:bg-white/[0.08] hover:text-white;
+}
+
+.replay-override-tree-indent {
+  @apply h-5 w-5 shrink-0;
+}
+
+.replay-override-leaf-spacer {
+  @apply h-[13px] w-[13px] shrink-0;
+}
+
+.replay-override-group-name,
+.replay-override-leaf-name {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.replay-override-group-name {
+  @apply font-extrabold text-slate-100;
+}
+
+.replay-override-leaf-name {
+  @apply text-slate-300;
+}
+
+.replay-override-group-count {
+  @apply ml-auto shrink-0 text-[10px] font-extrabold text-slate-500;
+}
+
+.replay-override-empty {
+  @apply px-2 py-3 text-center text-[12px] font-bold text-slate-500;
+}
+
+.replay-override-row {
+  @apply grid min-w-0 grid-cols-[minmax(80px,0.82fr)_minmax(90px,1fr)_32px] items-center gap-1.5;
+}
+
+.replay-override-row input,
+.replay-override-path {
+  @apply h-8 min-w-0 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-[12px] font-semibold text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/20;
+}
+
+.replay-override-path {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-left;
+}
+
+.replay-override-row button {
+  @apply h-8 min-h-8;
+}
+
+.replay-override-add {
+  @apply w-fit;
+}
+
+@media (max-width: 760px) {
+  .replay-override-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.replay-progress {
+  @apply grid gap-1.5 rounded-md border border-[#30363d] bg-[#111719] p-2 text-[12px] font-bold text-slate-200;
+}
+
+.replay-progress span {
+  @apply text-slate-300;
+}
+
+.replay-progress progress {
+  @apply h-2 w-full overflow-hidden rounded bg-[#2d2d2d];
+}
+
+.replay-progress progress::-webkit-progress-bar {
+  @apply rounded bg-[#2d2d2d];
+}
+
+.replay-progress progress::-webkit-progress-value {
+  @apply rounded bg-[#3794ff];
+}
+
+.replay-failures {
+  @apply grid max-h-[136px] gap-1 overflow-auto rounded-md border border-red-400/30 bg-red-500/10 p-2 text-[11px] font-semibold text-red-100;
+}
+
+.replay-failures strong {
+  @apply text-[12px] font-extrabold text-red-100;
+}
+
+.replay-failures span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
 }
 
 .replay-dynamic-guide {
@@ -404,7 +654,8 @@
 }
 
 .replay-target-modal .modal-actions {
-  @apply mt-4 border-t border-[#2b2b2b] bg-[#1b1b1b] px-4 py-3;
+  @apply relative z-10 mt-0 border-t border-[#3a3a3a] bg-[#1b1b1b] px-4 py-3;
+  box-shadow: 0 -12px 28px rgb(0 0 0 / 0.28);
 }
 
 .replay-target-modal .modal-actions button {
@@ -584,4 +835,125 @@
 .message-tree-node.leaf:hover .message-tree-filter,
 .message-tree-node.leaf:hover .message-tree-column {
   @apply opacity-100;
+}
+
+.replay-jobs-panel {
+  @apply fixed bottom-4 right-4 z-[95] grid w-[380px] max-w-[calc(100vw-32px)] overflow-hidden rounded-lg border border-[#30363d] bg-[#1b1b1b] text-slate-200 shadow-[0_20px_70px_rgba(0,0,0,0.5)];
+}
+
+.replay-jobs-panel.collapsed {
+  @apply w-[300px];
+}
+
+.replay-jobs-header {
+  @apply flex min-h-11 items-center justify-between gap-3 border-b border-[#30363d] px-3 py-2;
+}
+
+.replay-jobs-header > div:first-child {
+  @apply grid min-w-0 gap-0.5;
+}
+
+.replay-jobs-header strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-extrabold text-white;
+}
+
+.replay-jobs-header span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-semibold text-slate-400;
+}
+
+.replay-jobs-actions {
+  @apply flex shrink-0 items-center gap-1;
+}
+
+.replay-jobs-list {
+  @apply grid max-h-[360px] gap-2 overflow-auto p-2;
+}
+
+.replay-job-card {
+  @apply grid gap-2 rounded-md border border-[#30363d] bg-[#202020] p-2.5;
+}
+
+.replay-job-card.running,
+.replay-job-card.aborting {
+  @apply border-[#1f6feb]/60 bg-[#0f1c24];
+}
+
+.replay-job-card.completed {
+  @apply border-emerald-400/30;
+}
+
+.replay-job-card.failed {
+  @apply border-red-400/40;
+}
+
+.replay-job-card.aborted {
+  @apply border-amber-400/35;
+}
+
+.replay-job-topline,
+.replay-job-meta {
+  @apply flex min-w-0 items-center justify-between gap-2;
+}
+
+.replay-job-topline strong,
+.replay-job-meta span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.replay-job-topline strong {
+  @apply text-[12px] font-extrabold text-slate-100;
+}
+
+.replay-job-topline > span {
+  @apply shrink-0 rounded border border-[#3c3c3c] px-1.5 py-0.5 text-[10px] font-bold text-slate-300;
+}
+
+.replay-job-card.running .replay-job-topline > span {
+  @apply border-[#1f6feb]/60 bg-[#094771] text-white;
+}
+
+.replay-job-card.aborting .replay-job-topline > span,
+.replay-job-card.aborted .replay-job-topline > span {
+  @apply border-amber-400/40 bg-amber-400/10 text-amber-100;
+}
+
+.replay-job-card.failed .replay-job-topline > span {
+  @apply border-red-400/40 bg-red-400/10 text-red-100;
+}
+
+.replay-job-meta {
+  @apply text-[11px] font-semibold text-slate-400;
+}
+
+.replay-job-card progress {
+  @apply h-1.5 w-full overflow-hidden rounded-full border-0 bg-[#30363d];
+}
+
+.replay-job-card progress::-webkit-progress-bar {
+  @apply rounded-full bg-[#30363d];
+}
+
+.replay-job-card progress::-webkit-progress-value {
+  @apply rounded-full bg-[#1f6feb];
+}
+
+.replay-job-card.completed progress::-webkit-progress-value {
+  @apply bg-emerald-400;
+}
+
+.replay-job-card.failed progress::-webkit-progress-value {
+  @apply bg-red-400;
+}
+
+.replay-job-card.aborted progress::-webkit-progress-value,
+.replay-job-card.aborting progress::-webkit-progress-value {
+  @apply bg-amber-400;
+}
+
+.replay-job-failures {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded border border-red-400/20 bg-red-400/10 px-2 py-1 text-[11px] font-semibold text-red-100;
+}
+
+.replay-job-abort {
+  @apply inline-flex h-7 w-fit items-center gap-1.5 rounded-md border border-red-400/30 bg-red-400/10 px-2 text-[11px] font-bold text-red-100 transition hover:bg-red-400/20 disabled:cursor-wait disabled:opacity-70;
 }

@@ -3,7 +3,7 @@
 }
 
 .streaming-badge {
-  @apply invisible inline-flex min-h-[28px] min-w-[96px] items-center gap-2 rounded-full border border-transparent bg-transparent px-2.5 text-[12px] font-extrabold text-emerald-800;
+  @apply invisible inline-flex h-9 min-h-9 min-w-[96px] items-center gap-2 rounded-full border border-transparent bg-transparent px-2.5 text-[12px] font-extrabold leading-none text-emerald-800;
 }
 
 .streaming-badge.active {
@@ -16,11 +16,11 @@
 }
 
 .recording-badge {
-  @apply inline-flex min-h-[28px] max-w-[220px] items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 text-[12px] font-extrabold text-red-700;
+  @apply inline-flex h-9 min-h-9 max-w-[220px] items-center gap-1.5 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2.5 text-[12px] font-extrabold leading-none text-red-700;
 }
 
 .auto-scroll-toggle {
-  @apply inline-flex min-h-[28px] items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2.5 text-[12px] font-extrabold text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+  @apply inline-flex h-9 min-h-9 items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2.5 text-[12px] font-extrabold leading-none text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
 }
 
 .auto-scroll-toggle input {
@@ -29,7 +29,7 @@
 }
 
 .max-messages-control {
-  @apply inline-flex min-h-[28px] grid-cols-none items-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2 text-[12px] font-extrabold text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
+  @apply inline-flex h-9 min-h-9 grid-cols-none items-center gap-1.5 rounded-md border border-[#3c3c3c] bg-[#2d2d2d] px-2 text-[12px] font-extrabold leading-none text-slate-300 shadow-sm hover:border-[#007acc]/60 hover:bg-[#333333] hover:text-white;
   font-weight: var(--app-strong-font-weight);
 }
 

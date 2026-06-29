@@ -37,14 +37,19 @@
 
 .produce-mode-row {
   @apply flex flex-wrap items-center gap-2;
+  --produce-control-height: 36px;
 }
 
 .produce-mode-row .segmented-control {
-  @apply inline-flex h-9 min-h-9 overflow-hidden rounded-md border border-[#3c3c3c] bg-[#2d2d2d] shadow-none;
+  @apply inline-flex overflow-hidden rounded-md border border-[#3c3c3c] bg-[#2d2d2d] shadow-none;
+  height: var(--produce-control-height);
+  min-height: var(--produce-control-height);
 }
 
 .produce-mode-row .segmented-control button {
-  @apply min-h-9 border-0 bg-transparent px-3 text-[12px] text-slate-300 transition hover:bg-[#333333] hover:text-white;
+  @apply border-0 bg-transparent px-3 text-[12px] leading-none text-slate-300 transition hover:bg-[#333333] hover:text-white;
+  height: var(--produce-control-height);
+  min-height: var(--produce-control-height);
   font-weight: var(--app-font-weight);
 }
 
@@ -57,11 +62,15 @@
 }
 
 .produce-primary-action {
-  @apply h-9 min-h-9 shrink-0 whitespace-nowrap px-3;
+  @apply inline-flex shrink-0 items-center justify-center whitespace-nowrap px-3 leading-none;
+  height: var(--produce-control-height);
+  min-height: var(--produce-control-height);
 }
 
 .produce-interval-controls label {
-  @apply inline-flex h-9 min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 leading-none;
+  @apply inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 leading-none;
+  height: var(--produce-control-height);
+  min-height: var(--produce-control-height);
   font-weight: var(--app-font-weight);
 }
 
@@ -85,7 +94,9 @@
 }
 
 .produce-interval-status {
-  @apply inline-flex h-9 min-h-9 items-center rounded-md border border-[#264f78] bg-[#1b2f3a] px-2 text-[11px] text-[#9cdcfe];
+  @apply inline-flex items-center rounded-md border border-[#264f78] bg-[#1b2f3a] px-2 text-[11px] text-[#9cdcfe];
+  height: var(--produce-control-height);
+  min-height: var(--produce-control-height);
   font-weight: var(--app-font-weight);
 }
 

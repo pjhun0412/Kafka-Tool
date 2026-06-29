@@ -6,6 +6,7 @@ import type { QuickSearchResult, QuickSearchScopedQuery } from "../../quickSearc
 import type { ManualAvroSchemaRow } from "../../hooks/preferences/useManualAvroSchemaSummary";
 import type { ServerContextMenuState, TopicContextMenuState } from "../../hooks/state/useSidebarInteractionState";
 import { QuickSearchPalette } from "../QuickSearchPalette";
+import { ReplayJobsPanel } from "./ReplayJobsPanel";
 import { WorkspaceContextMenus } from "./WorkspaceContextMenus";
 import { WorkspaceDialogs } from "./WorkspaceDialogs";
 
@@ -214,6 +215,7 @@ export function WorkspaceOverlays({
         onEditServer={onEditServer}
         onDeleteServer={onDeleteServer}
       />
+      <ReplayJobsPanel />
     </>
   );
 }

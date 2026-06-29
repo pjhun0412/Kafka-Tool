@@ -1,18 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Columns3, Copy, Filter, MapPin, Search, Send, Settings2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Columns3, Copy, Filter, Folder, MapPin, Search, Send, Settings2, X } from "lucide-react";
 import type { ConsumedMessage } from "../../../../shared/types";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
 import { createLiveMapPoint, getMapCoordinateFromSelection, normalizeMapFieldMapping } from "../../../mapPreview";
 import type { MapFieldMapping } from "../../../mapPreview";
 import { formatMessagePayload } from "../../../messagePreview";
-import { collectValuePaths } from "../../../consumeValuePaths";
+import { collectValuePaths, getMessageValuePayload } from "../../../consumeValuePaths";
 import { getProduceTemplateExamples, renderProduceTemplateDraft, validateProduceTemplateDraft } from "../../../produceTemplate";
+import { startReplayJob } from "../../../replayJobs";
 import type { ReplayDraft, ReplayPayloadOptions, ReplayTargetServer } from "../../../replayTypes";
 import type { MessageInspectorMode, MessagePayloadFormat, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode } from "../../../uiTypes";
 import { formatProduceValue, getEpochTitle, parseProduceHeaders, renderHighlightedText, renderRawJsonText, stringifyPrimitive, validateJsonLikeValue } from "../../../utils";
 
 type MapFieldPickerId = "x" | "y" | "identity" | "heading" | "speed";
+type ReplaySourceKind = "single" | "selected" | "filtered" | "all";
+type ReplayOrder = "grid" | "original" | "timestamp";
+type ReplayFieldOverride = {
+  id: string;
+  path: string;
+  value: string;
+};
+type ReplayOverrideTreeNode = {
+  children: Map<string, ReplayOverrideTreeNode>;
+  fullPath: string;
+  leafPath?: string;
+  name: string;
+};
 
 function getPathSegments(path: string) {
   return path.split(".").filter(Boolean);
@@ -44,6 +58,97 @@ function getValueColumnPathFromTreePath(path: string) {
   return valuePath ? valuePath : null;
 }
 
+function createReplayOverrideTree(paths: string[]) {
+  const root: ReplayOverrideTreeNode = { name: "", fullPath: "", children: new Map() };
+  for (const path of paths) {
+    const segments = path.split(".").filter(Boolean);
+    let current = root;
+    segments.forEach((segment, index) => {
+      const fullPath = segments.slice(0, index + 1).join(".");
+      if (!current.children.has(segment)) {
+        current.children.set(segment, { name: segment, fullPath, children: new Map() });
+      }
+      current = current.children.get(segment) as ReplayOverrideTreeNode;
+      if (index === segments.length - 1) current.leafPath = path;
+    });
+  }
+  return root;
+}
+
+function getReplayOverrideLeafPaths(node: ReplayOverrideTreeNode): string[] {
+  if (node.leafPath && node.children.size === 0) return [node.leafPath];
+  return Array.from(node.children.values()).flatMap(getReplayOverrideLeafPaths);
+}
+
+function getDefaultReplayOverrideValue(path: string) {
+  const leaf = path.split(".").at(-1)?.toLowerCase() ?? "";
+  if (leaf === "year") return "${date:yyyy}";
+  if (leaf === "month") return "${date:MM}";
+  if (leaf === "day") return "${date:dd}";
+  if (leaf === "hour") return "${date:HH}";
+  if (leaf === "minute") return "${date:mm}";
+  if (leaf === "second") return "${date:ss}";
+  if (leaf === "millisecond") return "${date:SSS}";
+  if (leaf.includes("time") || leaf.includes("timestamp")) return "${timestamp}";
+  return "";
+}
+
+function parseReplayOverrideValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (trimmed === "null") return null;
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) return Number(trimmed);
+  if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+    try {
+      return JSON.parse(trimmed) as unknown;
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+function setValueAtPath(target: unknown, path: string, value: unknown) {
+  const segments = path.split(".").map((segment) => segment.trim()).filter(Boolean);
+  if (segments.length === 0 || typeof target !== "object" || target === null || Array.isArray(target)) return false;
+  let cursor = target as Record<string, unknown>;
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index];
+    if (!segment) return false;
+    const next = cursor[segment];
+    if (typeof next !== "object" || next === null || Array.isArray(next)) {
+      cursor[segment] = {};
+    }
+    cursor = cursor[segment] as Record<string, unknown>;
+  }
+  const leaf = segments.at(-1);
+  if (!leaf) return false;
+  cursor[leaf] = value;
+  return true;
+}
+
+function compareMessageOffset(left: ConsumedMessage, right: ConsumedMessage) {
+  const partitionDiff = left.partition - right.partition;
+  if (partitionDiff !== 0) return partitionDiff;
+  const leftOffset = Number(left.offset);
+  const rightOffset = Number(right.offset);
+  if (Number.isFinite(leftOffset) && Number.isFinite(rightOffset)) return leftOffset - rightOffset;
+  return left.offset.localeCompare(right.offset, undefined, { numeric: true });
+}
+
+function getReplayOrderedMessages(messages: ConsumedMessage[], order: ReplayOrder) {
+  if (order === "grid") return [...messages];
+  if (order === "timestamp") {
+    return [...messages].sort((left, right) => {
+      const timeDiff = Date.parse(left.timestamp) - Date.parse(right.timestamp);
+      return timeDiff || compareMessageOffset(left, right);
+    });
+  }
+  return [...messages].sort(compareMessageOffset);
+}
+
 export function MessageInspector(props: {
   serverId: string;
   serverName: string;
@@ -58,6 +163,9 @@ export function MessageInspector(props: {
   rawText: string;
   valueText: string;
   selectedMessage: ConsumedMessage | null;
+  selectedReplayMessages: ConsumedMessage[];
+  filteredReplayMessages: ConsumedMessage[];
+  allReplayMessages: ConsumedMessage[];
   mapFieldMapping: MapFieldMapping | null;
   valueColumnPaths: string[];
   onMode: (mode: MessageInspectorMode) => void;
@@ -88,13 +196,22 @@ export function MessageInspector(props: {
     headers: true,
     value: true
   });
+  const [replaySourceKind, setReplaySourceKind] = useState<ReplaySourceKind>("single");
+  const [replayMessages, setReplayMessages] = useState<ConsumedMessage[]>([]);
   const [replayDraft, setReplayDraft] = useState<ReplayDraft>({
     key: "",
     headers: "{}",
     value: ""
   });
   const [replayNotice, setReplayNotice] = useState("");
-  const [isReplaySending, setIsReplaySending] = useState(false);
+  const [replayApplyDynamicFields, setReplayApplyDynamicFields] = useState(false);
+  const [replayFieldOverrides, setReplayFieldOverrides] = useState<ReplayFieldOverride[]>([]);
+  const [replayOverrideSearch, setReplayOverrideSearch] = useState("");
+  const [expandedReplayOverrideGroups, setExpandedReplayOverrideGroups] = useState<Set<string>>(() => new Set());
+  const [replayOrder, setReplayOrder] = useState<ReplayOrder>("original");
+  const [replayStopOnFirstError, setReplayStopOnFirstError] = useState(false);
+  const [replayDelayEnabled, setReplayDelayEnabled] = useState(false);
+  const [replayDelayMs, setReplayDelayMs] = useState("10");
   const [activeMapFieldPicker, setActiveMapFieldPicker] = useState<MapFieldPickerId | null>(null);
   const [mapFieldPickerQuery, setMapFieldPickerQuery] = useState("");
   const [mapSettingsNotice, setMapSettingsNotice] = useState("");
@@ -147,6 +264,15 @@ export function MessageInspector(props: {
         : ""
     };
   }
+  const isSingleReplay = replayMessages.length <= 1;
+  const replaySourceTopic = replayMessages[0]?.topic ?? props.selectedMessage?.topic ?? "";
+  const replayOffsetRange = useMemo(() => {
+    const offsets = replayMessages.map((message) => Number(message.offset)).filter(Number.isFinite);
+    if (offsets.length === 0) return "-";
+    const min = Math.min(...offsets);
+    const max = Math.max(...offsets);
+    return min === max ? String(min) : `${min} ~ ${max}`;
+  }, [replayMessages]);
   const selectedReplayServer = useMemo(() => {
     return props.replayTargets.find((target) => target.id === replayServerId)
       ?? props.replayTargets.find((target) => target.id === props.serverId)
@@ -161,6 +287,43 @@ export function MessageInspector(props: {
       .sort((left, right) => left.localeCompare(right));
   }, [replayTopicQuery, selectedReplayServer?.topics]);
   const replayTemplateExamples = useMemo(() => getProduceTemplateExamples(), []);
+  const replayOverrideSource = useMemo(() => {
+    const sourceMessage = replayMessages[0] ?? props.selectedMessage;
+    return sourceMessage ? getMessageValuePayload(sourceMessage) : null;
+  }, [props.selectedMessage, replayMessages]);
+  const replayOverridePaths = useMemo(() => Array.from(collectValuePaths(replayOverrideSource)).sort((left, right) => left.localeCompare(right)), [replayOverrideSource]);
+  const replayOverrideTreePaths = useMemo(() => {
+    const query = replayOverrideSearch.trim().toLowerCase();
+    if (!query) return replayOverridePaths;
+    return replayOverridePaths.filter((path) => path.toLowerCase().includes(query));
+  }, [replayOverridePaths, replayOverrideSearch]);
+  const replayOverrideTree = useMemo(() => createReplayOverrideTree(replayOverrideTreePaths), [replayOverrideTreePaths]);
+  const replaySourceOptions = useMemo(() => [
+    {
+      kind: "single" as const,
+      label: t(language, "replay.sourceSingle"),
+      count: props.selectedMessage ? 1 : 0,
+      messages: props.selectedMessage ? [props.selectedMessage] : []
+    },
+    {
+      kind: "selected" as const,
+      label: t(language, "replay.sourceSelected"),
+      count: props.selectedReplayMessages.length,
+      messages: props.selectedReplayMessages
+    },
+    {
+      kind: "filtered" as const,
+      label: t(language, "replay.sourceFiltered"),
+      count: props.filteredReplayMessages.length,
+      messages: props.filteredReplayMessages
+    },
+    {
+      kind: "all" as const,
+      label: t(language, "replay.sourceAll"),
+      count: props.allReplayMessages.length,
+      messages: props.allReplayMessages
+    }
+  ], [language, props.allReplayMessages, props.filteredReplayMessages, props.selectedMessage, props.selectedReplayMessages]);
 
   useEffect(() => {
     function copySelectedInspectorText(event: KeyboardEvent) {
@@ -249,20 +412,49 @@ export function MessageInspector(props: {
     setIsMapSettingsOpen(true);
   }
 
+  function applyReplaySource(kind: ReplaySourceKind, messages: ConsumedMessage[]) {
+    if (messages.length === 0) return;
+    const sourceMessage = messages[0] as ConsumedMessage;
+    setReplaySourceKind(kind);
+    setReplayMessages(messages);
+    setReplayDraft(createReplayDraft(sourceMessage, replayPayload));
+    setReplayNotice("");
+  }
+
+  function changeReplaySource(kind: ReplaySourceKind) {
+    const option = replaySourceOptions.find((item) => item.kind === kind);
+    if (!option || option.messages.length === 0) return;
+    applyReplaySource(kind, option.messages);
+  }
+
   function openReplayDialog() {
-    if (!props.selectedMessage) return;
+    const defaultOption = replaySourceOptions.find((option) => option.kind === "selected" && option.count > 0)
+      ?? replaySourceOptions.find((option) => option.kind === "single" && option.count > 0)
+      ?? replaySourceOptions.find((option) => option.kind === "filtered" && option.count > 0)
+      ?? replaySourceOptions.find((option) => option.kind === "all" && option.count > 0);
+    if (!defaultOption) return;
+    const sourceMessage = defaultOption.messages[0] as ConsumedMessage;
     const payload = { key: true, headers: true, value: true };
     const targetServer = props.replayTargets.find((target) => target.id === props.serverId)
       ?? props.replayTargets.find((target) => target.connected)
       ?? props.replayTargets[0];
     const targetTopics = targetServer?.topics.map((topic) => topic.name) ?? [];
     setReplayServerId(targetServer?.id ?? props.serverId);
-    setReplayTopic(targetTopics.includes(props.selectedMessage.topic) ? props.selectedMessage.topic : targetTopics[0] ?? "");
+    setReplayTopic(targetTopics.includes(sourceMessage.topic) ? sourceMessage.topic : targetTopics[0] ?? "");
     setReplayTopicQuery("");
     setReplayPayload(payload);
-    setReplayDraft(createReplayDraft(props.selectedMessage, payload));
+    setReplaySourceKind(defaultOption.kind);
+    setReplayMessages(defaultOption.messages);
+    setReplayDraft(createReplayDraft(sourceMessage, payload));
     setReplayNotice("");
-    setIsReplaySending(false);
+    setReplayApplyDynamicFields(false);
+    setReplayFieldOverrides([]);
+    setReplayOverrideSearch("");
+    setExpandedReplayOverrideGroups(new Set());
+    setReplayOrder("original");
+    setReplayStopOnFirstError(false);
+    setReplayDelayEnabled(false);
+    setReplayDelayMs("10");
     setIsReplayServerPickerOpen(false);
     setIsReplayTopicPickerOpen(false);
     setIsProduceMenuOpen(false);
@@ -270,36 +462,87 @@ export function MessageInspector(props: {
   }
 
   async function submitReplay() {
-    if (!props.selectedMessage || !replayTopic.trim() || !selectedReplayServer) return;
-    const draft = {
-      key: replayPayload.key ? replayDraft.key : "",
-      headers: replayPayload.headers ? replayDraft.headers : "{}",
-      value: replayPayload.value ? replayDraft.value : ""
-    };
-    const templateIssue = validateProduceTemplateDraft(draft)[0];
-    if (templateIssue) {
-      setReplayNotice(`${templateIssue.token}: ${templateIssue.message}`);
-      return;
+    if (replayMessages.length === 0 || !replayTopic.trim() || !selectedReplayServer) return;
+    const delayMs = replayDelayEnabled ? Math.max(0, Math.floor(Number(replayDelayMs) || 0)) : 0;
+    const orderedMessages = getReplayOrderedMessages(replayMessages, replayOrder);
+    const drafts: ReplayDraft[] = [];
+    const activeOverrides = replayFieldOverrides
+      .map((override) => ({ ...override, path: override.path.trim() }))
+      .filter((override) => override.path);
+    for (let index = 0; index < orderedMessages.length; index += 1) {
+      const message = orderedMessages[index];
+      if (!message) continue;
+      if (isSingleReplay) {
+        const draft = {
+          key: replayPayload.key ? replayDraft.key : "",
+          headers: replayPayload.headers ? replayDraft.headers : "{}",
+          value: replayPayload.value ? replayDraft.value : ""
+        };
+        const templateIssue = validateProduceTemplateDraft(draft)[0];
+        if (templateIssue) {
+          setReplayNotice(`${templateIssue.token}: ${templateIssue.message}`);
+          return;
+        }
+        drafts.push(renderProduceTemplateDraft(draft, 1));
+      } else {
+        let draft = createReplayDraft(message, replayPayload);
+        if (replayApplyDynamicFields) {
+          for (const override of activeOverrides) {
+            const templateIssue = validateProduceTemplateDraft({ key: "", headers: "{}", value: override.value })[0];
+            if (templateIssue) {
+              setReplayNotice(`${templateIssue.token}: ${templateIssue.message}`);
+              return;
+            }
+          }
+          if (replayPayload.value && activeOverrides.length > 0) {
+            try {
+              const valueObject = JSON.parse(draft.value) as unknown;
+              for (const override of activeOverrides) {
+                const renderedOverride = renderProduceTemplateDraft({ key: "", headers: "{}", value: override.value }, index + 1).value;
+                const applied = setValueAtPath(valueObject, override.path.replace(/^value\./, ""), parseReplayOverrideValue(renderedOverride));
+                if (!applied) {
+                  setReplayNotice(t(language, "replay.invalidOverridePath", { path: override.path }));
+                  return;
+                }
+              }
+              draft = { ...draft, value: JSON.stringify(valueObject, null, 2) };
+            } catch {
+              setReplayNotice(t(language, "replay.overrideRequiresJson"));
+              return;
+            }
+          }
+          draft = renderProduceTemplateDraft(draft, index + 1);
+        }
+        drafts.push(draft);
+      }
     }
-    const renderedDraft = renderProduceTemplateDraft(draft, 1);
-    const valueError = validateJsonLikeValue(renderedDraft.value);
-    if (valueError) {
-      setReplayNotice(valueError);
-      return;
+    for (const draft of drafts) {
+      const valueError = validateJsonLikeValue(draft.value);
+      if (valueError) {
+        setReplayNotice(valueError);
+        return;
+      }
+      const headers = parseProduceHeaders(draft.headers);
+      if (typeof headers === "string") {
+        setReplayNotice(headers);
+        return;
+      }
     }
-    const headers = parseProduceHeaders(renderedDraft.headers);
-    if (typeof headers === "string") {
-      setReplayNotice(headers);
-      return;
-    }
-    setIsReplaySending(true);
     setReplayNotice("");
-    try {
-      await props.onReplayMessage(selectedReplayServer.id, replayTopic.trim(), renderedDraft);
-      setIsReplayOpen(false);
-    } finally {
-      setIsReplaySending(false);
-    }
+    startReplayJob({
+      sourceServerId: props.serverId,
+      sourceServerName: props.serverName,
+      sourceTopic: orderedMessages[0]?.topic ?? replayMessages[0]?.topic ?? "",
+      targetServerId: selectedReplayServer.id,
+      targetServerName: selectedReplayServer.name,
+      targetTopic: replayTopic.trim(),
+      drafts,
+      messageLabels: orderedMessages.map((message) => `${message.topic}[${message.partition}]@${message.offset}`),
+      delayMs,
+      stopOnFirstError: replayStopOnFirstError,
+      send: props.onReplayMessage
+    });
+    setIsReplayOpen(false);
   }
 
   function toggleReplayPayload(key: keyof ReplayPayloadOptions) {
@@ -313,6 +556,116 @@ export function MessageInspector(props: {
       }
       return next;
     });
+  }
+
+  function addReplayFieldOverride() {
+    setReplayApplyDynamicFields(true);
+    setReplayFieldOverrides((current) => [
+      ...current,
+      { id: `${Date.now()}-${current.length}`, path: "", value: "${timestamp}" }
+    ]);
+  }
+
+  function toggleReplayOverridePath(path: string) {
+    setReplayFieldOverrides((current) => {
+      if (current.some((override) => override.path === path)) return current.filter((override) => override.path !== path);
+      return [
+        ...current,
+        { id: `${Date.now()}-${current.length}`, path, value: getDefaultReplayOverrideValue(path) }
+      ];
+    });
+  }
+
+  function toggleReplayOverrideGroup(path: string) {
+    setExpandedReplayOverrideGroups((current) => {
+      const next = new Set(current);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }
+
+  function toggleReplayOverrideGroupSelection(node: ReplayOverrideTreeNode) {
+    const leafPaths = getReplayOverrideLeafPaths(node);
+    setReplayFieldOverrides((current) => {
+      const currentByPath = new Map(current.map((override) => [override.path, override]));
+      const allSelected = leafPaths.every((path) => currentByPath.has(path));
+      if (allSelected) {
+        for (const path of leafPaths) currentByPath.delete(path);
+      } else {
+        for (const path of leafPaths) {
+          if (!currentByPath.has(path)) {
+            currentByPath.set(path, { id: `${Date.now()}-${path}`, path, value: getDefaultReplayOverrideValue(path) });
+          }
+        }
+      }
+      return Array.from(currentByPath.values());
+    });
+  }
+
+  function updateReplayFieldOverride(id: string, patch: Partial<ReplayFieldOverride>) {
+    setReplayFieldOverrides((current) => current.map((override) => override.id === id ? { ...override, ...patch } : override));
+  }
+
+  function removeReplayFieldOverride(id: string) {
+    setReplayFieldOverrides((current) => current.filter((override) => override.id !== id));
+  }
+
+  function renderReplayOverrideNode(node: ReplayOverrideTreeNode, depth: number) {
+    const children = Array.from(node.children.values()).sort((left, right) => left.name.localeCompare(right.name));
+    const hasChildren = children.length > 0;
+    const isExpanded = replayOverrideSearch.trim().length > 0 || expandedReplayOverrideGroups.has(node.fullPath);
+    const selectedPaths = new Set(replayFieldOverrides.map((override) => override.path));
+
+    if (!hasChildren) {
+      const path = node.leafPath ?? node.fullPath;
+      return (
+        <label key={path} className="replay-override-tree-row leaf" style={{ paddingLeft: 8 + depth * 24 }}>
+          <span className="replay-override-tree-indent" />
+          <input
+            type="checkbox"
+            checked={selectedPaths.has(path)}
+            onChange={() => toggleReplayOverridePath(path)}
+          />
+          <span className="replay-override-leaf-spacer" />
+          <span className="replay-override-leaf-name" title={path}>{node.name}</span>
+        </label>
+      );
+    }
+
+    const leafPaths = getReplayOverrideLeafPaths(node);
+    const selectedLeafCount = leafPaths.filter((path) => selectedPaths.has(path)).length;
+    const isGroupChecked = leafPaths.length > 0 && selectedLeafCount === leafPaths.length;
+    const isGroupMixed = selectedLeafCount > 0 && selectedLeafCount < leafPaths.length;
+    return (
+      <div key={node.fullPath} className="replay-override-tree-group">
+        <div className="replay-override-tree-row group" style={{ paddingLeft: 8 + depth * 24 }}>
+          <button
+            type="button"
+            className="replay-override-tree-expander"
+            onClick={() => toggleReplayOverrideGroup(node.fullPath)}
+            aria-label={isExpanded ? "Collapse group" : "Expand group"}
+          >
+            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
+          <input
+            type="checkbox"
+            checked={isGroupChecked}
+            ref={(input) => {
+              if (input) input.indeterminate = isGroupMixed;
+            }}
+            onChange={() => toggleReplayOverrideGroupSelection(node)}
+          />
+          <Folder size={13} />
+          <span className="replay-override-group-name" title={node.fullPath}>{node.name}</span>
+          <span className="replay-override-group-count">{selectedLeafCount}/{leafPaths.length}</span>
+        </div>
+        {isExpanded && children.map((child) => renderReplayOverrideNode(child, depth + 1))}
+      </div>
+    );
   }
 
   async function changeReplayServer(serverId: string) {
@@ -548,7 +901,7 @@ export function MessageInspector(props: {
                   <strong>{t(language, "replay.produceCurrent")}</strong>
                   <span>{props.selectedMessage?.topic ?? "-"}</span>
                 </button>
-                <button type="button" onClick={openReplayDialog}>
+                <button type="button" onClick={() => openReplayDialog()}>
                   <strong>{t(language, "replay.chooseTarget")}</strong>
                   <span>{t(language, "replay.chooseTargetHelp")}</span>
                 </button>
@@ -574,11 +927,25 @@ export function MessageInspector(props: {
               {replayNotice && <div className="replay-notice" role="alert">{replayNotice}</div>}
               <section className="replay-route-card">
                 <h3>{t(language, "label.source")}</h3>
+                <div className="replay-source-modes" role="group" aria-label={t(language, "replay.sourceMode")}>
+                  {replaySourceOptions.map((option) => (
+                    <button
+                      key={option.kind}
+                      type="button"
+                      className={replaySourceKind === option.kind ? "active" : ""}
+                      disabled={option.count === 0}
+                      onClick={() => changeReplaySource(option.kind)}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.count}</span>
+                    </button>
+                  ))}
+                </div>
                 <dl>
                   <div><dt>{t(language, "label.cluster")}</dt><dd>{props.serverName}</dd></div>
-                  <div><dt>{t(language, "label.topic")}</dt><dd>{props.selectedMessage?.topic ?? "-"}</dd></div>
-                  <div><dt>{t(language, "label.partition")}</dt><dd>{props.selectedMessage?.partition ?? "-"}</dd></div>
-                  <div><dt>Offset</dt><dd>{props.selectedMessage?.offset ?? "-"}</dd></div>
+                  <div><dt>{t(language, "label.topic")}</dt><dd>{replaySourceTopic || "-"}</dd></div>
+                  <div><dt>{t(language, "label.count")}</dt><dd>{replayMessages.length || "-"}</dd></div>
+                  <div><dt>Offset</dt><dd>{replayOffsetRange}</dd></div>
                 </dl>
               </section>
               <section className="replay-route-card">
@@ -678,6 +1045,44 @@ export function MessageInspector(props: {
                 <label><input type="checkbox" checked={replayPayload.headers} onChange={() => toggleReplayPayload("headers")} /> {t(language, "label.headers")}</label>
                 <label><input type="checkbox" checked={replayPayload.value} onChange={() => toggleReplayPayload("value")} /> {t(language, "label.value")}</label>
               </section>
+              <section className="replay-route-card replay-options-card">
+                <h3>{t(language, "label.options")}</h3>
+                <div className="replay-order-control" role="group" aria-label={t(language, "replay.order")}>
+                  {(["grid", "original", "timestamp"] as ReplayOrder[]).map((order) => (
+                    <button
+                      key={order}
+                      type="button"
+                      className={replayOrder === order ? "active" : ""}
+                      onClick={() => setReplayOrder(order)}
+                      title={t(language, `replay.order.${order}.help`)}
+                      aria-label={`${t(language, `replay.order.${order}`)}: ${t(language, `replay.order.${order}.help`)}`}
+                    >
+                      {t(language, `replay.order.${order}`)}
+                    </button>
+                  ))}
+                </div>
+                <p className="replay-option-help">{t(language, `replay.order.${replayOrder}.help`)}</p>
+                <label><input type="checkbox" checked={replayStopOnFirstError} onChange={(event) => setReplayStopOnFirstError(event.target.checked)} /> {t(language, "replay.stopOnFirstError")}</label>
+                <label className="replay-delay-control">
+                  <input
+                    type="checkbox"
+                    checked={replayDelayEnabled}
+                    onChange={(event) => setReplayDelayEnabled(event.target.checked)}
+                  />
+                  <span>{t(language, "replay.delayEnabled")}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={replayDelayMs}
+                    onChange={(event) => setReplayDelayMs(event.target.value)}
+                    disabled={!replayDelayEnabled}
+                    aria-label={t(language, "replay.delayMs")}
+                  />
+                  <span>{t(language, "replay.delayUnit")}</span>
+                </label>
+              </section>
+              {isSingleReplay ? (
               <section className="replay-route-card replay-editor-card">
                 <div className="replay-editor-card-title">
                   <h3>{t(language, "replay.editPayload")}</h3>
@@ -720,11 +1125,102 @@ export function MessageInspector(props: {
                   />
                 </label>
               </section>
+              ) : (
+              <section className="replay-route-card replay-batch-card">
+                <h3>{t(language, "replay.batchOptions")}</h3>
+                <p>{t(language, "replay.batchOriginalPayload")}</p>
+                <label className="replay-dynamic-toggle">
+                  <input
+                    type="checkbox"
+                    checked={replayApplyDynamicFields}
+                    onChange={(event) => setReplayApplyDynamicFields(event.target.checked)}
+                  />
+                  <span>{t(language, "replay.applyDynamicFields")}</span>
+                </label>
+                {replayApplyDynamicFields && (
+                  <div className="replay-override-panel">
+                    <div className="replay-override-title">
+                      <strong>{t(language, "replay.valueOverrides")}</strong>
+                      <details className="replay-dynamic-guide">
+                        <summary>{t(language, "produce.dynamicFieldGuide")}</summary>
+                        <div>
+                          {replayTemplateExamples.map((example) => (
+                            <p key={example.syntax}>
+                              <code>{example.syntax}</code>
+                              <span>{example.description}</span>
+                            </p>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                    <p>{t(language, "replay.valueOverridesHelp")}</p>
+                    <div className="replay-override-body">
+                      <div className="replay-override-tree-panel">
+                        <input
+                          className="replay-override-search"
+                          value={replayOverrideSearch}
+                          onChange={(event) => setReplayOverrideSearch(event.target.value)}
+                          placeholder={t(language, "placeholder.searchReplayOverrideFields")}
+                        />
+                        <div className="replay-override-tree">
+                          {Array.from(replayOverrideTree.children.values())
+                            .sort((left, right) => left.name.localeCompare(right.name))
+                            .map((node) => renderReplayOverrideNode(node, 0))}
+                          {replayOverrideTree.children.size === 0 && (
+                            <div className="replay-override-empty">{t(language, "replay.noOverrideFields")}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="replay-override-selected-panel">
+                        <div className="replay-override-list">
+                          {replayFieldOverrides.map((override) => (
+                            <div className="replay-override-row" key={override.id}>
+                              {override.path ? (
+                                <button
+                                  type="button"
+                                  className="replay-override-path"
+                                  title={`$.${override.path}`}
+                                  aria-label={`$.${override.path}`}
+                                >
+                                  {formatMapFieldPath(override.path)}
+                                </button>
+                              ) : (
+                                <input
+                                  value={override.path}
+                                  onChange={(event) => updateReplayFieldOverride(override.id, { path: event.target.value })}
+                                  placeholder={t(language, "placeholder.replayOverridePath")}
+                                  title={override.path ? `$.${override.path}` : t(language, "placeholder.replayOverridePath")}
+                                />
+                              )}
+                              <input
+                                value={override.value}
+                                onChange={(event) => updateReplayFieldOverride(override.id, { value: event.target.value })}
+                                placeholder="${timestamp}"
+                                title={override.path ? `$.${override.path}` : undefined}
+                              />
+                              <button type="button" className="ghost icon-only" onClick={() => removeReplayFieldOverride(override.id)} title={t(language, "action.remove")}>
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button type="button" className="ghost compact replay-override-add" onClick={addReplayFieldOverride}>
+                          + {t(language, "replay.addCustomOverride")}
+                        </button>
+                        {replayFieldOverrides.length === 0 && (
+                          <div className="replay-override-empty">{t(language, "replay.noOverrideFields")}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+              )}
             </div>
             <div className="modal-actions">
-              <button className="ghost" onClick={() => setIsReplayOpen(false)} disabled={isReplaySending}>{t(language, "action.cancel")}</button>
-              <button className="primary" onClick={() => void submitReplay()} disabled={isReplaySending || !selectedReplayServer?.connected || !replayTopic.trim() || (!replayPayload.key && !replayPayload.headers && !replayPayload.value)}>
-                <Send size={14} /> {isReplaySending ? t(language, "replay.sending") : t(language, "replay.send")}
+              <button className="ghost" onClick={() => setIsReplayOpen(false)}>{t(language, "action.cancel")}</button>
+              <button className="primary" onClick={() => void submitReplay()} disabled={!selectedReplayServer?.connected || !replayTopic.trim() || (!replayPayload.key && !replayPayload.headers && !replayPayload.value)}>
+                <Send size={14} /> {isSingleReplay ? t(language, "replay.send") : t(language, "replay.sendMany", { count: String(replayMessages.length) })}
               </button>
             </div>
           </section>

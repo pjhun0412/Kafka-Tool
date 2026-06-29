@@ -11,9 +11,9 @@ export type ReleaseNote = {
 };
 
 export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
-  "2.0.5": {
+  "2.0.6": {
     ko: {
-      title: "Kafka Tool 2.0.5",
+      title: "Kafka Tool 2.0.6",
       sections: [
         {
           heading: "Consume Value Columns",
@@ -45,9 +45,12 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
         {
           heading: "Message Replay",
           items: [
-            "Consume한 단건 메시지를 원하는 대상 서버와 Topic으로 바로 다시 전송할 수 있습니다.",
-            "Replay 팝업에서 원본 Cluster/Topic/Partition/Offset을 확인하고 Key, Headers, Value 포함 여부를 선택할 수 있습니다.",
-            "전송 전 Payload를 직접 수정할 수 있으며 Produce Dynamic Field 문법도 Replay 전송 직전에 치환됩니다."
+            "Consume한 메시지를 원하는 대상 서버와 Topic으로 바로 다시 전송할 수 있습니다.",
+            "단건, 선택 메시지, 필터 결과, 조회된 전체 메시지를 Replay 대상으로 선택할 수 있습니다.",
+            "Replay 팝업에서 원본 Cluster/Topic/Partition/Offset과 대상 서버/Topic을 확인하고 Key, Headers, Value 포함 여부를 선택할 수 있습니다.",
+            "전송 순서를 Grid order, Original order, Timestamp order 중 선택할 수 있습니다.",
+            "단건은 Payload를 직접 수정할 수 있고, 다건 Replay는 Value 필드별 Dynamic Field 치환을 지원합니다.",
+            "대량 Replay는 메시지 간 Delay를 설정할 수 있으며, 백그라운드 Replay Jobs 패널에서 진행률 확인과 전송 중단이 가능합니다."
           ]
         },
         {
@@ -60,7 +63,7 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
       ]
     },
     en: {
-      title: "Kafka Tool 2.0.5",
+      title: "Kafka Tool 2.0.6",
       sections: [
         {
           heading: "Consume Value Columns",
@@ -92,9 +95,12 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
         {
           heading: "Message Replay",
           items: [
-            "Replay a consumed single message directly to any target server and Topic.",
-            "The replay dialog shows the source cluster/topic/partition/offset and lets you choose whether to include Key, Headers, and Value.",
-            "Payload fields can be edited before sending, and Produce Dynamic Field syntax is rendered right before replay."
+            "Replay consumed messages directly to any target server and Topic.",
+            "Choose a single message, selected messages, filtered results, or all loaded messages as the Replay source.",
+            "The replay dialog shows source cluster/topic/partition/offset details and target server/topic details, with Key, Headers, and Value include toggles.",
+            "Batch Replay can be sent in Grid, Original, or Timestamp order.",
+            "Single Replay supports direct payload editing, while batch Replay supports Dynamic Field overrides for selected Value fields.",
+            "Large Replay jobs support per-message Delay and continue in the background with progress and abort controls in the Replay Jobs panel."
           ]
         },
         {

@@ -11,7 +11,7 @@ import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspect
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { MessageInspector } from "./MessageInspector";
 import { MessageFilterBar } from "./MessageFilterBar";
-import { MessageGrid } from "./MessageGrid";
+import { getMessageRowKey, MessageGrid } from "./MessageGrid";
 import { useConsumePanelMessages } from "./useConsumePanelMessages";
 import { useInspectorResize } from "./useInspectorResize";
 
@@ -155,6 +155,7 @@ function ConsumePanelView(props: ConsumePanelProps) {
   const [showValueColumns, setShowValueColumns] = useState(false);
   const [valueColumnSearch, setValueColumnSearch] = useState("");
   const [expandedValueColumnGroups, setExpandedValueColumnGroups] = useState<Set<string>>(() => new Set());
+  const [checkedMessageKeys, setCheckedMessageKeys] = useState<Set<string>>(() => new Set());
   const messageTableRef = useRef<HTMLDivElement | null>(null);
   const consumeGridRef = useRef<HTMLDivElement | null>(null);
   const lastSentLiveMapMessageRef = useRef("");
@@ -193,6 +194,10 @@ function ConsumePanelView(props: ConsumePanelProps) {
     valueFormat: props.valueFormat,
     payloadEncoding: props.payloadEncoding
   });
+  const checkedMessages = useMemo(
+    () => props.messages.filter((message) => checkedMessageKeys.has(getMessageRowKey(message))),
+    [checkedMessageKeys, props.messages]
+  );
 
   const valueColumnCandidates = useMemo(() => {
     return collectMessageValuePaths(props.messages, VALUE_COLUMN_SAMPLE_SIZE, MAX_VALUE_COLUMN_CANDIDATES);
@@ -228,6 +233,15 @@ function ConsumePanelView(props: ConsumePanelProps) {
       return new Set(rootValueColumnGroupPaths);
     });
   }, [rootValueColumnGroupPaths]);
+
+  useEffect(() => {
+    setCheckedMessageKeys((current) => {
+      if (current.size === 0) return current;
+      const availableKeys = new Set(props.messages.map(getMessageRowKey));
+      const next = new Set([...current].filter((key) => availableKeys.has(key)));
+      return next.size === current.size ? current : next;
+    });
+  }, [props.messages]);
 
   useEffect(() => {
     setIsGridReady(false);
@@ -311,6 +325,34 @@ function ConsumePanelView(props: ConsumePanelProps) {
       setPreviewMode(props.valueFormat);
     }
     setPreviewEncoding(props.payloadEncoding);
+  }
+
+  function toggleMessageChecked(message: ConsumedMessage) {
+    const key = getMessageRowKey(message);
+    setCheckedMessageKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function toggleVisibleChecked(messages: ConsumedMessage[], checked: boolean) {
+    setCheckedMessageKeys((current) => {
+      const next = new Set(current);
+      messages.forEach((message) => {
+        const key = getMessageRowKey(message);
+        if (checked) {
+          next.add(key);
+        } else {
+          next.delete(key);
+        }
+      });
+      return next;
+    });
   }
 
   function toggleValueColumn(path: string) {
@@ -539,10 +581,13 @@ function ConsumePanelView(props: ConsumePanelProps) {
               rows={gridRows}
               valueColumnPaths={valueColumnPaths}
               selectedMessageKey={selectedMessageKey}
+              checkedMessageKeys={checkedMessageKeys}
               filterMode={props.filterMode}
               hasActiveMessageFilter={hasActiveMessageFilter}
               highlightedMessageKeys={highlightedMessageKeys}
               onSelectMessage={selectMessage}
+              onToggleMessageChecked={toggleMessageChecked}
+              onToggleVisibleChecked={toggleVisibleChecked}
             />
           ) : (
             <div className="message-table tanstack-message-table table-warmup">
@@ -573,6 +618,9 @@ function ConsumePanelView(props: ConsumePanelProps) {
               rawText={selectedJson}
               valueText={props.selectedMessage?.value ?? ""}
               selectedMessage={props.selectedMessage}
+              selectedReplayMessages={checkedMessages}
+              filteredReplayMessages={filteredMessages}
+              allReplayMessages={props.messages}
               mapFieldMapping={props.mapFieldMapping}
               valueColumnPaths={valueColumnPaths}
               onMapFieldMapping={props.onMapFieldMapping}

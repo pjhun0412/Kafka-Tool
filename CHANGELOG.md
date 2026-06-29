@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.5
+## 2.0.6
 
 ### Added
 
@@ -10,6 +10,8 @@
 - Added the independent Map Viewer window for coordinate messages, including per-topic field mapping, projection conversion, vehicle markers, heading, trails, and selected-vehicle follow mode.
 - Added Consumer Group Offset Reset with partition selection, preview, active-group protection, and Earliest/Latest/Timestamp/Specific offset modes.
 - Added Message Replay from Consume results with target server/topic selection, payload editing, Key/Headers/Value toggles, and Dynamic Field rendering.
+- Added batch Message Replay for selected messages, filtered results, and all loaded Consume messages.
+- Added background Replay Jobs with progress tracking, source/target server display, delay control, and abort support.
 
 ### Improved
 
@@ -18,6 +20,8 @@
 - Support `km/h` and `m/s` speed field handling in Map Viewer.
 - Show reset progress and errors inside the Consumer Group reset dialog.
 - Keep Message Replay inside its dialog so messages can be reviewed, edited, and sent without switching to the Produce tab.
+- Support Grid, Original, and Timestamp ordering for batch Replay.
+- Keep Replay sends running in the background when the Replay dialog or Topic pane is closed.
 - Improved large Consume tab switching by avoiding unnecessary filter copies and caching message row/value parsing work.
 - Improved Map Viewer movement by interpolating vehicle position and heading updates.
 - Refactored Consume value-path helpers and Map Viewer vehicle helpers into focused modules.

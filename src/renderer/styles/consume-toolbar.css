@@ -1,24 +1,55 @@
 .consume-workspace > .toolbar {
   @apply gap-1.5 rounded-lg border border-[#30363d] bg-[#252526] p-2 text-slate-100 shadow-[0_8px_20px_rgba(0,0,0,0.18)];
+  --consume-toolbar-control-height: 36px;
 }
 
 .consume-workspace > .toolbar .count {
   @apply whitespace-nowrap;
 }
 
+.consume-workspace > .toolbar .segmented {
+  height: var(--consume-toolbar-control-height);
+  min-height: var(--consume-toolbar-control-height);
+}
+
+.consume-workspace > .toolbar .segmented button {
+  height: var(--consume-toolbar-control-height);
+  min-height: var(--consume-toolbar-control-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1;
+}
+
 .toolbar input,
 .toolbar select {
-  @apply h-9 min-h-9 py-2;
+  @apply py-0 leading-none;
+  height: var(--consume-toolbar-control-height);
+  min-height: var(--consume-toolbar-control-height);
 }
 
 .toolbar .primary,
 .toolbar .danger,
+.toolbar .ui-button,
 .toolbar .export-button {
-  @apply h-9 min-h-9 px-3;
+  @apply px-3 py-0 leading-none;
+  height: var(--consume-toolbar-control-height);
+  min-height: var(--consume-toolbar-control-height);
 }
 
 .toolbar .export-menu {
-  @apply inline-flex h-9 min-h-9 items-center;
+  @apply inline-flex items-center;
+  height: var(--consume-toolbar-control-height);
+  min-height: var(--consume-toolbar-control-height);
+}
+
+.toolbar .payload-format-control {
+  height: var(--consume-toolbar-control-height);
+  min-height: var(--consume-toolbar-control-height);
+}
+
+.toolbar input[type="checkbox"] {
+  height: 14px;
+  min-height: 0;
 }
 
 .export-button {
