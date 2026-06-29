@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { RefreshCw, Trash2, X } from "lucide-react";
-import type { ConsumerGroupLagDetail, ConsumerGroupSummary } from "../../../../shared/types";
+import type { ConsumerGroupLagDetail, ConsumerGroupOffsetResetRequest, ConsumerGroupSummary } from "../../../../shared/types";
 import { useAppLanguage } from "../../../hooks/state/useAppLanguage";
 import { t } from "../../../i18n";
 import { DataGrid } from "../../DataGrid";
@@ -35,12 +35,14 @@ function SelectionCheckbox(props: {
 }
 
 export function ConsumerGroupsPanel(props: {
+  serverId: string;
   groups: ConsumerGroupSummary[];
   selectedGroupId: string;
   detail: ConsumerGroupLagDetail | null;
   detailsByGroup: Record<string, ConsumerGroupLagDetail>;
   onSelectGroup: (groupId: string) => void;
   onDeleteGroups: (groupIds: string[]) => void;
+  onResetOffsets: (request: ConsumerGroupOffsetResetRequest) => Promise<void>;
   onBack: () => void;
   onRefresh: () => void;
   onRefreshDetail: () => void;
@@ -183,10 +185,12 @@ export function ConsumerGroupsPanel(props: {
     return (
       <ConsumerGroupDetailView
         detail={props.detail}
+        serverId={props.serverId}
         query={query}
         onQuery={setQuery}
         onBack={props.onBack}
         onRefreshDetail={props.onRefreshDetail}
+        onResetOffsets={props.onResetOffsets}
       />
     );
   }

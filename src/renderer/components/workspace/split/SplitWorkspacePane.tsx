@@ -4,6 +4,7 @@ import type {
   BrokerSummary,
   ConsumedMessage,
   ConsumerGroupLagDetail,
+  ConsumerGroupOffsetResetRequest,
   ConsumerGroupSummary,
   ManualAvroSchema,
   MessageExportFormat,
@@ -61,6 +62,7 @@ export function SplitWorkspacePane(props: {
   onToggleTopicFavorite: (topic: string) => void;
   onSelectGroup: (groupId: string) => void;
   onDeleteConsumerGroups: (groupIds: string[]) => void;
+  onResetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => Promise<void>;
   onBackGroup: () => void;
   onRefreshGroups: () => void;
   onRefreshGroupDetail: () => void;
@@ -190,6 +192,7 @@ export function SplitWorkspacePane(props: {
         onToggleTopicFavorite={props.onToggleTopicFavorite}
         onSelectGroup={props.onSelectGroup}
         onDeleteConsumerGroups={props.onDeleteConsumerGroups}
+        onResetConsumerGroupOffsets={props.onResetConsumerGroupOffsets}
         onBackGroup={props.onBackGroup}
         onRefreshGroups={props.onRefreshGroups}
         onRefreshGroupDetail={props.onRefreshGroupDetail}

@@ -257,3 +257,140 @@
 .group-state-badge.preparingrebalance {
   @apply border-amber-500/30 bg-amber-500/10 text-amber-300;
 }
+
+.reset-offset-backdrop {
+  @apply z-[80];
+}
+
+.reset-offset-dialog {
+  @apply grid max-h-[88vh] w-[760px] max-w-[calc(100vw-32px)] gap-3 overflow-hidden rounded-lg border border-[#30363d] bg-[#252526] p-4 text-slate-200 shadow-[0_24px_80px_rgba(0,0,0,0.55)];
+}
+
+.reset-offset-warning {
+  @apply flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-100;
+}
+
+.reset-offset-warning svg {
+  @apply mt-0.5 shrink-0 text-amber-300;
+}
+
+.reset-offset-warning strong,
+.reset-offset-warning span {
+  @apply block;
+}
+
+.reset-offset-warning strong {
+  @apply mb-0.5 text-amber-50;
+}
+
+.reset-offset-form {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.reset-offset-form label,
+.reset-offset-confirm {
+  @apply grid min-w-0 gap-1.5;
+}
+
+.reset-offset-form label > span,
+.reset-offset-confirm > span {
+  @apply text-[11px] font-extrabold uppercase text-[#9da5b4];
+}
+
+.reset-offset-form input,
+.reset-offset-form select,
+.reset-offset-confirm input {
+  @apply h-9 min-h-9 min-w-0 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-0 text-[12px] font-bold text-white outline-none focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/25;
+  color-scheme: dark;
+}
+
+.reset-offset-partitions {
+  @apply grid min-h-0 gap-2 rounded-md border border-[#30363d] bg-[#1e1e1e] p-2;
+}
+
+.reset-offset-partition-header {
+  @apply flex items-center justify-between gap-2;
+}
+
+.reset-offset-partition-header label {
+  @apply inline-flex items-center gap-2 text-[12px] font-bold text-slate-200;
+}
+
+.reset-offset-partition-list {
+  @apply grid max-h-[220px] gap-1 overflow-auto;
+}
+
+.reset-offset-partition-row {
+  @apply grid min-h-8 grid-cols-[auto_52px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 rounded-md border border-transparent px-2 py-1 text-[12px] text-slate-300 hover:border-[#3c3c3c] hover:bg-[#252526];
+}
+
+.reset-offset-partition-row input,
+.reset-offset-partition-header input {
+  @apply m-0 h-4 min-h-0 w-4 accent-brand;
+  padding: 0;
+}
+
+.reset-offset-partition-row strong {
+  @apply text-slate-100;
+}
+
+.reset-offset-actions {
+  @apply flex justify-end;
+}
+
+.reset-offset-preview {
+  @apply grid max-h-[250px] gap-2 overflow-auto rounded-md border border-[#264f78] bg-[#142331] p-3 text-[12px] text-slate-200;
+}
+
+.reset-offset-preview > strong {
+  @apply text-[#9cdcfe];
+}
+
+.reset-offset-preview-note {
+  @apply rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-100;
+}
+
+.reset-offset-preview-grid {
+  @apply grid grid-cols-4 gap-x-2 gap-y-1;
+}
+
+.reset-offset-preview-grid > span {
+  @apply text-[11px] font-extrabold uppercase text-[#9da5b4];
+}
+
+.reset-offset-preview-row {
+  @apply contents;
+}
+
+.reset-offset-preview-row span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-black/10 px-2 py-1;
+}
+
+.reset-offset-confirm {
+  @apply mt-1;
+}
+
+.reset-offset-progress {
+  @apply flex items-start gap-2 rounded-md border border-[#3794ff]/40 bg-[#142331] px-3 py-2 text-[12px] text-slate-200;
+}
+
+.reset-offset-progress svg {
+  @apply mt-0.5 shrink-0 text-[#9cdcfe];
+}
+
+.reset-offset-progress strong,
+.reset-offset-progress span {
+  @apply block;
+}
+
+.reset-offset-progress strong {
+  @apply mb-0.5 text-[#9cdcfe];
+}
+
+.reset-offset-progress span {
+  @apply text-[#c8d2dc];
+}
+
+.reset-offset-apply-message {
+  @apply mr-auto max-w-[360px] text-left text-[12px] leading-snug text-red-300;
+}

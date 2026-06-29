@@ -26,6 +26,7 @@ type PrimaryPaneCallbackProps =
   | "onToggleTopicFavorite"
   | "onSelectGroup"
   | "onDeleteConsumerGroups"
+  | "onResetConsumerGroupOffsets"
   | "onBackGroup"
   | "onRefreshGroups"
   | "onRefreshGroupDetail"
@@ -78,6 +79,7 @@ export function createPrimaryWorkspacePaneProps({
     onToggleTopicFavorite: callbacks.toggleTopicFavorite,
     onSelectGroup: callbacks.selectGroup,
     onDeleteConsumerGroups: callbacks.deleteConsumerGroups,
+    onResetConsumerGroupOffsets: callbacks.resetConsumerGroupOffsets,
     onBackGroup: callbacks.backGroup,
     onRefreshGroups: callbacks.refreshGroups,
     onRefreshGroupDetail: callbacks.refreshGroupDetail,

@@ -14,6 +14,7 @@ Current release: `2.0.5`
 
 - Added `Value Columns` for Consume grids and CSV export.
 - Added Map Viewer for coordinate messages with per-topic field mapping, projection conversion, vehicle heading, trails, and selected-vehicle follow mode.
+- Added Consumer Group Offset Reset with preview, partition selection, and active-group protection.
 - Improved large Consume tab switching and Map Viewer movement smoothing.
 
 ## Documentation
@@ -30,6 +31,7 @@ Current release: `2.0.5`
 - [x] Multi-cluster server profile management
 - [x] Server profile validation and Kafka connection testing before saving
 - [x] `Broker`, `Topic`, and `Consumer Group` browsing
+- [x] Consumer Group Offset Reset with dry-run preview and partition selection
 - [x] Topic detail, settings, creation, clear messages, and delete actions
 - [x] `Offset`, `Time`, and `Live` Consume modes
 - [x] Key/Value payload display as `Text`, `JSON`, `Hex`, or `Base64`
@@ -72,6 +74,19 @@ Key and Value can be viewed and exported as `Text`, `JSON`, `Hex`, or `Base64`. 
 Use `Value Columns` to select fields inside a structured Value payload, such as `vehicleId`, `latitude`, `longitude`, `speed`, or deeply nested paths. The picker groups nested fields as a tree, and leaf values in the Message Viewer Tree can be added directly to Value Columns. Selected Value Columns are stored per topic. CSV exports include selected Value Columns after the default message columns; JSON and LOG exports keep their existing formats.
 
 Live Record writes messages directly to a `JSONL` file stream. It is intended for long-running captures without keeping the entire captured dataset in renderer memory.
+
+## Consumer Groups
+
+Consumer Group details show committed offsets, beginning/end offsets, and lag by topic partition.
+
+Use `Reset Offsets` from a Consumer Group detail view to reset selected partitions to:
+
+- `Earliest`
+- `Latest`
+- `Timestamp`
+- `Specific offset`
+
+Kafka Tool blocks reset execution while the Consumer Group is active, requires a preview step, and asks for explicit `RESET` confirmation before applying changes. Reset progress and errors are shown inside the dialog.
 
 ## Map Viewer
 

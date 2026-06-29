@@ -136,6 +136,7 @@ export function createWorkspacePaneParams({
       refreshActiveWorkspaceView: actions.refreshActiveWorkspaceView,
       refreshCurrentView: actions.refreshCurrentView,
       refreshGroupsForServer: actions.refreshGroupsForServer,
+      resetConsumerGroupOffsetsFor: actions.resetConsumerGroupOffsetsFor,
       refreshSplitPaneView: actions.refreshSplitPaneView,
       requestTopicAction: actions.requestTopicAction,
       selectTopicInWorkspace: actions.selectTopicInWorkspace,
