@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { AppLogPayload, AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ImportSettingsResult, KafkaApi, LiveMapPoint, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
+import type { AppLogPayload, AppMenuLanguage, AppPreferenceSection, AppPreferences, BrokerConfigUpdateRequest, ConsumedMessage, ConsumeOffsetRequest, ConsumeTimeRangeRequest, ConsumerGroupMutationRequest, ConsumerGroupOffsetResetRequest, ImportSettingsResult, KafkaApi, LiveMapPoint, MessageExportRequest, OffsetMessageExportRequest, ProduceRequest, ServerProfile, StartConsumeRequest, StopConsumeRequest, TopicConfigUpdateRequest, TopicCreateRequest, TopicMutationRequest, UpdateStatus } from "../shared/types.js";
 
 const api: KafkaApi = {
   listServers: () => ipcRenderer.invoke("servers:list"),
@@ -35,6 +35,7 @@ const api: KafkaApi = {
   listConsumerGroups: (serverId: string) => ipcRenderer.invoke("kafka:groups", serverId),
   deleteConsumerGroups: (request: ConsumerGroupMutationRequest) => ipcRenderer.invoke("kafka:groups-delete", request),
   getConsumerGroupLag: (serverId: string, groupId: string) => ipcRenderer.invoke("kafka:group-lag", serverId, groupId),
+  resetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => ipcRenderer.invoke("kafka:group-offsets-reset", request),
   exportMessages: (request: MessageExportRequest) => ipcRenderer.invoke("messages:export", request),
   exportOffsetMessages: (request: OffsetMessageExportRequest) => ipcRenderer.invoke("messages:export-offset", request),
   produce: (message: ProduceRequest) => ipcRenderer.invoke("kafka:produce", message),

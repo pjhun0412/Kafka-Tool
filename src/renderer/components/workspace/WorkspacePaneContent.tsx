@@ -4,6 +4,7 @@ import type {
   BrokerSummary,
   ConsumedMessage,
   ConsumerGroupLagDetail,
+  ConsumerGroupOffsetResetRequest,
   ConsumerGroupSummary,
   ManualAvroSchema,
   MessageExportFormat,
@@ -61,6 +62,7 @@ type WorkspacePaneContentProps = {
   onToggleTopicFavorite: (topic: string) => void;
   onSelectGroup: (groupId: string) => void;
   onDeleteConsumerGroups: (groupIds: string[]) => void;
+  onResetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => Promise<void>;
   onBackGroup: () => void;
   onRefreshGroups: () => void;
   onRefreshGroupDetail: () => void;
@@ -207,12 +209,14 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
       )}
       {props.view === "consumers" && (
         <ConsumerGroupsPanel
+          serverId={props.serverId}
           groups={props.groups}
           selectedGroupId={props.selectedGroupId}
           detail={props.selectedGroupLag}
           detailsByGroup={props.groupDetailsById}
           onSelectGroup={props.onSelectGroup}
           onDeleteGroups={props.onDeleteConsumerGroups}
+          onResetOffsets={props.onResetConsumerGroupOffsets}
           onBack={props.onBackGroup}
           onRefresh={props.onRefreshGroups}
           onRefreshDetail={props.onRefreshGroupDetail}

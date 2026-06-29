@@ -190,6 +190,7 @@ export function useWorkspaceControllerViewComposition(params: {
       refreshActiveWorkspaceView: refreshActions.refreshActiveWorkspaceView,
       refreshCurrentView: refreshActions.refreshCurrentView,
       refreshGroupsForServer: consumerGroups.refreshGroupsForServer,
+      resetConsumerGroupOffsetsFor: consumerGroups.resetConsumerGroupOffsetsFor,
       refreshSplitPaneView: refreshActions.refreshSplitPaneView,
       requestTopicAction: topicOperations.requestTopicAction,
       selectTopicInWorkspace: navigation.selectTopicInWorkspace,

@@ -1,5 +1,5 @@
 .toast {
-  @apply fixed left-1/2 top-5 z-50 inline-flex min-h-11 min-w-[260px] max-w-[560px] -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-white px-4 py-3 text-[13px] font-extrabold text-slate-700 shadow-soft;
+  @apply fixed left-1/2 top-5 z-[120] inline-flex min-h-11 min-w-[260px] max-w-[560px] -translate-x-1/2 items-center gap-3 rounded-lg border border-line bg-white px-4 py-3 text-[13px] font-extrabold text-slate-700 shadow-soft;
   box-shadow: 0 18px 50px rgb(15 23 42 / 18%);
 }
 

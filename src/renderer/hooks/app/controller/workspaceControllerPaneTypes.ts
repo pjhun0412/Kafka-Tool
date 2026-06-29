@@ -104,6 +104,7 @@ export type WorkspacePaneCallbacks = Pick<
   | "refreshActiveWorkspaceView"
   | "refreshCurrentView"
   | "refreshGroupsForServer"
+  | "resetConsumerGroupOffsetsFor"
   | "requestTopicAction"
   | "selectTopicInWorkspace"
   | "setActiveWorkspacePane"

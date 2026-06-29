@@ -1,6 +1,6 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
-import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
+import type { ConsumedMessage, ConsumerGroupOffsetResetRequest, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import { createSplitConsumeCallbacks, createSplitProduceCallbacks } from "./splitPaneCallbackGroups";
@@ -29,6 +29,7 @@ export type SplitPaneCallbacksParams = {
   toggleFavoriteTopic: (topic: string) => void;
   loadConsumerGroupLagFor: (serverId: string, groupId: string, target?: WorkspaceActionTarget) => Promise<void>;
   deleteConsumerGroupsFor: (serverId: string, groupIds: string[], target?: WorkspaceActionTarget) => Promise<void>;
+  resetConsumerGroupOffsetsFor: (request: ConsumerGroupOffsetResetRequest, target?: WorkspaceActionTarget) => Promise<void>;
   setSelectedGroupByServer: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refreshGroupsForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
   updateConsumeStateFor: (serverId: string, topic: string, patch: Partial<TopicConsumeState>, pane?: WorkspacePaneId) => void;
@@ -64,6 +65,7 @@ export function useSplitPaneCallbacks({
   toggleFavoriteTopic,
   loadConsumerGroupLagFor,
   deleteConsumerGroupsFor,
+  resetConsumerGroupOffsetsFor,
   setSelectedGroupByServer,
   refreshGroupsForServer,
   updateConsumeStateFor,
@@ -124,6 +126,10 @@ export function useSplitPaneCallbacks({
     deleteConsumerGroups: (groupIds: string[]) => {
       if (pane) void deleteConsumerGroupsFor(pane.serverId, groupIds, target);
     },
+    resetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => {
+      if (pane) return resetConsumerGroupOffsetsFor(request, target);
+      return Promise.reject(new Error("Split pane is not available."));
+    },
     backGroup: () => {
       if (pane) setSelectedGroupByServer((current) => ({ ...current, [pane.serverId]: "" }));
     },
@@ -168,6 +174,7 @@ export function useSplitPaneCallbacks({
     produceFor,
     refreshGroupsForServer,
     refreshSplitPaneView,
+    resetConsumerGroupOffsetsFor,
     requestTopicAction,
     selectedGroupId,
     sendMessageToProduce,

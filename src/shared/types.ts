@@ -145,6 +145,7 @@ export type ConsumerGroupLagRow = {
   topic: string;
   partition: number;
   currentOffset: string;
+  startOffset: string;
   endOffset: string;
   lag: string;
   metadata?: string;
@@ -414,6 +415,27 @@ export type ConsumerGroupMutationRequest = {
   groupIds: string[];
 };
 
+export type ConsumerGroupOffsetResetMode = "earliest" | "latest" | "timestamp" | "specific";
+
+export type ConsumerGroupOffsetResetRequest = {
+  serverId: string;
+  groupId: string;
+  topic: string;
+  partitions: number[];
+  mode: ConsumerGroupOffsetResetMode;
+  timestamp?: number;
+  offset?: string;
+};
+
+export type ConsumerGroupOffsetResetResult = {
+  groupId: string;
+  topic: string;
+  partitions: Array<{
+    partition: number;
+    offset: string;
+  }>;
+};
+
 export type UpdateStatus = {
   status: "checking" | "available" | "not-available" | "download-progress" | "downloaded" | "error";
   message: string;
@@ -506,6 +528,7 @@ export type KafkaApi = {
   listConsumerGroups: (serverId: string) => Promise<ConsumerGroupSummary[]>;
   deleteConsumerGroups: (request: ConsumerGroupMutationRequest) => Promise<void>;
   getConsumerGroupLag: (serverId: string, groupId: string) => Promise<ConsumerGroupLagDetail>;
+  resetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => Promise<ConsumerGroupOffsetResetResult>;
   exportMessages: (request: MessageExportRequest) => Promise<string | null>;
   exportOffsetMessages: (request: OffsetMessageExportRequest) => Promise<string | null>;
   produce: (message: ProduceRequest) => Promise<ProducedMessage[]>;

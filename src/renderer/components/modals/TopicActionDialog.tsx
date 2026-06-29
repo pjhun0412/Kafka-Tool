@@ -45,12 +45,14 @@ export function TopicActionDialog({
         <div className="topic-action-warning">
           <strong>{t(language, "topicAction.selected", { count: String(action.topics.length) })}</strong>
           <p>{t(language, isDelete ? "topicAction.deleteDescription" : "topicAction.purgeDescription")}</p>
-          <div className="topic-action-list">
-            {action.topics.map((topic) => <span key={topic}>{topic}</span>)}
-          </div>
+          <ul className="topic-action-list" aria-label={t(language, "label.topics")}>
+            {action.topics.map((topic) => (
+              <li key={topic} title={topic}>{topic}</li>
+            ))}
+          </ul>
         </div>
-        <label>
-          {t(language, "topicAction.confirm", { word: action.kind.toUpperCase() })}
+        <label className="topic-action-confirm">
+          <span>{t(language, "topicAction.confirm", { word: action.kind.toUpperCase() })}</span>
           <input value={confirmText} onChange={(event) => onConfirmText(event.target.value)} autoFocus />
         </label>
         <div className="modal-actions">

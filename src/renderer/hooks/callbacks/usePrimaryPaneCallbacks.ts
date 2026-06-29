@@ -1,6 +1,6 @@
 ﻿import { useMemo } from "react";
 import type React from "react";
-import type { ConsumedMessage, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
+import type { ConsumedMessage, ConsumerGroupOffsetResetRequest, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import type { ConsumeDefaultPatch } from "../../uiTypes";
@@ -33,6 +33,7 @@ export type PrimaryPaneCallbacksParams = {
   toggleFavoriteTopic: (topic: string) => void;
   loadConsumerGroupLag: (groupId: string) => Promise<void>;
   deleteConsumerGroupsFor: (serverId: string, groupIds: string[], target?: WorkspaceActionTarget) => Promise<void>;
+  resetConsumerGroupOffsetsFor: (request: ConsumerGroupOffsetResetRequest, target?: WorkspaceActionTarget) => Promise<void>;
   setSelectedGroupByServer: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refreshGroupsForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
   updateSelectedConsumeState: (patch: Partial<TopicConsumeState>) => void;
@@ -74,6 +75,7 @@ export function usePrimaryPaneCallbacks({
   toggleFavoriteTopic,
   loadConsumerGroupLag,
   deleteConsumerGroupsFor,
+  resetConsumerGroupOffsetsFor,
   setSelectedGroupByServer,
   refreshGroupsForServer,
   updateSelectedConsumeState,
@@ -122,6 +124,7 @@ export function usePrimaryPaneCallbacks({
     toggleTopicFavorite: toggleFavoriteTopic,
     selectGroup: (groupId: string) => void loadConsumerGroupLag(groupId),
     deleteConsumerGroups: (groupIds: string[]) => void deleteConsumerGroupsFor(selectedServerId, groupIds, paneTarget),
+    resetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => resetConsumerGroupOffsetsFor(request, paneTarget),
     backGroup: () => setSelectedGroupByServer((current) => ({ ...current, [selectedServerId]: "" })),
     refreshGroups: () => void refreshGroupsForServer(selectedServerId, paneTarget),
     refreshGroupDetail: () => {
@@ -166,6 +169,7 @@ export function usePrimaryPaneCallbacks({
     refreshActiveWorkspaceView,
     refreshCurrentView,
     refreshGroupsForServer,
+    resetConsumerGroupOffsetsFor,
     requestTopicAction,
     selectTopicInWorkspace,
     selectedConsumeState,

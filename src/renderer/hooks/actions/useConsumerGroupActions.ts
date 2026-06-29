@@ -1,5 +1,5 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
-import type { ConsumerGroupLagDetail, ConsumerGroupSummary, KafkaApi } from "../../../shared/types";
+import type { ConsumerGroupLagDetail, ConsumerGroupOffsetResetRequest, ConsumerGroupSummary, KafkaApi } from "../../../shared/types";
 import type { SplitPaneState, WorkspacePaneId } from "../../uiTypes";
 
 type WorkspaceActionTarget = {
@@ -77,6 +77,25 @@ export function useConsumerGroupActions({
     await refreshGroupsForServer(serverId, target);
   }
 
+  async function resetConsumerGroupOffsetsFor(request: ConsumerGroupOffsetResetRequest, target?: WorkspaceActionTarget) {
+    if (!kafkaApi || !request.serverId) {
+      throw new Error("Kafka API or server id is not available.");
+    }
+    const task = () => {
+      if (typeof kafkaApi.resetConsumerGroupOffsets !== "function") {
+        throw new Error("Reset offsets API is not available. Please restart the app.");
+      }
+      return kafkaApi.resetConsumerGroupOffsets(request);
+    };
+    if (target) {
+      await runWorkspaceTask(target, "Resetting consumer group offsets...", task);
+    } else {
+      await runTask("Resetting consumer group offsets...", task);
+    }
+    await loadConsumerGroupLagFor(request.serverId, request.groupId, target);
+    await refreshGroupsForServer(request.serverId, target);
+  }
+
   async function loadConsumerGroupLag(groupId: string) {
     if (!kafkaApi || !selectedServerId) return;
     const target = visibleSplitPane
@@ -104,6 +123,7 @@ export function useConsumerGroupActions({
     refreshGroups,
     refreshGroupsForServer,
     deleteConsumerGroupsFor,
+    resetConsumerGroupOffsetsFor,
     loadConsumerGroupLag,
     loadConsumerGroupLagFor
   };

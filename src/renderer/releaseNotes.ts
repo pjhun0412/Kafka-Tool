@@ -35,6 +35,14 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
           ]
         },
         {
+          heading: "Consumer Group Offset Reset",
+          items: [
+            "Consumer Group 상세 화면에서 Partition별 offset을 Earliest, Latest, Timestamp, Specific offset으로 리셋할 수 있습니다.",
+            "실행 전 미리보기와 RESET 확인 입력을 요구해 운영 실수를 줄입니다.",
+            "활성 Consumer Group은 자동으로 차단하고, reset 진행 상태와 오류를 팝업 내부에서 확인할 수 있습니다."
+          ]
+        },
+        {
           heading: "성능 및 안정성",
           items: [
             "대량 Consume 탭 전환 때 불필요한 필터 복사와 메시지 row 재계산을 줄였습니다.",
@@ -63,6 +71,14 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
             "Vehicle markers now support heading, trails, and selected-vehicle follow mode.",
             "Speed fields in km/h or m/s can be shown in Map Viewer.",
             "Vehicle position and heading updates are interpolated for smoother movement."
+          ]
+        },
+        {
+          heading: "Consumer Group Offset Reset",
+          items: [
+            "Reset selected Consumer Group partitions to Earliest, Latest, Timestamp, or a Specific offset from the detail view.",
+            "Preview and explicit RESET confirmation are required before applying changes.",
+            "Active consumer groups are blocked, and progress/errors are shown directly inside the reset dialog."
           ]
         },
         {

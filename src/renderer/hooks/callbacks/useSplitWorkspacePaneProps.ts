@@ -24,6 +24,7 @@ type SplitPaneCallbackProps =
   | "onToggleTopicFavorite"
   | "onSelectGroup"
   | "onDeleteConsumerGroups"
+  | "onResetConsumerGroupOffsets"
   | "onBackGroup"
   | "onRefreshGroups"
   | "onRefreshGroupDetail"
@@ -74,6 +75,7 @@ export function createSplitWorkspacePaneProps({
     onToggleTopicFavorite: callbacks.toggleTopicFavorite,
     onSelectGroup: callbacks.selectGroup,
     onDeleteConsumerGroups: callbacks.deleteConsumerGroups,
+    onResetConsumerGroupOffsets: callbacks.resetConsumerGroupOffsets,
     onBackGroup: callbacks.backGroup,
     onRefreshGroups: callbacks.refreshGroups,
     onRefreshGroupDetail: callbacks.refreshGroupDetail,
