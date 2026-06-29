@@ -48,10 +48,11 @@ export function ConsumerGroupsPanel(props: {
   onRefreshDetail: () => void;
 }) {
   const language = useAppLanguage();
-  const [query, setQuery] = useState("");
+  const [groupQuery, setGroupQuery] = useState("");
+  const [detailQuery, setDetailQuery] = useState("");
   const [groupSorting, setGroupSorting] = useState<SortingState>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = groupQuery.trim().toLowerCase();
   const filteredGroups = props.groups.filter((group) => group.groupId.toLowerCase().includes(normalizedQuery));
   const filteredGroupIds = useMemo(() => filteredGroups.map((group) => group.groupId), [filteredGroups]);
   const selectedVisibleCount = filteredGroupIds.filter((groupId) => selectedGroupIds.includes(groupId)).length;
@@ -62,6 +63,10 @@ export function ConsumerGroupsPanel(props: {
     const liveGroupIds = new Set(props.groups.map((group) => group.groupId));
     setSelectedGroupIds((current) => current.filter((groupId) => liveGroupIds.has(groupId)));
   }, [props.groups]);
+
+  useEffect(() => {
+    setDetailQuery("");
+  }, [props.selectedGroupId]);
 
   function toggleGroupSelected(groupId: string) {
     setSelectedGroupIds((current) => (
@@ -186,8 +191,8 @@ export function ConsumerGroupsPanel(props: {
       <ConsumerGroupDetailView
         detail={props.detail}
         serverId={props.serverId}
-        query={query}
-        onQuery={setQuery}
+        query={detailQuery}
+        onQuery={setDetailQuery}
         onBack={props.onBack}
         onRefreshDetail={props.onRefreshDetail}
         onResetOffsets={props.onResetOffsets}
@@ -218,8 +223,8 @@ export function ConsumerGroupsPanel(props: {
         </div>
       </div>
       <div className="search-box group-search">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t(language, "placeholder.searchConsumerGroup")} />
-        {query && <button onClick={() => setQuery("")} title={t(language, "title.clearSearch")}><X size={13} /></button>}
+        <input value={groupQuery} onChange={(event) => setGroupQuery(event.target.value)} placeholder={t(language, "placeholder.searchConsumerGroup")} />
+        {groupQuery && <button onClick={() => setGroupQuery("")} title={t(language, "title.clearSearch")}><X size={13} /></button>}
       </div>
       <DataGrid
         data={filteredGroups}
@@ -233,7 +238,10 @@ export function ConsumerGroupsPanel(props: {
           group.groupId === props.selectedGroupId ? "selected" : "",
           selectedGroupIds.includes(group.groupId) ? "row-checked" : ""
         ].filter(Boolean).join(" ")}
-        onRowClick={(group) => props.onSelectGroup(group.groupId)}
+        onRowClick={(group) => {
+          setDetailQuery("");
+          props.onSelectGroup(group.groupId);
+        }}
       />
     </section>
   );

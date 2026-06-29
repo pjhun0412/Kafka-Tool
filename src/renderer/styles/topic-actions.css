@@ -59,17 +59,29 @@
 }
 
 .topic-action-list {
-  @apply max-h-36 overflow-auto rounded border border-amber-200 bg-white/60 p-2;
+  @apply m-0 flex max-h-36 list-none flex-wrap gap-1.5 overflow-auto rounded-md border border-amber-200 bg-white/40 p-2;
 }
 
-.topic-action-list span {
-  @apply block overflow-hidden text-ellipsis whitespace-nowrap py-0.5 font-mono text-[11px];
+.topic-action-list li {
+  @apply max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded border border-amber-200 bg-white/70 px-2 py-1 font-mono text-[11px] font-bold;
+}
+
+.topic-action-confirm {
+  @apply grid gap-1.5;
+}
+
+.topic-action-confirm > span {
+  @apply text-[12px] font-extrabold text-slate-200;
 }
 
 .topic-action-warning {
   @apply border-[#30363d] bg-[#252526] text-slate-100;
 }
 
-.topic-action-list span {
-  @apply border-[#3c3c3c] bg-[#2d2d2d] text-[#9cdcfe];
+.topic-action-list {
+  @apply border-[#30363d] bg-[#1e1e1e];
+}
+
+.topic-action-list li {
+  @apply border-[#3c3c3c] bg-[#2a2d2e] text-[#9cdcfe];
 }
