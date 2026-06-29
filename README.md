@@ -15,6 +15,7 @@ Current release: `2.0.5`
 - Added `Value Columns` for Consume grids and CSV export.
 - Added Map Viewer for coordinate messages with per-topic field mapping, projection conversion, vehicle heading, trails, and selected-vehicle follow mode.
 - Added Consumer Group Offset Reset with preview, partition selection, and active-group protection.
+- Added Message Replay with target server/topic selection, payload editing, and Dynamic Field rendering.
 - Improved large Consume tab switching and Map Viewer movement smoothing.
 
 ## Documentation
@@ -37,6 +38,7 @@ Current release: `2.0.5`
 - [x] Key/Value payload display as `Text`, `JSON`, `Hex`, or `Base64`
 - [x] `Value Columns` for selected `value.*` fields in the Consume grid and CSV export
 - [x] Message Viewer with `Raw`, `Tree`, and `Preview` modes
+- [x] Message Replay from Consume results to any connected target server/topic
 - [x] Map Viewer with per-topic coordinate field mapping and WGS84/TM/UTM conversion
 - [x] Live message recording to `JSONL` files
 - [x] Produce messages with key, headers, value, templates, and Interval Produce
@@ -72,6 +74,8 @@ Large offset queries are paged automatically when the requested limit is greater
 Key and Value can be viewed and exported as `Text`, `JSON`, `Hex`, or `Base64`. Kafka Tool keeps raw payload bytes only up to a fixed per-message limit to protect memory during large consumes. Larger payloads still display as text when KafkaJS can decode them, but raw-only views such as hex/base64 show an explicit retained-bytes warning.
 
 Use `Value Columns` to select fields inside a structured Value payload, such as `vehicleId`, `latitude`, `longitude`, `speed`, or deeply nested paths. The picker groups nested fields as a tree, and leaf values in the Message Viewer Tree can be added directly to Value Columns. Selected Value Columns are stored per topic. CSV exports include selected Value Columns after the default message columns; JSON and LOG exports keep their existing formats.
+
+Use Message Replay from the Message Viewer toolbar to send the selected consumed message to a target server and topic. The replay dialog shows the source cluster/topic/partition/offset, lets you pick a target server and topic, and supports Key, Headers, and Value inclusion toggles. Payload fields can be edited before sending, and Dynamic Produce fields such as `${uuid}`, `${seq:1..100}`, and `${date:yyyy-MM-dd HH:mm:ss}` are rendered just before replay.
 
 Live Record writes messages directly to a `JSONL` file stream. It is intended for long-running captures without keeping the entire captured dataset in renderer memory.
 

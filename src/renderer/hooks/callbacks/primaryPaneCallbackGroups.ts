@@ -2,7 +2,8 @@ import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types
 import { normalizeValueColumnPaths } from "../../consumeValuePaths";
 import { toConsumeDefaultPatch } from "../../consumeConfig";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
-import type { ConsumeDefaultPatch, OffsetOrder, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
+import type { ReplayDraft, ReplayPayloadOptions } from "../../replayTypes";
+import type { ConsumeDefaultPatch, OffsetOrder, TopicConsumeState, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import type { PrimaryPaneCallbacksParams } from "./usePrimaryPaneCallbacks";
 
 type PrimaryConsumeCallbackParams = Pick<
@@ -16,6 +17,8 @@ type PrimaryConsumeCallbackParams = Pick<
   | "startConsume"
   | "stopConsume"
   | "sendMessageToProduce"
+  | "produceFor"
+  | "openTopicInWorkspace"
   | "exportConsumedMessages"
   | "exportOffsetConditionMessages"
 > & {
@@ -50,8 +53,19 @@ export function createPrimaryConsumeCallbacks(params: PrimaryConsumeCallbackPara
     },
     startConsume: () => void params.startConsume(),
     stopConsume: () => void params.stopConsume(params.selectedServerId, params.selectedTopic, "primary"),
-    sendToProduce: (message: ConsumedMessage) => {
-      params.sendMessageToProduce(params.selectedServerId, params.selectedTopic, message, "primary");
+    sendToProduce: (message: ConsumedMessage, targetTopic?: string, targetServerId?: string, payload?: ReplayPayloadOptions) => {
+      const serverId = targetServerId || params.selectedServerId;
+      const topic = targetTopic || params.selectedTopic;
+      if (serverId !== params.selectedServerId || topic !== params.selectedTopic) {
+        params.sendMessageToProduce(serverId, topic, message, "primary", { navigate: false, payload });
+        const target: WorkspaceActionTarget = { pane: "primary", serverId, topic };
+        void params.openTopicInWorkspace(target, topic, "produce");
+      } else {
+        params.sendMessageToProduce(serverId, topic, message, "primary", { payload });
+      }
+    },
+    replayMessage: (serverId: string, topic: string, draft: ReplayDraft) => {
+      return params.produceFor(serverId, topic, "primary", draft);
     },
     exportMessages: (format: MessageExportFormat, messages: ConsumedMessage[]) => {
       void params.exportConsumedMessages(format, messages, params.selectedTopic, params.paneId, params.selectedServerId, payloadOptions);

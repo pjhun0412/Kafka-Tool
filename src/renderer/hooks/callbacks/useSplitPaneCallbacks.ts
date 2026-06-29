@@ -2,6 +2,7 @@
 import type React from "react";
 import type { ConsumedMessage, ConsumerGroupOffsetResetRequest, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
+import type { ReplayPayloadOptions } from "../../replayTypes";
 import type { OffsetOrder, SplitPaneState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import { createSplitConsumeCallbacks, createSplitProduceCallbacks } from "./splitPaneCallbackGroups";
 
@@ -17,6 +18,7 @@ export type SplitPaneCallbacksParams = {
   clearDragPayload: () => void;
   showSplitView: (view: View) => void;
   activateSplitTopic: (topic: string, view?: TopicWorkView, options?: { addToTabs?: boolean; preservePreview?: boolean; silent?: boolean }) => Promise<void>;
+  openTopicInWorkspace: (target: WorkspaceActionTarget, topic: string, view?: TopicWorkView) => Promise<void>;
   closeSplitTopicTab: (topic: string) => Promise<void>;
   startTopicDrag: (event: React.DragEvent, serverId: string, topic: string, source: WorkspacePaneId) => void;
   refreshSplitPaneView: (pane: SplitPaneState, state: TopicConsumeState) => Promise<void>;
@@ -29,6 +31,7 @@ export type SplitPaneCallbacksParams = {
   toggleFavoriteTopic: (topic: string) => void;
   loadConsumerGroupLagFor: (serverId: string, groupId: string, target?: WorkspaceActionTarget) => Promise<void>;
   deleteConsumerGroupsFor: (serverId: string, groupIds: string[], target?: WorkspaceActionTarget) => Promise<void>;
+  ensureServerConnected: (serverId: string, options?: { activate?: boolean; openTab?: boolean }) => Promise<boolean>;
   resetConsumerGroupOffsetsFor: (request: ConsumerGroupOffsetResetRequest, target?: WorkspaceActionTarget) => Promise<void>;
   setSelectedGroupByServer: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refreshGroupsForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
@@ -36,7 +39,7 @@ export type SplitPaneCallbacksParams = {
   moveOffsetPageFor: (serverId: string, topic: string, state: TopicConsumeState, direction: "prev" | "next", pane: WorkspacePaneId) => Promise<void>;
   startConsumeFor: (serverId: string, topic: string, state: TopicConsumeState, pane: WorkspacePaneId) => Promise<void>;
   stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
-  sendMessageToProduce: (serverId: string, topic: string, message: ConsumedMessage, pane?: WorkspacePaneId) => void;
+  sendMessageToProduce: (serverId: string, topic: string, message: ConsumedMessage, pane?: WorkspacePaneId, options?: { navigate?: boolean; payload?: ReplayPayloadOptions }) => void;
   exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string, payloadOptions?: MessageExportPayloadOptions) => Promise<void>;
   exportOffsetConditionMessages: (format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) => Promise<void>;
   updateProduceDraftFor: (serverId: string, topic: string, patch: ProduceDraftPatch) => void;
@@ -53,6 +56,7 @@ export function useSplitPaneCallbacks({
   clearDragPayload,
   showSplitView,
   activateSplitTopic,
+  openTopicInWorkspace,
   closeSplitTopicTab,
   startTopicDrag,
   refreshSplitPaneView,
@@ -65,6 +69,7 @@ export function useSplitPaneCallbacks({
   toggleFavoriteTopic,
   loadConsumerGroupLagFor,
   deleteConsumerGroupsFor,
+  ensureServerConnected,
   resetConsumerGroupOffsetsFor,
   setSelectedGroupByServer,
   refreshGroupsForServer,
@@ -123,6 +128,7 @@ export function useSplitPaneCallbacks({
     selectGroup: (groupId: string) => {
       if (pane) void loadConsumerGroupLagFor(pane.serverId, groupId, target);
     },
+    connectReplayServer: (serverId: string) => ensureServerConnected(serverId, { activate: false, openTab: false }),
     deleteConsumerGroups: (groupIds: string[]) => {
       if (pane) void deleteConsumerGroupsFor(pane.serverId, groupIds, target);
     },
@@ -147,6 +153,8 @@ export function useSplitPaneCallbacks({
       startConsumeFor,
       stopConsume,
       sendMessageToProduce,
+      produceFor,
+      openTopicInWorkspace,
       exportConsumedMessages,
       exportOffsetConditionMessages
     }),
@@ -166,10 +174,12 @@ export function useSplitPaneCallbacks({
     deleteConsumerGroupsFor,
     exportConsumedMessages,
     exportOffsetConditionMessages,
+    ensureServerConnected,
     loadConsumerGroupLagFor,
     moveOffsetPageFor,
     openTopicCreateForm,
     openManualAvroSchema,
+    openTopicInWorkspace,
     pane,
     produceFor,
     refreshGroupsForServer,

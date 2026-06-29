@@ -78,6 +78,10 @@ type ServerLifecycleActionsParams = {
 };
 
 type ServerStreamingStopper = (serverId: string, topic: string, pane?: "primary" | "split") => Promise<void>;
+type ServerConnectOptions = {
+  activate?: boolean;
+  openTab?: boolean;
+};
 
 export function useServerLifecycleActions({
   kafkaApi,
@@ -153,9 +157,11 @@ export function useServerLifecycleActions({
     setSelectedServerId(nextServers[0]?.id ?? "");
   }
 
-  async function connectServer(server: ServerProfile) {
+  async function connectServer(server: ServerProfile, options: ServerConnectOptions = {}) {
     if (!kafkaApi) return false;
-    setSelectedServerId(server.id);
+    const activate = options.activate ?? true;
+    const openTab = options.openTab ?? true;
+    if (activate) setSelectedServerId(server.id);
     try {
       await runTask("Checking server connection...", async () => {
         await kafkaApi.checkHealth(server.id);
@@ -169,7 +175,7 @@ export function useServerLifecycleActions({
       setFailedServerIds((current) => removeId(current, server.id));
       setHealthFailuresByServer((current) => removeServerRecord(current, server.id));
       setConnectedServerIds((current) => addIdOnce(current, server.id));
-      setOpenClusterIds((current) => addIdOnce(current, server.id));
+      if (openTab) setOpenClusterIds((current) => addIdOnce(current, server.id));
       void refreshBrokersForServer(server.id);
       setViewByServer((current) => ({ ...current, [server.id]: current[server.id] ?? "info" }));
       void refreshGroupsForServer(server.id);
@@ -196,16 +202,18 @@ export function useServerLifecycleActions({
     return connectServer(server);
   }
 
-  async function ensureServerConnected(serverId: string) {
+  async function ensureServerConnected(serverId: string, options: ServerConnectOptions = {}) {
     const server = servers.find((item) => item.id === serverId);
     if (!server) return false;
-    setSelectedServerId(serverId);
+    const activate = options.activate ?? true;
+    const openTab = options.openTab ?? true;
+    if (activate) setSelectedServerId(serverId);
     if (connectedServerIds.includes(serverId)) {
-      setOpenClusterIds((current) => addIdOnce(current, serverId));
+      if (openTab) setOpenClusterIds((current) => addIdOnce(current, serverId));
       return true;
     }
     setToast({ message: `Connecting to ${server.name}...`, kind: "loading" });
-    return openCluster(server);
+    return connectServer(server, { activate, openTab });
   }
 
   async function disconnectServer(serverId: string) {

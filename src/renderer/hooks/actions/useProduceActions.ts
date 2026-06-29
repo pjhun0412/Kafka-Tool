@@ -1,5 +1,6 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import type { ConsumedMessage, KafkaApi } from "../../../shared/types";
+import type { ReplayPayloadOptions } from "../../replayTypes";
 import type { SplitPaneState, ToastState, WorkspacePaneId } from "../../uiTypes";
 import { formatProduceValue, parseProduceHeaders, validateJsonLikeValue } from "../../utils";
 
@@ -83,16 +84,27 @@ export function useProduceActions({
     setStatus(`Message sent: ${result.map((item) => `p${item.partition}@${item.offset}`).join(", ")}`);
   }
 
-  function sendMessageToProduce(serverId: string, topic: string, message: ConsumedMessage, targetPane: WorkspacePaneId = "primary") {
+  function sendMessageToProduce(
+    serverId: string,
+    topic: string,
+    message: ConsumedMessage,
+    targetPane: WorkspacePaneId = "primary",
+    options: { navigate?: boolean; payload?: ReplayPayloadOptions } = {}
+  ) {
+    const payload = options.payload ?? { key: true, headers: true, value: true };
     updateProduceDraftFor(serverId, topic, {
-      key: message.key,
-      value: message.decoded?.value === undefined ? formatProduceValue(message.value) : JSON.stringify(message.decoded.value, null, 2),
-      headers: JSON.stringify(message.headers ?? {}, null, 2)
+      key: payload.key ? message.key : "",
+      value: payload.value
+        ? message.decoded?.value === undefined ? formatProduceValue(message.value) : JSON.stringify(message.decoded.value, null, 2)
+        : "",
+      headers: payload.headers ? JSON.stringify(message.headers ?? {}, null, 2) : ""
     });
-    if (targetPane === "split") {
-      setSplitPane((current) => current && current.serverId === serverId && current.topic === topic ? { ...current, view: "produce" } : current);
-    } else {
-      setView("produce");
+    if (options.navigate !== false) {
+      if (targetPane === "split") {
+        setSplitPane((current) => current && current.serverId === serverId && current.topic === topic ? { ...current, view: "produce" } : current);
+      } else {
+        setView("produce");
+      }
     }
     setStatus("Message copied to Produce.");
   }

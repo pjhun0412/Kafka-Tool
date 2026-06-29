@@ -43,6 +43,14 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
           ]
         },
         {
+          heading: "Message Replay",
+          items: [
+            "Consume한 단건 메시지를 원하는 대상 서버와 Topic으로 바로 다시 전송할 수 있습니다.",
+            "Replay 팝업에서 원본 Cluster/Topic/Partition/Offset을 확인하고 Key, Headers, Value 포함 여부를 선택할 수 있습니다.",
+            "전송 전 Payload를 직접 수정할 수 있으며 Produce Dynamic Field 문법도 Replay 전송 직전에 치환됩니다."
+          ]
+        },
+        {
           heading: "성능 및 안정성",
           items: [
             "대량 Consume 탭 전환 때 불필요한 필터 복사와 메시지 row 재계산을 줄였습니다.",
@@ -79,6 +87,14 @@ export const releaseNotes: Record<string, Record<AppLanguage, ReleaseNote>> = {
             "Reset selected Consumer Group partitions to Earliest, Latest, Timestamp, or a Specific offset from the detail view.",
             "Preview and explicit RESET confirmation are required before applying changes.",
             "Active consumer groups are blocked, and progress/errors are shown directly inside the reset dialog."
+          ]
+        },
+        {
+          heading: "Message Replay",
+          items: [
+            "Replay a consumed single message directly to any target server and Topic.",
+            "The replay dialog shows the source cluster/topic/partition/offset and lets you choose whether to include Key, Headers, and Value.",
+            "Payload fields can be edited before sending, and Produce Dynamic Field syntax is rendered right before replay."
           ]
         },
         {

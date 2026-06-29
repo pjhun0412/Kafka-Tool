@@ -15,6 +15,7 @@ import type {
 import type { OffsetOrder, PaneToastState, SplitPaneState, TopicConsumeState, View } from "../../../uiTypes";
 import type { AppLanguage } from "../../../i18n";
 import type { ProduceDraftOverride } from "../../../hooks/actions/useProduceActions";
+import type { ReplayDraft, ReplayPayloadOptions, ReplayTargetServer } from "../../../replayTypes";
 import { PaneToastView } from "../feedback/WorkspaceFeedback";
 import { OpenedTopicTabs } from "../tabs/OpenedTopicTabs";
 import { TopicWorkTabs } from "../tabs/WorkspaceModeTabs";
@@ -24,6 +25,7 @@ export function SplitWorkspacePane(props: {
   pane: SplitPaneState;
   server: ServerProfile;
   topics: TopicSummary[];
+  replayTargets: ReplayTargetServer[];
   brokers: BrokerSummary[];
   groups: ConsumerGroupSummary[];
   favoriteTopicNames: string[];
@@ -71,7 +73,9 @@ export function SplitWorkspacePane(props: {
   onOffsetPage: (direction: "prev" | "next") => void;
   onStartConsume: () => void;
   onStopConsume: () => void;
-  onSendToProduce: (message: ConsumedMessage) => void;
+  onSendToProduce: (message: ConsumedMessage, targetTopic?: string, targetServerId?: string, payload?: ReplayPayloadOptions) => void;
+  onReplayMessage: (serverId: string, topic: string, draft: ReplayDraft) => Promise<void>;
+  onConnectReplayServer: (serverId: string) => Promise<boolean>;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
   onExportAll: (format: MessageExportFormat) => void;
   onMessagePaneHeight: (value: number) => void;
@@ -155,6 +159,7 @@ export function SplitWorkspacePane(props: {
       <WorkspacePaneContent
         className="split-content-grid"
         serverId={props.pane.serverId}
+        serverName={props.server.name ?? props.pane.serverId}
         view={props.pane.view}
         topic={props.pane.topic}
         openedTopicTabs={props.pane.topicTabs}
@@ -162,6 +167,7 @@ export function SplitWorkspacePane(props: {
         isConnected={props.isConnected}
         detail={props.pane.detail}
         topics={props.topics}
+        replayTargets={props.replayTargets}
         brokers={props.brokers}
         groups={props.groups}
         favoriteTopicNames={props.favoriteTopicNames}
@@ -202,6 +208,8 @@ export function SplitWorkspacePane(props: {
         onStartConsume={props.onStartConsume}
         onStopConsume={props.onStopConsume}
         onSendToProduce={props.onSendToProduce}
+        onReplayMessage={props.onReplayMessage}
+        onConnectReplayServer={props.onConnectReplayServer}
         onExport={props.onExport}
         onExportAll={props.onExportAll}
         onMessagePaneHeight={props.onMessagePaneHeight}

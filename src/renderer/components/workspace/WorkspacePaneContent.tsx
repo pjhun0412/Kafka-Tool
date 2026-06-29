@@ -16,6 +16,7 @@ import type { AppLanguage } from "../../i18n";
 import { getDefaultTimeRangeValues } from "../../consumeConfig";
 import type { ProduceDraftOverride } from "../../hooks/actions/useProduceActions";
 import { parseProduceDurationMs, renderProduceTemplateDraft, type ProduceIntervalRequest } from "../../produceTemplate";
+import type { ReplayDraft, ReplayPayloadOptions, ReplayTargetServer } from "../../replayTypes";
 import type { OffsetOrder, TopicConsumeState, View } from "../../uiTypes";
 import { ConsumePanel } from "./consume/ConsumePanel";
 import { ConsumerGroupsPanel } from "./groups/ConsumerGroupsPanel";
@@ -25,6 +26,7 @@ import { BrokersPanel, ServerTopicsPanel, TopicPanel, TopicSettingsPanel } from 
 type WorkspacePaneContentProps = {
   className?: string;
   serverId: string;
+  serverName?: string;
   view: View;
   topic: string;
   openedTopicTabs: string[];
@@ -32,6 +34,7 @@ type WorkspacePaneContentProps = {
   isConnected: boolean;
   detail: TopicDetail | null;
   topics: TopicSummary[];
+  replayTargets: ReplayTargetServer[];
   brokers: BrokerSummary[];
   groups: ConsumerGroupSummary[];
   favoriteTopicNames: string[];
@@ -71,7 +74,9 @@ type WorkspacePaneContentProps = {
   onOffsetPage: (direction: "prev" | "next") => void;
   onStartConsume: () => void;
   onStopConsume: () => void;
-  onSendToProduce: (message: ConsumedMessage) => void;
+  onSendToProduce: (message: ConsumedMessage, targetTopic?: string, targetServerId?: string, payload?: ReplayPayloadOptions) => void;
+  onReplayMessage: (serverId: string, topic: string, draft: ReplayDraft) => Promise<void>;
+  onConnectReplayServer: (serverId: string) => Promise<boolean>;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
   onExportAll: (format: MessageExportFormat) => void;
   onMessagePaneHeight: (value: number) => void;
@@ -227,7 +232,11 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
       {props.view === "consume" && (
         <ConsumePanel
           messages={props.consumeState.messages}
+          serverId={props.serverId}
+          serverName={props.serverName ?? props.serverId}
           topic={props.topic}
+          topics={props.topics}
+          replayTargets={props.replayTargets}
           language={props.language}
           selectedMessage={props.consumeState.selectedMessage}
           mode={props.consumeState.mode}
@@ -287,6 +296,8 @@ export function WorkspacePaneContent(props: WorkspacePaneContentProps) {
           onSelectMessage={(selectedMessage) => props.onUpdateConsume({ selectedMessage })}
           onMessagePaneHeight={props.onMessagePaneHeight}
           onSendToProduce={props.onSendToProduce}
+          onReplayMessage={props.onReplayMessage}
+          onConnectReplayServer={props.onConnectReplayServer}
           onExport={props.onExport}
           onExportAll={props.onExportAll}
           onStart={props.onStartConsume}

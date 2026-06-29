@@ -2,7 +2,8 @@
 import type React from "react";
 import type { ConsumedMessage, ConsumerGroupOffsetResetRequest, MessageExportFormat, MessageExportPayloadOptions } from "../../../shared/types";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
-import type { OffsetOrder, SplitPaneState, TopicConsumeState, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
+import type { ReplayPayloadOptions } from "../../replayTypes";
+import type { OffsetOrder, SplitPaneState, TopicConsumeState, TopicWorkView, View, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import type { ConsumeDefaultPatch } from "../../uiTypes";
 import { createPrimaryConsumeCallbacks, createPrimaryProduceCallbacks } from "./primaryPaneCallbackGroups";
 
@@ -18,6 +19,7 @@ export type PrimaryPaneCallbacksParams = {
   showServerViewInActivePane: (view: View) => void;
   refreshActiveWorkspaceView: () => Promise<void>;
   selectTopicInWorkspace: (target: WorkspaceActionTarget, topic: string) => Promise<void>;
+  openTopicInWorkspace: (target: WorkspaceActionTarget, topic: string, view?: TopicWorkView) => Promise<void>;
   closeTopicTab: (topic: string) => Promise<void>;
   startTopicDrag: (event: React.DragEvent, serverId: string, topic: string, source: WorkspacePaneId) => void;
   clearDragPayload: () => void;
@@ -33,6 +35,7 @@ export type PrimaryPaneCallbacksParams = {
   toggleFavoriteTopic: (topic: string) => void;
   loadConsumerGroupLag: (groupId: string) => Promise<void>;
   deleteConsumerGroupsFor: (serverId: string, groupIds: string[], target?: WorkspaceActionTarget) => Promise<void>;
+  ensureServerConnected: (serverId: string, options?: { activate?: boolean; openTab?: boolean }) => Promise<boolean>;
   resetConsumerGroupOffsetsFor: (request: ConsumerGroupOffsetResetRequest, target?: WorkspaceActionTarget) => Promise<void>;
   setSelectedGroupByServer: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   refreshGroupsForServer: (serverId: string, target?: WorkspaceActionTarget) => Promise<void>;
@@ -41,11 +44,12 @@ export type PrimaryPaneCallbacksParams = {
   moveOffsetPageFor: (serverId: string, topic: string, state: TopicConsumeState, direction: "prev" | "next", pane: WorkspacePaneId) => Promise<void>;
   startConsume: () => Promise<void>;
   stopConsume: (serverId?: string, topic?: string, pane?: WorkspacePaneId) => Promise<void>;
-  sendMessageToProduce: (serverId: string, topic: string, message: ConsumedMessage, pane?: WorkspacePaneId) => void;
+  sendMessageToProduce: (serverId: string, topic: string, message: ConsumedMessage, pane?: WorkspacePaneId, options?: { navigate?: boolean; payload?: ReplayPayloadOptions }) => void;
   exportConsumedMessages: (format: MessageExportFormat, messages: ConsumedMessage[], topic: string, pane?: WorkspacePaneId, serverId?: string, payloadOptions?: MessageExportPayloadOptions) => Promise<void>;
   exportOffsetConditionMessages: (format: MessageExportFormat, serverId: string, topic: string, state: TopicConsumeState, pane?: WorkspacePaneId) => Promise<void>;
   updateProduceDraftFor: (serverId: string, topic: string, patch: { key?: string; headers?: string; value?: string }) => void;
   produce: (pane?: WorkspacePaneId, draftOverride?: ProduceDraftOverride) => Promise<void>;
+  produceFor: (serverId: string, topic: string, pane?: WorkspacePaneId, draftOverride?: ProduceDraftOverride) => Promise<void>;
 };
 
 export function usePrimaryPaneCallbacks({
@@ -60,6 +64,7 @@ export function usePrimaryPaneCallbacks({
   showServerViewInActivePane,
   refreshActiveWorkspaceView,
   selectTopicInWorkspace,
+  openTopicInWorkspace,
   closeTopicTab,
   startTopicDrag,
   clearDragPayload,
@@ -75,6 +80,7 @@ export function usePrimaryPaneCallbacks({
   toggleFavoriteTopic,
   loadConsumerGroupLag,
   deleteConsumerGroupsFor,
+  ensureServerConnected,
   resetConsumerGroupOffsetsFor,
   setSelectedGroupByServer,
   refreshGroupsForServer,
@@ -87,7 +93,8 @@ export function usePrimaryPaneCallbacks({
   exportConsumedMessages,
   exportOffsetConditionMessages,
   updateProduceDraftFor,
-  produce
+  produce,
+  produceFor
 }: PrimaryPaneCallbacksParams) {
   return useMemo(() => {
     const topicTarget: WorkspaceActionTarget = { pane: "primary", serverId: selectedServerId, topic: selectedTopic };
@@ -123,6 +130,7 @@ export function usePrimaryPaneCallbacks({
     deleteSelectedTopics: () => requestTopicAction("delete"),
     toggleTopicFavorite: toggleFavoriteTopic,
     selectGroup: (groupId: string) => void loadConsumerGroupLag(groupId),
+    connectReplayServer: (serverId: string) => ensureServerConnected(serverId, { activate: false, openTab: false }),
     deleteConsumerGroups: (groupIds: string[]) => void deleteConsumerGroupsFor(selectedServerId, groupIds, paneTarget),
     resetConsumerGroupOffsets: (request: ConsumerGroupOffsetResetRequest) => resetConsumerGroupOffsetsFor(request, paneTarget),
     backGroup: () => setSelectedGroupByServer((current) => ({ ...current, [selectedServerId]: "" })),
@@ -141,6 +149,8 @@ export function usePrimaryPaneCallbacks({
       startConsume,
       stopConsume,
       sendMessageToProduce,
+      produceFor,
+      openTopicInWorkspace,
       exportConsumedMessages,
       exportOffsetConditionMessages
     }),
@@ -160,12 +170,15 @@ export function usePrimaryPaneCallbacks({
     deleteConsumerGroupsFor,
     exportConsumedMessages,
     exportOffsetConditionMessages,
+    ensureServerConnected,
     loadConsumerGroupLag,
     moveOffsetPageFor,
     openManualAvroSchema,
+    openTopicInWorkspace,
     openTopicCreateForm,
     openTopicTab,
     produce,
+    produceFor,
     refreshActiveWorkspaceView,
     refreshCurrentView,
     refreshGroupsForServer,

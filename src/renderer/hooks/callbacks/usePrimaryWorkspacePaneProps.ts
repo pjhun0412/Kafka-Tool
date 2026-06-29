@@ -36,6 +36,8 @@ type PrimaryPaneCallbackProps =
   | "onStartConsume"
   | "onStopConsume"
   | "onSendToProduce"
+  | "onReplayMessage"
+  | "onConnectReplayServer"
   | "onExport"
   | "onExportAll"
   | "onMessagePaneHeight"
@@ -89,6 +91,8 @@ export function createPrimaryWorkspacePaneProps({
     onStartConsume: callbacks.startConsume,
     onStopConsume: callbacks.stopConsume,
     onSendToProduce: callbacks.sendToProduce,
+    onReplayMessage: callbacks.replayMessage,
+    onConnectReplayServer: callbacks.connectReplayServer,
     onExport: callbacks.exportMessages,
     onExportAll: callbacks.exportAll,
     onMessagePaneHeight: callbacks.messagePaneHeight,

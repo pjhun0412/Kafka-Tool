@@ -1,7 +1,8 @@
 import type { ConsumedMessage, MessageExportFormat } from "../../../shared/types";
 import { normalizeValueColumnPaths } from "../../consumeValuePaths";
-import type { OffsetOrder, TopicConsumeState, WorkspacePaneId } from "../../uiTypes";
+import type { OffsetOrder, TopicConsumeState, WorkspaceActionTarget, WorkspacePaneId } from "../../uiTypes";
 import type { ProduceDraftOverride } from "../actions/useProduceActions";
+import type { ReplayDraft, ReplayPayloadOptions } from "../../replayTypes";
 import type { SplitPaneCallbacksParams } from "./useSplitPaneCallbacks";
 
 type SplitConsumeCallbackParams = Pick<
@@ -13,8 +14,11 @@ type SplitConsumeCallbackParams = Pick<
   | "startConsumeFor"
   | "stopConsume"
   | "sendMessageToProduce"
+  | "produceFor"
+  | "openTopicInWorkspace"
   | "exportConsumedMessages"
   | "exportOffsetConditionMessages"
+  | "activateSplitTopic"
 >;
 
 type SplitProduceCallbackParams = Pick<
@@ -45,8 +49,23 @@ export function createSplitConsumeCallbacks(params: SplitConsumeCallbackParams) 
     stopConsume: () => {
       if (params.pane) void params.stopConsume(params.pane.serverId, params.pane.topic, "split");
     },
-    sendToProduce: (message: ConsumedMessage) => {
-      if (params.pane) params.sendMessageToProduce(params.pane.serverId, params.pane.topic, message, "split");
+    sendToProduce: (message: ConsumedMessage, targetTopic?: string, targetServerId?: string, payload?: ReplayPayloadOptions) => {
+      if (!params.pane) return;
+      const serverId = targetServerId || params.pane.serverId;
+      const topic = targetTopic || params.pane.topic;
+      if (serverId !== params.pane.serverId) {
+        params.sendMessageToProduce(serverId, topic, message, "primary", { navigate: false, payload });
+        const target: WorkspaceActionTarget = { pane: "primary", serverId, topic };
+        void params.openTopicInWorkspace(target, topic, "produce");
+      } else if (topic !== params.pane.topic) {
+        params.sendMessageToProduce(serverId, topic, message, "split", { navigate: false, payload });
+        void params.activateSplitTopic(topic, "produce");
+      } else {
+        params.sendMessageToProduce(serverId, topic, message, "split", { payload });
+      }
+    },
+    replayMessage: (serverId: string, topic: string, draft: ReplayDraft) => {
+      return params.produceFor(serverId, topic, "split", draft);
     },
     exportMessages: (format: MessageExportFormat, messages: ConsumedMessage[]) => {
       if (params.pane) void params.exportConsumedMessages(format, messages, params.pane.topic, "split", params.pane.serverId, payloadOptions);

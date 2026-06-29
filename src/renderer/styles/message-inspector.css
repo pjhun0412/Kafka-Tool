@@ -115,8 +115,306 @@
   @apply border-[#3794ff]/70 bg-[#094771] text-white;
 }
 
+.produce-action-menu-wrap {
+  @apply relative;
+}
+
+.produce-action-menu {
+  @apply absolute bottom-[calc(100%+6px)] right-0 z-40 grid w-[230px] overflow-hidden rounded-md border border-[#30363d] bg-[#1f1f1f] p-1 shadow-[0_18px_48px_rgba(0,0,0,0.5)];
+}
+
+.produce-action-menu button {
+  @apply grid min-w-0 gap-0.5 rounded px-2.5 py-2 text-left transition hover:bg-white/[0.06];
+}
+
+.produce-action-menu strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-extrabold text-slate-100;
+}
+
+.produce-action-menu span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[10px] font-semibold text-slate-500;
+}
+
 .map-field-modal-backdrop {
   @apply z-[80];
+}
+
+.replay-target-backdrop {
+  @apply z-[80];
+}
+
+.replay-target-modal {
+  @apply grid w-full max-w-[720px] rounded-lg border border-[#30363d] bg-[#1f1f1f] text-[#d4d4d4] shadow-[0_24px_80px_rgba(0,0,0,0.55)];
+  overflow: visible;
+}
+
+.replay-target-modal .modal-title {
+  @apply m-0 border-b border-[#2b2b2b] bg-[#181818] px-4 py-3;
+}
+
+.replay-target-modal .modal-title h2 {
+  @apply mt-0 text-lg text-[#f0f0f0];
+}
+
+.replay-target-modal .eyebrow {
+  @apply text-[#8ab4f8];
+}
+
+.replay-target-modal .modal-close {
+  @apply mt-0;
+}
+
+.replay-target-help {
+  @apply mx-4 mt-4 mb-0 text-[12px] font-semibold leading-5 text-slate-400;
+}
+
+.replay-route-grid {
+  @apply mx-4 mt-4 grid gap-3;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: visible;
+}
+
+.replay-route-card {
+  @apply grid gap-2 rounded-md border border-[#30363d] bg-[#181818] p-3;
+  overflow: visible;
+}
+
+.replay-notice {
+  @apply rounded-md border border-red-400/40 bg-red-500/10 px-3 py-2 text-[12px] font-bold leading-5 text-red-100;
+  grid-column: 1 / -1;
+}
+
+.replay-route-card h3 {
+  @apply text-[12px] font-extrabold text-slate-100;
+}
+
+.replay-route-card dl {
+  @apply grid gap-1.5;
+}
+
+.replay-route-card dl div {
+  @apply grid grid-cols-[72px_minmax(0,1fr)] gap-2 text-[12px];
+}
+
+.replay-route-card dt {
+  @apply font-bold text-slate-500;
+}
+
+.replay-route-card dd {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-bold text-slate-200;
+}
+
+.replay-target-select,
+.replay-target-server-picker,
+.replay-target-topic-picker {
+  @apply relative grid gap-1.5 text-[12px] font-extrabold text-slate-200;
+}
+
+.replay-target-select select {
+  @apply h-9 min-h-9 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-0 text-[12px] font-bold text-[#e6e6e6] outline-none focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/20;
+  color-scheme: dark;
+}
+
+.replay-target-select small {
+  @apply text-[11px] font-bold text-sky-300;
+}
+
+.replay-server-select-trigger {
+  @apply grid h-9 min-h-9 min-w-0 grid-cols-[18px_minmax(0,1fr)_auto_14px] items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-left text-[12px] font-bold text-[#e6e6e6] outline-none transition hover:border-[#007acc]/60 hover:bg-[#252526] disabled:cursor-wait disabled:opacity-80;
+}
+
+.replay-server-select-trigger strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-extrabold text-slate-100;
+}
+
+.replay-server-select-trigger small {
+  @apply shrink-0 text-[10px] font-bold text-slate-400;
+}
+
+.replay-server-list {
+  @apply absolute left-0 top-[calc(100%+4px)] z-50 grid max-h-[148px] w-full gap-1 overflow-auto rounded-md border border-[#30363d] bg-[#151515] p-1 shadow-[0_18px_48px_rgba(0,0,0,0.5)];
+}
+
+.replay-server-list button {
+  @apply grid min-w-0 grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 rounded px-2 py-1.5 text-left transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-80;
+}
+
+.replay-server-list button.selected {
+  @apply border border-[#3794ff]/60 bg-[#094771]/70;
+}
+
+.replay-server-list strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-extrabold text-slate-100;
+}
+
+.replay-server-list small {
+  @apply shrink-0 text-[10px] font-bold text-slate-400;
+}
+
+.replay-server-list button.selected small {
+  @apply text-sky-200;
+}
+
+.replay-server-status {
+  @apply grid h-3.5 w-3.5 place-items-center rounded-full text-[9px] font-extrabold leading-none;
+}
+
+.replay-server-status.connected {
+  @apply bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.12)];
+}
+
+.replay-server-status.disconnected {
+  @apply border border-red-300 bg-red-500/20 text-red-200;
+}
+
+.replay-topic-select-trigger {
+  @apply grid h-9 min-h-9 min-w-0 grid-cols-[minmax(0,1fr)_auto_14px] items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-left text-[12px] font-bold text-[#e6e6e6] outline-none transition hover:border-[#007acc]/60 hover:bg-[#252526] disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.replay-topic-select-trigger strong {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-extrabold text-slate-100;
+}
+
+.replay-topic-select-trigger small {
+  @apply shrink-0 rounded border border-[#3c3c3c] px-1.5 py-0.5 text-[10px] font-bold text-slate-400;
+}
+
+.replay-topic-popover {
+  @apply absolute left-0 top-[calc(100%+4px)] z-50 grid w-full gap-2 overflow-hidden rounded-md border border-[#30363d] bg-[#151515] p-2 shadow-[0_18px_48px_rgba(0,0,0,0.5)];
+  bottom: auto;
+}
+
+.replay-payload-card {
+  @apply grid-cols-3;
+  grid-column: 1 / -1;
+}
+
+.replay-payload-card h3 {
+  @apply col-span-3;
+}
+
+.replay-payload-card label {
+  @apply inline-flex items-center gap-2 text-[12px] font-bold text-slate-300;
+}
+
+.replay-payload-card input {
+  @apply h-4 w-4 accent-[#3794ff];
+}
+
+.replay-editor-card {
+  @apply relative gap-3;
+  grid-column: 1 / -1;
+}
+
+.replay-editor-card-title {
+  @apply relative flex min-w-0 items-center justify-between gap-3;
+}
+
+.replay-editor-card-title h3 {
+  @apply min-w-0;
+}
+
+.replay-editor-card label {
+  @apply grid gap-1.5 text-[12px] font-extrabold text-slate-300;
+}
+
+.replay-editor-card input,
+.replay-editor-card textarea {
+  @apply w-full rounded-md border border-[#3c3c3c] bg-[#111719] px-2 py-2 font-mono text-[12px] font-semibold leading-5 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-[#007acc] focus:ring-2 focus:ring-[#007acc]/20 disabled:cursor-not-allowed disabled:opacity-45;
+}
+
+.replay-editor-card input {
+  @apply h-9;
+}
+
+.replay-editor-card textarea {
+  @apply min-h-[74px] resize-y;
+}
+
+.replay-editor-card label:last-child textarea {
+  @apply min-h-[132px];
+}
+
+.replay-dynamic-guide {
+  @apply relative shrink-0 text-[12px] text-slate-300;
+}
+
+.replay-dynamic-guide summary {
+  @apply flex h-7 min-h-7 cursor-pointer select-none items-center rounded-md border border-transparent bg-[#1e1e1e] px-2 py-0 text-[11px] font-semibold leading-7 text-slate-200 transition hover:bg-white/[0.06];
+}
+
+.replay-dynamic-guide summary::-webkit-details-marker {
+  @apply hidden;
+}
+
+.replay-dynamic-guide[open] summary {
+  @apply border-[#264f78] bg-[#1b2f3a] text-[#9cdcfe];
+}
+
+.replay-dynamic-guide div {
+  @apply absolute right-0 top-[calc(100%+6px)] z-[70] grid w-[560px] max-w-[calc(100vw-48px)] gap-1 rounded-md border border-[#30363d] bg-[#111315] p-2 shadow-[0_18px_48px_rgba(0,0,0,0.5)];
+}
+
+.replay-dynamic-guide p {
+  @apply grid grid-cols-[minmax(180px,280px)_minmax(0,1fr)] items-center gap-3 rounded px-2 py-1 text-[11px];
+}
+
+.replay-dynamic-guide code {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] text-[#9cdcfe];
+}
+
+.replay-dynamic-guide span {
+  @apply min-w-0 text-[11px] text-muted;
+}
+
+.replay-target-search {
+  @apply flex h-8 min-h-8 items-center gap-2 rounded-md border border-[#3c3c3c] bg-[#1e1e1e] px-2 text-slate-400 focus-within:border-[#007acc] focus-within:ring-2 focus-within:ring-[#007acc]/20;
+}
+
+.replay-target-search input {
+  @apply h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-[12px] font-bold text-slate-100 outline-none ring-0 placeholder:text-slate-500;
+}
+
+.replay-target-search input:focus {
+  @apply border-0 ring-0;
+}
+
+.replay-topic-list {
+  @apply grid max-h-[150px] gap-1 overflow-auto rounded-md border border-[#30363d] bg-[#181818] p-1.5;
+}
+
+.replay-topic-list button {
+  @apply flex h-8 min-w-0 items-center justify-between gap-2 rounded px-2 text-left text-[12px] font-bold text-slate-200 transition hover:bg-white/[0.06];
+}
+
+.replay-topic-list button.selected {
+  @apply bg-[#094771] text-white;
+}
+
+.replay-topic-list button span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.replay-topic-list button small {
+  @apply shrink-0 rounded border border-[#3c3c3c] px-1.5 py-0.5 text-[10px] font-bold text-slate-400;
+}
+
+.replay-topic-empty {
+  @apply px-2 py-6 text-center text-[12px] font-semibold text-slate-500;
+}
+
+.replay-target-modal .modal-actions {
+  @apply mt-4 border-t border-[#2b2b2b] bg-[#1b1b1b] px-4 py-3;
+}
+
+.replay-target-modal .modal-actions button {
+  @apply min-h-8;
+}
+
+@media (max-width: 760px) {
+  .replay-route-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .map-field-modal {

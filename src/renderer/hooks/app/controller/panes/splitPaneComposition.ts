@@ -15,8 +15,10 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
     manualAvroSchemasByServer,
     produceTemplatesByServer,
     selectedTopicRows,
+    servers,
     setProduceTemplatesByServer,
     sortedTopics,
+    topicsByServer,
     topicGridSortingByServer,
     updateTopicGridSortingForServer
   } = params.resources;
@@ -49,9 +51,11 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
     closeSplitTopicTab,
     copySelectedTopicNames,
     deleteConsumerGroupsFor,
+    ensureServerConnected,
     loadConsumerGroupLagFor,
     openManualAvroSchema,
     openTopicCreateForm,
+    openTopicInWorkspace,
     refreshGroupsForServer,
     resetConsumerGroupOffsetsFor,
     refreshSplitPaneView,
@@ -66,6 +70,13 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
     toggleTopicRow
   } = params.callbacks;
 
+  const replayTargets = servers.map((server) => ({
+    id: server.id,
+    name: server.name || server.id,
+    connected: connectedServerIds.includes(server.id),
+    topics: topicsByServer[server.id] ?? []
+  }));
+
   return {
     splitCallbacks: {
       pane: visibleSplitPane,
@@ -77,6 +88,7 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
       clearDragPayload,
       showSplitView,
       activateSplitTopic,
+      openTopicInWorkspace,
       closeSplitTopicTab,
       startTopicDrag,
       refreshSplitPaneView,
@@ -89,6 +101,7 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
       toggleFavoriteTopic,
       loadConsumerGroupLagFor,
       deleteConsumerGroupsFor,
+      ensureServerConnected,
       resetConsumerGroupOffsetsFor,
       setSelectedGroupByServer,
       refreshGroupsForServer,
@@ -106,6 +119,7 @@ export function createSplitPaneComposition(params: WorkspaceControllerPanesParam
       pane: visibleSplitPane,
       server: splitServer,
       topics: sortedTopics,
+      replayTargets,
       brokers: splitModel.brokers,
       groups: splitModel.groups,
       favoriteTopicNames,

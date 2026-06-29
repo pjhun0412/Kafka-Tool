@@ -33,6 +33,7 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
     setProduceTemplatesByServer,
     sortedTopics,
     topicDetail,
+    topicsByServer,
     topicGridSortingByServer,
     updateTopicGridSortingForServer
   } = params.resources;
@@ -55,6 +56,7 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
   } = params.consume;
   const {
     produce,
+    produceFor,
     selectedProduceDraft,
     updateProduceDraftFor
   } = params.produce;
@@ -64,9 +66,11 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
     closeTopicTab,
     copySelectedTopicNames,
     deleteConsumerGroupsFor,
+    ensureServerConnected,
     loadConsumerGroupLag,
     openManualAvroSchema,
     openTopicCreateForm,
+    openTopicInWorkspace,
     openTopicTab,
     refreshActiveWorkspaceView,
     refreshCurrentView,
@@ -85,6 +89,13 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
     toggleTopicRow
   } = params.callbacks;
 
+  const replayTargets = servers.map((server) => ({
+    id: server.id,
+    name: server.name || server.id,
+    connected: connectedServerIds.includes(server.id),
+    topics: topicsByServer[server.id] ?? []
+  }));
+
   return {
     primaryCallbacks: {
       selectedServerId,
@@ -98,6 +109,7 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
       showServerViewInActivePane,
       refreshActiveWorkspaceView,
       selectTopicInWorkspace,
+      openTopicInWorkspace,
       closeTopicTab,
       startTopicDrag,
       clearDragPayload,
@@ -113,6 +125,7 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
       toggleFavoriteTopic,
       loadConsumerGroupLag,
       deleteConsumerGroupsFor,
+      ensureServerConnected,
       resetConsumerGroupOffsetsFor,
       setSelectedGroupByServer,
       refreshGroupsForServer,
@@ -125,7 +138,8 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
       exportConsumedMessages,
       exportOffsetConditionMessages,
       updateProduceDraftFor,
-      produce
+      produce,
+      produceFor
     },
     primaryPane: {
       server: selectedServer,
@@ -151,6 +165,7 @@ export function createPrimaryPaneComposition(params: WorkspaceControllerPanesPar
       view,
       detail: topicDetail,
       topics: sortedTopics,
+      replayTargets,
       brokers: primaryModel.brokers,
       groups: primaryModel.groups,
       favoriteTopicNames,

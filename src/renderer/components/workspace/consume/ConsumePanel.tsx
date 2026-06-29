@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, Columns3, Folder, RefreshCw, X } from "lucide-react";
-import type { ConsumedMessage, LiveMapPoint, MessageExportFormat } from "../../../../shared/types";
+import type { ConsumedMessage, LiveMapPoint, MessageExportFormat, TopicSummary } from "../../../../shared/types";
 import type { AppLanguage } from "../../../i18n";
 import { t } from "../../../i18n";
 import { collectMessageValuePaths, normalizeValueColumnPaths } from "../../../consumeValuePaths";
 import { createLiveMapPoint } from "../../../mapPreview";
 import type { MapFieldMapping } from "../../../mapPreview";
+import type { ReplayDraft, ReplayPayloadOptions, ReplayTargetServer } from "../../../replayTypes";
 import type { ConsumeFilterField, ConsumeFilterMode, ConsumeMode, MessageInspectorMode, MessagePayloadTarget, MessagePreviewEncoding, MessagePreviewMode, OffsetOrder, TopicConsumeState } from "../../../uiTypes";
 import { ConsumeToolbar } from "./ConsumeToolbar";
 import { MessageInspector } from "./MessageInspector";
@@ -16,7 +17,11 @@ import { useInspectorResize } from "./useInspectorResize";
 
 type ConsumePanelProps = {
   messages: ConsumedMessage[];
+  serverId: string;
+  serverName: string;
   topic: string;
+  topics: TopicSummary[];
+  replayTargets: ReplayTargetServer[];
   language: AppLanguage;
   selectedMessage: ConsumedMessage | null;
   mode: ConsumeMode;
@@ -71,7 +76,9 @@ type ConsumePanelProps = {
   onPageNext: () => void;
   onSelectMessage: (message: ConsumedMessage) => void;
   onMessagePaneHeight: (value: number) => void;
-  onSendToProduce: (message: ConsumedMessage) => void;
+  onSendToProduce: (message: ConsumedMessage, targetTopic?: string, targetServerId?: string, payload?: ReplayPayloadOptions) => void;
+  onReplayMessage: (serverId: string, topic: string, draft: ReplayDraft) => Promise<void>;
+  onConnectReplayServer: (serverId: string) => Promise<boolean>;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
   onExportAll: (format: MessageExportFormat) => void;
   onStart: () => void;
@@ -553,6 +560,9 @@ function ConsumePanelView(props: ConsumePanelProps) {
           <>
             <div className="consume-split-resizer" onPointerDown={startInspectorResize} title={t(props.language, "title.resizeMessageViewerPanels")} />
             <MessageInspector
+              serverId={props.serverId}
+              serverName={props.serverName}
+              replayTargets={props.replayTargets}
               mode={props.inspectorMode}
               previewTarget={previewTarget}
               previewMode={previewMode}
@@ -574,6 +584,8 @@ function ConsumePanelView(props: ConsumePanelProps) {
               onSearch={setInspectorSearch}
               onApplyFilter={props.onApplyFilter}
               onSendToProduce={props.onSendToProduce}
+              onReplayMessage={props.onReplayMessage}
+              onConnectReplayServer={props.onConnectReplayServer}
               onCollapse={() => props.onInspectorCollapsed(true)}
             />
           </>
@@ -585,7 +597,10 @@ function ConsumePanelView(props: ConsumePanelProps) {
 
 function areConsumePanelPropsEqual(previous: ConsumePanelProps, next: ConsumePanelProps) {
   return previous.messages === next.messages
+    && previous.serverId === next.serverId
+    && previous.serverName === next.serverName
     && previous.topic === next.topic
+    && previous.replayTargets === next.replayTargets
     && previous.language === next.language
     && previous.selectedMessage === next.selectedMessage
     && previous.mode === next.mode
@@ -613,7 +628,9 @@ function areConsumePanelPropsEqual(previous: ConsumePanelProps, next: ConsumePan
     && previous.valueColumnPaths === next.valueColumnPaths
     && previous.mapFieldMapping === next.mapFieldMapping
     && previous.offsetPagination === next.offsetPagination
-    && previous.messagePaneHeight === next.messagePaneHeight;
+    && previous.messagePaneHeight === next.messagePaneHeight
+    && previous.onReplayMessage === next.onReplayMessage
+    && previous.onConnectReplayServer === next.onConnectReplayServer;
 }
 
 export const ConsumePanel = React.memo(ConsumePanelView, areConsumePanelPropsEqual);

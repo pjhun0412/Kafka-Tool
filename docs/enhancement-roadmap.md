@@ -84,21 +84,25 @@ src/renderer/hooks/actions/useConsumerGroupOffsetResetActions.ts
 
 Consume한 메시지를 같은 topic 또는 다른 topic으로 다시 produce합니다.
 
-1차 구현 범위:
+1차 구현 완료:
 
 - Consume grid 선택 메시지 replay
 - 대상 server/topic 선택
 - key/header/value 유지 여부 선택
 - value 편집
-- preview 후 실행
+- 팝업 내 직접 실행
 - produce 결과 partition/offset 표시
+- 대상 서버가 미연결 상태일 때 replay 팝업 안에서 연결
+- Replay Payload 편집 시 Produce Dynamic Field 문법 렌더링
 
-확장 항목:
+남은 확장 항목:
 
+- 선택 메시지 다중 replay
 - 필터 결과 전체 replay
 - JSON field 치환
 - header 추가/삭제
 - replay 전 batch preview
+- replay 진행률/취소
 - 실패 메시지만 재시도
 
 ### Message Diff

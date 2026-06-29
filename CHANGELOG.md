@@ -9,6 +9,7 @@
 - Added Message Viewer Tree actions for adding leaf values directly to `Value Columns`.
 - Added the independent Map Viewer window for coordinate messages, including per-topic field mapping, projection conversion, vehicle markers, heading, trails, and selected-vehicle follow mode.
 - Added Consumer Group Offset Reset with partition selection, preview, active-group protection, and Earliest/Latest/Timestamp/Specific offset modes.
+- Added Message Replay from Consume results with target server/topic selection, payload editing, Key/Headers/Value toggles, and Dynamic Field rendering.
 
 ### Improved
 
@@ -16,6 +17,7 @@
 - Support WGS84 degree, WGS84 millisecond, Korea TM, and UTM Zone 52N coordinate inputs in Map Viewer.
 - Support `km/h` and `m/s` speed field handling in Map Viewer.
 - Show reset progress and errors inside the Consumer Group reset dialog.
+- Keep Message Replay inside its dialog so messages can be reviewed, edited, and sent without switching to the Produce tab.
 - Improved large Consume tab switching by avoiding unnecessary filter copies and caching message row/value parsing work.
 - Improved Map Viewer movement by interpolating vehicle position and heading updates.
 - Refactored Consume value-path helpers and Map Viewer vehicle helpers into focused modules.

@@ -50,6 +50,7 @@ export type WorkspacePaneResources = {
   selectedTopicRows: PrimaryPane["selectedTopics"];
   servers: PrimaryPane["servers"];
   sortedTopics: PrimaryPane["topics"];
+  topicsByServer: Record<string, PrimaryPane["topics"]>;
   produceTemplatesByServer: Record<string, Record<string, ProduceTemplatePreference[]>>;
   setProduceTemplatesByServer: React.Dispatch<React.SetStateAction<Record<string, Record<string, ProduceTemplatePreference[]>>>>;
   topicDetail: PrimaryPane["detail"];
@@ -97,9 +98,11 @@ export type WorkspacePaneCallbacks = Pick<
   | "closeTopicTab"
   | "copySelectedTopicNames"
   | "deleteConsumerGroupsFor"
+  | "ensureServerConnected"
   | "loadConsumerGroupLag"
   | "openManualAvroSchema"
   | "openTopicCreateForm"
+  | "openTopicInWorkspace"
   | "openTopicTab"
   | "refreshActiveWorkspaceView"
   | "refreshCurrentView"

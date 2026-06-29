@@ -16,6 +16,7 @@ import type {
 import type { OffsetOrder, PaneToastState, TopicConsumeState, View } from "../../../uiTypes";
 import type { AppLanguage } from "../../../i18n";
 import type { ProduceDraftOverride } from "../../../hooks/actions/useProduceActions";
+import type { ReplayDraft, ReplayPayloadOptions, ReplayTargetServer } from "../../../replayTypes";
 import { PaneToastView } from "../feedback/WorkspaceFeedback";
 import { ClusterTabs } from "../tabs/ClusterTabs";
 import { OpenedTopicTabs } from "../tabs/OpenedTopicTabs";
@@ -42,6 +43,7 @@ export function PrimaryWorkspacePane(props: {
   view: View;
   detail: TopicDetail | null;
   topics: TopicSummary[];
+  replayTargets: ReplayTargetServer[];
   brokers: BrokerSummary[];
   groups: ConsumerGroupSummary[];
   favoriteTopicNames: string[];
@@ -97,7 +99,9 @@ export function PrimaryWorkspacePane(props: {
   onOffsetPage: (direction: "prev" | "next") => void;
   onStartConsume: () => void;
   onStopConsume: () => void;
-  onSendToProduce: (message: ConsumedMessage) => void;
+  onSendToProduce: (message: ConsumedMessage, targetTopic?: string, targetServerId?: string, payload?: ReplayPayloadOptions) => void;
+  onReplayMessage: (serverId: string, topic: string, draft: ReplayDraft) => Promise<void>;
+  onConnectReplayServer: (serverId: string) => Promise<boolean>;
   onExport: (format: MessageExportFormat, messages: ConsumedMessage[]) => void;
   onExportAll: (format: MessageExportFormat) => void;
   onMessagePaneHeight: (value: number) => void;
@@ -200,6 +204,7 @@ export function PrimaryWorkspacePane(props: {
 
         <WorkspacePaneContent
           serverId={props.selectedServerId}
+          serverName={props.server?.name ?? props.selectedServerId}
           view={props.view}
           topic={props.selectedTopic}
           openedTopicTabs={props.topicTabs}
@@ -207,6 +212,7 @@ export function PrimaryWorkspacePane(props: {
           isConnected={props.isSelectedServerConnected}
           detail={props.detail}
           topics={props.topics}
+          replayTargets={props.replayTargets}
           brokers={props.brokers}
           groups={props.groups}
           favoriteTopicNames={props.favoriteTopicNames}
@@ -247,6 +253,8 @@ export function PrimaryWorkspacePane(props: {
           onStartConsume={props.onStartConsume}
           onStopConsume={props.onStopConsume}
           onSendToProduce={props.onSendToProduce}
+          onReplayMessage={props.onReplayMessage}
+          onConnectReplayServer={props.onConnectReplayServer}
           onExport={props.onExport}
           onExportAll={props.onExportAll}
           onMessagePaneHeight={props.onMessagePaneHeight}
