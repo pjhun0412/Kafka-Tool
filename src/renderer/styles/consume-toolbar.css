@@ -1,6 +1,6 @@
 .consume-workspace > .toolbar {
   @apply gap-1.5 rounded-lg border border-[#30363d] bg-[#252526] p-2 text-slate-100 shadow-[0_8px_20px_rgba(0,0,0,0.18)];
-  --consume-toolbar-control-height: 36px;
+  --consume-toolbar-control-height: 2.25rem;
 }
 
 .consume-workspace > .toolbar .count {
@@ -31,7 +31,7 @@
 .toolbar .danger,
 .toolbar .ui-button,
 .toolbar .export-button {
-  @apply px-3 py-0 leading-none;
+  @apply px-2 py-0 text-[12px] leading-none;
   height: var(--consume-toolbar-control-height);
   min-height: var(--consume-toolbar-control-height);
 }

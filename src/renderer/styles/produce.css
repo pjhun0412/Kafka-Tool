@@ -37,7 +37,7 @@
 
 .produce-mode-row {
   @apply flex flex-wrap items-center gap-2;
-  --produce-control-height: 36px;
+  --produce-control-height: 2.25rem;
 }
 
 .produce-mode-row .segmented-control {
@@ -62,9 +62,9 @@
 }
 
 .produce-primary-action {
-  @apply inline-flex shrink-0 items-center justify-center whitespace-nowrap px-3 leading-none;
-  height: var(--produce-control-height);
-  min-height: var(--produce-control-height);
+  @apply inline-flex shrink-0 items-center justify-center whitespace-nowrap px-3 text-[12px] leading-none;
+  height: var(--produce-control-height) !important;
+  min-height: var(--produce-control-height) !important;
 }
 
 .produce-interval-controls label {
