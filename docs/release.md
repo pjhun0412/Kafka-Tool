@@ -16,7 +16,7 @@ Delete short-lived branches after they are merged into `main`.
 Update the package version before a release:
 
 ```bash
-npm version 2.0.5 --no-git-tag-version
+npm version x.y.z --no-git-tag-version
 ```
 
 Verify the build:
@@ -29,7 +29,7 @@ Commit the version update:
 
 ```bash
 git add package.json package-lock.json
-git commit -m "chore: release 2.0.5"
+git commit -m "chore: release x.y.z"
 ```
 
 ## Tag
@@ -37,7 +37,7 @@ git commit -m "chore: release 2.0.5"
 Create a release tag from `main`:
 
 ```bash
-git tag v2.0.5
+git tag vx.y.z
 git push origin main --tags
 ```
 
